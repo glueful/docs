@@ -1,2 +1,30 @@
-@import 'tailwindcss';
-@import '@nuxt/ui-pro';
+@import 'tailwindcss' theme(static);
+@import '@nuxt/ui';
+
+:root {
+  --ui-header-height: --spacing(16);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+
+.logo img {
+  height: 100%;
+  width: auto;
+}
+
+/* Show/hide logos based on color mode */
+.dark-logo {
+  display: none;
+}
+
+:root.dark .light-logo {
+  display: none;
+}
+
+:root.dark .dark-logo {
+  display: block;
+}

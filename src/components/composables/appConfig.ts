@@ -14,6 +14,8 @@ const defaultAppConfig = {
       close: 'i-lucide-x',
       panelOpen: 'i-lucide-menu',
       panelClose: 'i-lucide-menu',
+      dark: 'i-heroicons-moon',
+      light: 'i-heroicons-sun',
     },
   },
 }
