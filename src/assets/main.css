@@ -2,7 +2,45 @@
 @import '@nuxt/ui';
 
 :root {
+  /* Brand Colors */
+  --brand-dark: #231f20;
+  --brand-medium: #747474;
+  --brand-light: #a3a3a3;
+
+  /* Light Theme - Glueful */
+  /* Using brand colors for the light theme */
+  --ui-primary-50: #f8f8f8;
+  --ui-primary-100: #f0f0f0;
+  --ui-primary-200: #e4e4e4;
+  --ui-primary-300: #d1d1d1;
+  --ui-primary-400: #b4b4b4;
+  --ui-primary-500: var(--brand-light);
+  --ui-primary-600: var(--brand-medium);
+  --ui-primary-700: #5e5e5e;
+  --ui-primary-800: #3d3d3d;
+  --ui-primary-900: var(--brand-dark);
+  --ui-primary-950: #1a1718;
+
+  /* Primary color for components */
+  --ui-primary: var(--brand-dark);
+
+  /* App Variables */
   --ui-header-height: --spacing(16);
+
+  --ui-primary: var(--ui-color-primary-600);
+  --ui-color-primary-500: var(--ui-primary-500);
+  --ui-color-primary-600: var(--ui-primary-600);
+  --ui-color-primary-700: var(--ui-primary-700);
+  --ui-color-primary-800: var(--ui-primary-800);
+  --ui-color-primary-900: var(--ui-primary-900);
+  --ui-color-primary-950: var(--ui-primary-950);
+}
+
+.home-page-hero .text-center {
+  text-align: left !important;
+}
+.home-page-hero .justify-center {
+  justify-content: flex-start !important;
 }
 
 .logo {

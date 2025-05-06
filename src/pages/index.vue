@@ -9,13 +9,22 @@ import { onBeforeMount, ref } from 'vue'
 // })
 // console.log('Content:', content.value)
 // Use onMounted instead of top-level await
-
+const appear = ref(false)
+const appeared = ref(false)
+const isLoading = ref(false)
 const ast = ref<any>(null)
 const { parse } = useMarkdownParser()
 
 onBeforeMount(async () => {
+  isLoading.value = true
+
   ast.value = await parse(contentRaw)
-  console.log('AST:', ast.value)
+  // console.log('AST:', ast.value)
+  isLoading.value = false
+  appear.value = true
+  setTimeout(() => {
+    appeared.value = true
+  }, 400)
 })
 </script>
 
@@ -23,7 +32,16 @@ onBeforeMount(async () => {
   <AppHeader />
   <Suspense>
     <template #default>
-      <ContentRenderer :value="ast" />
+      <Main class="relative">
+        <HeroBackground
+          class="absolute w-full -top-px transition-all shrink-0"
+          :class="[
+            isLoading ? 'animate-pulse' : appear ? '' : 'opacity-0',
+            appeared ? 'duration-[400ms]' : 'duration-1000',
+          ]"
+        />
+        <ContentRenderer :value="ast" />
+      </Main>
     </template>
     <template #fallback>
       <div class="p-4 text-center">

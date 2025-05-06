@@ -16,7 +16,23 @@ export default defineConfig({
     VueRouter({
       extensions: ['.vue', '.md'],
     }),
-    ui(),
+    ui({
+      ui: {
+        icons: {
+          loading: 'i-lucide-loader-circle',
+        },
+        button: {
+          slots: {
+            base: ['cursor-pointer'],
+          },
+        },
+        dropdownMenu: {
+          slots: {
+            item: ['cursor-pointer'],
+          },
+        },
+      },
+    }),
     vueDevTools(),
   ],
   resolve: {

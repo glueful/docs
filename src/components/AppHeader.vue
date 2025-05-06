@@ -8,7 +8,7 @@ import logoLight from '../assets/logo_full.svg'
 const { activeHeadings } = useScrollspy()
 const items = computed(() => [
   {
-    label: 'Docs',
+    label: 'Documentation',
     to: '#docs',
     active: activeHeadings.value.includes('docs') && !activeHeadings.value.includes('extensions'),
   },
@@ -29,6 +29,7 @@ const items = computed(() => [
     </template>
     <template #right>
       <UNavigationMenu :items="items" variant="link" class="hidden lg:block" />
+      <UButton icon="i-tabler-brand-github-filled" size="md" color="primary" variant="ghost" />
     </template>
   </Header>
 </template>
