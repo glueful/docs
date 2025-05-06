@@ -147,7 +147,7 @@ const ui = computed(() =>
           :class="ui.features({ class: props.ui?.features })"
         >
           <slot name="features">
-            <UPageFeature
+            <PageFeature
               v-for="(feature, index) in features"
               :key="index"
               as="li"
