@@ -100,13 +100,10 @@ php glueful extensions enable MyExtension
 
 ::
 
-::u-separator{class="border-primary/30"}
-::
-
 ::page-section{class="endpoints"}
 
-<div class="absolute rounded-full -left-10 top-10 size-[300px] z-10 bg-primary blur-[200px]"></div>
-<div class="absolute rounded-full -right-10 -bottom-10 size-[300px] z-10 bg-primary blur-[200px]"></div>
+<!-- <div class="absolute rounded-full -left-10 top-10 size-[300px] z-10 bg-primary blur-[200px]"></div> -->
+<!-- <div class="absolute rounded-full -right-10 -bottom-10 size-[300px] z-10 bg-primary blur-[200px]"></div> -->
 
 #title
 
@@ -135,4 +132,32 @@ php glueful extensions enable MyExtension
 ::u-separator{class="border-primary/30"}
 ::
 
-::page-section
+::page-section{class="get-started"}
+
+<!-- <img  class="absolute left-10 -top-10 sm:top-0 h-full" src="/images/light/line-6.svg" /> -->
+<img  class="absolute right-0 bottom-0 h-full" src="/images/light/line-7.svg" />
+
+#title
+
+<div class="text-left">Building APIs with <span class="text-primary-500 font-medium">Glueful</span> is easy</div>
+
+#description
+
+<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>Glueful is designed to be easy to use and understand, even for developers who are new to API development. With its intuitive syntax and comprehensive documentation, you can get started quickly and easily.</p></div>
+<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>Whether you're building a simple API for a small project or a complex system for a large enterprise, Glueful has the tools and features you need to succeed.</p></div>
+<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>With Glueful, you can focus on building great applications without worrying about the underlying infrastructure.</p></div>
+<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>Get started today and see how Glueful can help you build better APIs faster.</p></div>
+
+#links
+::u-button{size = "xl" to = "/" trailing-icon = "i-lucide-arrow-right" color = "neutral" variant = "subtle"}
+
+Get started
+::
+
+::u-button{color= "neutral" icon = "i-tabler-brand-github-filled" size = "xl" target = "\_blank" to = "https://github.com/your-repo"}
+
+::
+::
+
+::u-separator{class="border-primary/30"}
+::

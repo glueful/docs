@@ -39,7 +39,8 @@
 .home-page-hero .text-center {
   text-align: left !important;
 }
-.home-page-hero .justify-center {
+.home-page-hero .justify-center,
+.get-started .justify-center {
   justify-content: flex-start !important;
 }
 

@@ -49,4 +49,5 @@ onBeforeMount(async () => {
       </div>
     </template>
   </Suspense>
+  <AppFooter />
 </template>
