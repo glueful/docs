@@ -16,6 +16,7 @@ const defaultAppConfig = {
       panelClose: 'i-lucide-menu',
       dark: 'i-heroicons-moon',
       light: 'i-heroicons-sun',
+      chevronDown: 'i-heroicons-chevron-down',
     },
   },
 }
