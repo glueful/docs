@@ -139,7 +139,7 @@ export async function generateNavigation() {
 
     // Create section item
     const sectionItem = {
-      title: sectionMeta.title || formatTitle(sectionName),
+      title: formatTitle(sectionName),
       path: `/${sectionName}`,
       icon: sectionMeta.navigation?.icon || navConfig.icon,
       children: processSection(section, sectionName),
@@ -157,8 +157,8 @@ export async function generateNavigation() {
 function processSection(section: any, sectionBaseName: any) {
   const items: any = []
   const sectionPathPrefix = `/src/content/${section}/`
-  const sectionFiles = Object.keys(contentModules).filter(
-    (path) => path.startsWith(sectionPathPrefix) && !path.endsWith('/1.index.md'),
+  const sectionFiles = Object.keys(contentModules).filter((path) =>
+    path.startsWith(sectionPathPrefix),
   )
 
   // Group files by directories
@@ -184,7 +184,7 @@ function processSection(section: any, sectionBaseName: any) {
 
   // Process top-level files
   topLevelFiles
-    .filter((filePath: any) => !filePath.endsWith('index.md'))
+    // .filter((filePath: any) => !filePath.endsWith('index.md'))
     .sort(sortByNumericPrefix)
     .forEach((filePath: any) => {
       const content = contentModules[filePath]
@@ -196,9 +196,12 @@ function processSection(section: any, sectionBaseName: any) {
         .replace(/^\d+\./, '')
         .replace(/\.md$/, '')
 
+      //idex file with data title
+      if (fileName === 'index' && !data.title) data.title = 'Overview'
+
       items.push({
         title: data.title || formatTitle(fileName),
-        path: `/${sectionBaseName}/${fileName}`,
+        path: fileName != 'index' ? `/${sectionBaseName}/${fileName}` : `/${sectionBaseName}`,
         icon: data.navigation?.icon,
         badge: data.navigation?.badge,
       })
@@ -212,9 +215,7 @@ function processSection(section: any, sectionBaseName: any) {
       const dirFiles = filesByDir[dirName]
 
       // Find index file for the directory
-      const indexFile = dirFiles.find(
-        (file: any) => file.endsWith('/index.md') || file.endsWith('/1.index.md'),
-      )
+      const indexFile = dirFiles.find((file: any) => file.endsWith('/1.index.md'))
       const dirMeta = indexFile ? parseFrontmatter(contentModules[indexFile]).data : {}
 
       const children = processDirFiles(dirFiles, `/${sectionBaseName}/${cleanDirName}`)
@@ -235,6 +236,24 @@ function processSection(section: any, sectionBaseName: any) {
  */
 function processDirFiles(filePaths: any, basePath: string) {
   const items: any = []
+
+  // Find index file
+  const indexFile = filePaths.find(
+    (path: any) => path.endsWith('/index.md') || path.endsWith('/1.index.md'),
+  )
+
+  // If index file exists, create a special first entry for it
+  if (indexFile) {
+    const content = contentModules[indexFile]
+    const { data } = parseFrontmatter(content)
+
+    items.push({
+      title: data.title || 'Overview', // Could use "Overview" or whatever default title makes sense
+      path: basePath, // Same path as parent directory
+      icon: data.navigation?.icon,
+      badge: data.navigation?.badge,
+    })
+  }
 
   filePaths
     .filter((path: any) => !path.endsWith('index.md') && !path.endsWith('1.index.md'))

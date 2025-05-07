@@ -82,7 +82,7 @@ export default function useContentQuery() {
 
         // Parse the markdown content
         const ast = await parse(content)
-        return { ast, content, path }
+        return { ast }
       }
     }
 
@@ -101,7 +101,7 @@ export default function useContentQuery() {
       if (pattern.test(path)) {
         const content = contentModules[path]
         const ast = await parse(content)
-        results.push({ ast, content, path })
+        results.push({ ast })
       }
     }
 
