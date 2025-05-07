@@ -255,9 +255,9 @@ const defaultValue = computed(() => {
           </AccordionTrigger>
 
           <AccordionContent :class="ui.content({ class: props.ui?.content })">
-            <UContentNavigation
+            <ContentNavigation
               v-bind="rootProps"
-              :navigation="link.children"
+              :navigation="link.children as T[]"
               :default-open="defaultOpen"
               :level="level + 1"
               :trailing-icon="trailingIcon"
@@ -270,7 +270,7 @@ const defaultValue = computed(() => {
               <template v-for="(_, name) in slots" #[name]="slotData: any">
                 <slot :name="name" v-bind="slotData" />
               </template>
-            </UContentNavigation>
+            </ContentNavigation>
           </AccordionContent>
         </AccordionItem>
 

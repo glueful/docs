@@ -6,6 +6,7 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import VueRouter from 'unplugin-vue-router/vite'
 import ui from '@nuxt/ui/vite'
 import path from 'path'
+import Layouts from 'vite-plugin-vue-layouts-next'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -16,6 +17,7 @@ export default defineConfig({
     VueRouter({
       extensions: ['.vue', '.md'],
     }),
+    Layouts(),
     ui({
       ui: {
         icons: {

@@ -4,8 +4,10 @@ import { useScrollspy } from './composables/useScrollspy'
 
 // Import the logo images
 import logoLight from '../assets/logo_full.svg'
+import { useRouter } from 'vue-router'
 
 const { activeHeadings } = useScrollspy()
+const router = useRouter()
 const items = computed(() => [
   {
     label: 'Documentation',
@@ -18,13 +20,22 @@ const items = computed(() => [
     active: activeHeadings.value.includes('extensions'),
   },
 ])
+const handleLogoClick = () => {
+  // Scroll to the top of the page
+  router.push('/')
+}
 </script>
 
 <template>
   <Header>
     <template #left>
       <div class="logo">
-        <img :src="logoLight" alt="Glueful Logo" class="light-logo" />
+        <img
+          :src="logoLight"
+          alt="Glueful Logo"
+          class="light-logo cursor-pointer"
+          @click="handleLogoClick"
+        />
       </div>
     </template>
     <template #right>
