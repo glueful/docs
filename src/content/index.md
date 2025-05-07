@@ -17,7 +17,7 @@ seo:
 Glueful is a modern, secure, and scalable PHP API framework designed for building robust applications. With its powerful extension system, comprehensive security features, and developer-friendly tools, Glueful helps you create production-ready APIs in less time.
 
 #links
-::u-button{size = "xl" to = "/" trailing-icon = "i-lucide-arrow-right" color = "neutral"}
+::u-button{size = "xl" to = "/getting-started" trailing-icon = "i-lucide-arrow-right" color = "neutral"}
 
 Get started
 ::

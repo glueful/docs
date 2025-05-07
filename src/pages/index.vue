@@ -4,11 +4,6 @@ import useMarkdownParser from '@/components/content/composables/useMarkdownParse
 import contentRaw from '@/content/index.md?raw'
 import { onBeforeMount, ref } from 'vue'
 
-// const content = ref({
-//   body: {},
-// })
-// console.log('Content:', content.value)
-// Use onMounted instead of top-level await
 const appear = ref(false)
 const appeared = ref(false)
 const isLoading = ref(false)
