@@ -163,14 +163,12 @@ php glueful extensions enable MyExtension
   variant: ghost
   ---
 
-  <div class="@max-[1280px]:hidden"><img src="/images/light/line-7.svg" alt="Line Decoration" class="absolute right-0 bottom-0 h-full" alt="line-7"></div>
+  <div class="hidden lg:block"><img src="/images/light/line-7.svg" alt="Line Decoration" class="absolute right-0 bottom-0 h-full" alt="line-7"></div>
 
   #title
   <spna class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-primary-500 font-medium">APIs</span> is easy<span>
 
   :::
-
-
 ::
 
 ::u-separator{class="border-primary/30"}
