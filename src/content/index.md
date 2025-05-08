@@ -17,17 +17,30 @@ seo:
 Glueful is a modern, secure, and scalable PHP API framework designed for building robust applications. With its powerful extension system, comprehensive security features, and developer-friendly tools, Glueful helps you create production-ready APIs in less time.
 
 #links
-::u-button{size = "xl" to = "/getting-started" trailing-icon = "i-lucide-arrow-right" color = "neutral"}
+  :::u-button
+  ---
+  size: xl
+  to: /getting-started
+  trailing-icon: i-lucide-arrow-right
+  color: neutral
+  ---
+  Get started
+  :::
 
-Get started
-::
+  :::u-button
+  ---
+  color: neutral
+  icon: i-tabler-brand-github-filled
+  size: xl
+  target: _blank
+  to: https://github.com/glueful
+  variant: subtle
+  ---
+  :::
 
-::u-button{color= "neutral" icon = "i-tabler-brand-github-filled" size = "xl" target = "\_blank" to = "https://github.com/nuxt-ui-pro/docs" variant = "subtle"}
-GitHub
-::
-::
+
 ::div{class="hidden lg:block absolute top-20 left-15 -z-1"}
-::img{src="/images/light/line-1.svg" alt="Line" class="aabsolute pointer-events-none pb-10 left-0 top-0 object-cover h-[650px]"}
+::img{src="/images/light/line-1.svg" alt="Line" class="aabsolute pointer-events-none pb-10 left-0 top-0 object-cover h-[650px]" alt="Line Decoration"}
 ::
 ::
 
@@ -40,7 +53,7 @@ GitHub
 <p class="my-5 leading-7 text-pretty font-normal text-primary-600">Why developers choose <span class="text-primary-500 font-medium">Glueful</span></p>
 </div>
 <div class="hidden @min-[1020px]:block">
-<img  class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" />
+<img  class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" alt="Line Decoration"/>
 </div>
 </h2>
 
@@ -77,7 +90,7 @@ GitHub
 ::
 
 ::page-section{orientation = "horizontal"}
-<img  class="absolute -top-10 sm:top-0 right-1/2 h-24" src="/images/light/line-3.svg" />
+<img  class="absolute -top-10 sm:top-0 right-1/2 h-24" src="/images/light/line-3.svg" alt="Line Decoration" />
 
 ::prose-pre{code = "php glueful extensions create MyExtension" filename = "Terminal"}
 
@@ -100,20 +113,17 @@ php glueful extensions enable MyExtension
 
 ::
 
-::page-section{class="endpoints"}
+::page-section{class="relative overflow-x-hidden"}
 
 <!-- <div class="absolute rounded-full -left-10 top-10 size-[300px] z-10 bg-primary blur-[200px]"></div> -->
 <!-- <div class="absolute rounded-full -right-10 -bottom-10 size-[300px] z-10 bg-primary blur-[200px]"></div> -->
 
 #title
-
-<h2 class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
-<div class="*:leading-9">
-<p class="my-5 leading-7 text-pretty font-normal text-primary-600">Ready-to-Use <span class="text-primary-500 font-medium">API Endpoints</span></p>
-</div>
-<div class="hidden @min-[1020px]:block">
-<img  class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" />
-</div>
+<h2 class="mt-12 mb-6 scroll-mt-[calc(48px+45px+var(--ui-header-height))] lg:scroll-mt-[calc(48px+var(--ui-header-height))] [&>a]:focus-visible:outline-(--ui-primary) [&>a>code]:border-dashed hover:[&>a>code]:border-(--ui-primary) hover:[&>a>code]:text-(--ui-primary) [&>a>code]:text-xl/7 [&>a>code]:font-bold [&>a>code]:transition-colors text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
+  <div class="*:leading-9">
+    <p class="my-5 leading-7 text-pretty font-normal text-primary-600">Ready-to-Use <span class="text-primary-500 font-medium">API Endpoints</span></p>
+  </div>
+  <div class="hidden @min-[1020px]:block"><img src="/images/light/line-2.svg" alt="Line Decoration" class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" alt="line-2"></div>
 </h2>
 
 #description
@@ -132,31 +142,35 @@ php glueful extensions enable MyExtension
 ::u-separator{class="border-primary/30"}
 ::
 
-::page-section{class="get-started"}
+  ::u-page-section
+ 
+  :::u-page-c-t-a
+  ---
+  links:
+    - label:  Get started
+      to: /getting-started
+      trailing-icon: i-lucide-arrow-right
+      color: neutral
+      size: xl
+    - label: ''
+      to: https://github.com/glueful
+      icon: i-tabler-brand-github-filled
+      target: _blank
+      color: neutral
+      size: xl
+      variant: subtle
+  description: Glueful simplifies API development with intuitive syntax and powerful tools—perfect for projects big or small. Get started in minutes and focus on what matters- building great applications.
+  variant: ghost
+  ---
 
-<!-- <img  class="absolute left-10 -top-10 sm:top-0 h-full" src="/images/light/line-6.svg" /> -->
-<img  class="absolute right-0 bottom-0 h-full" src="/images/light/line-7.svg" />
+  <div class="@max-[1280px]:hidden"><img src="/images/light/line-7.svg" alt="Line Decoration" class="absolute right-0 bottom-0 h-full" alt="line-7"></div>
 
-#title
+  #title
+  <spna class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-primary-500 font-medium">APIs</span> is easy<span>
 
-<div class="text-left">Building APIs with <span class="text-primary-500 font-medium">Glueful</span> is easy</div>
+  :::
 
-#description
 
-<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>Glueful is designed to be easy to use and understand, even for developers who are new to API development. With its intuitive syntax and comprehensive documentation, you can get started quickly and easily.</p></div>
-<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>Whether you're building a simple API for a small project or a complex system for a large enterprise, Glueful has the tools and features you need to succeed.</p></div>
-<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>With Glueful, you can focus on building great applications without worrying about the underlying infrastructure.</p></div>
-<div class="text-(--ui-text-muted) text-left text-balance mt-6"><p>Get started today and see how Glueful can help you build better APIs faster.</p></div>
-
-#links
-::u-button{size = "xl" to = "/" trailing-icon = "i-lucide-arrow-right" color = "neutral" variant = "subtle"}
-
-Get started
-::
-
-::u-button{color= "neutral" icon = "i-tabler-brand-github-filled" size = "xl" target = "\_blank" to = "https://github.com/your-repo"}
-
-::
 ::
 
 ::u-separator{class="border-primary/30"}

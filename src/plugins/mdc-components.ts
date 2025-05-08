@@ -9,7 +9,7 @@ import Separator from '@/components/elements/Separator.vue'
 import Icon from '@/components/elements/Icon.vue'
 
 // Import prose components
-import ProseP from '@/components/content/Prose/ProseP.vue'
+// import ProseP from '@/components/content/Prose/ProseP.vue'
 import ProseH1 from '@/components/content/Prose/ProseH1.vue'
 import ProseH2 from '@/components/content/Prose/ProseH2.vue'
 import ProseH3 from '@/components/content/Prose/ProseH3.vue'
@@ -37,20 +37,21 @@ import ProseCard from '@/components/content/Prose/ProseCard.vue'
 // Component map for MDC
 export const mdcComponents = {
   // Page components
+  'u-button': Button,
   'page-hero': PageHero,
   'page-section': PageSection,
   'page-feature': PageFeature,
   'page-cta': PageCTA,
   'prose-pre': ProsePre,
-  'u-button': Button,
   'u-separator': Separator,
   'u-icon': Icon,
   'code-preview': CodePreview,
   'code-group': CodeGroup,
   card: ProseCard,
+  'u-page-c-t-a': PageCTA,
 
   // Prose components for standard HTML elements
-  p: ProseP,
+  // p: ProseP,
   h1: ProseH1,
   h2: ProseH2,
   h3: ProseH3,
