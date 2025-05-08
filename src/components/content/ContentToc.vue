@@ -88,7 +88,7 @@ const rootProps = useForwardPropsEmits(reactivePick(props, 'as', 'open', 'defaul
 
 const router = useRouter()
 const appConfig = useAppConfig()
-const { activeHeadings } = useScrollspy()
+const { activeHeadings, setActiveHeading } = useScrollspy()
 const [DefineListTemplate, ReuseListTemplate] = createReusableTemplate<{
   links: T[]
   level: number
@@ -110,7 +110,20 @@ const ui = computed(() =>
 
 function scrollToHeading(id: string) {
   const encodedId = encodeURIComponent(id)
+
+  // First update the URL hash
   router.push(`#${encodedId}`)
+
+  setActiveHeading(id)
+
+  // Then use native scrolling for more reliable behavior
+  setTimeout(() => {
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, 100)
+
   emits('move', id)
 }
 

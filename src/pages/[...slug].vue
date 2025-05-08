@@ -45,7 +45,13 @@ const ast: any = computed(() => data.value?.ast || null)
       <ContentRenderer :value="ast" />
     </PageBody>
     <template v-if="ast?.toc?.links?.length" #right>
-      <ContentToc :title="toc?.title" :links="ast.toc?.links">
+      <ContentToc
+        :title="toc?.title"
+        :links="ast.toc?.links"
+        highlight
+        highlight-color="neutral"
+        color="neutral"
+      >
         <template v-if="toc?.bottom" #bottom>
           <div class="hidden lg:block space-y-6" :class="{ '!mt-6': ast.toc?.links?.length }">
             <USeparator v-if="ast.toc?.links?.length" type="dashed" />
