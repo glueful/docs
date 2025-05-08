@@ -24,6 +24,14 @@ export function useScrollspy() {
       observer.value.observe(heading)
     })
   }
+
+  // Add a method to manually set an active heading
+  function setActiveHeading(id) {
+    if (id) {
+      activeHeadings.value = [id]
+    }
+  }
+
   watch(visibleHeadings, (val, oldVal) => {
     if (val.length === 0) {
       activeHeadings.value = oldVal
@@ -37,5 +45,6 @@ export function useScrollspy() {
     visibleHeadings,
     activeHeadings,
     updateHeadings,
+    setActiveHeading,
   }
 }

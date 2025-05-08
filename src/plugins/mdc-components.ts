@@ -30,6 +30,9 @@ import ProseTableData from '@/components/content/Prose/ProseTd.vue'
 import ProseHr from '@/components/content/Prose/ProseHr.vue'
 import ProseStrong from '@/components/content/Prose/ProseStrong.vue'
 import ProseEm from '@/components/content/Prose/ProseEm.vue'
+import CodePreview from '@/components/content/Prose/ProseCodePreview.vue'
+import CodeGroup from '@/components/content/Prose/ProseCodeGroup.vue'
+import ProseCard from '@/components/content/Prose/ProseCard.vue'
 
 // Component map for MDC
 export const mdcComponents = {
@@ -42,6 +45,9 @@ export const mdcComponents = {
   'u-button': Button,
   'u-separator': Separator,
   'u-icon': Icon,
+  'code-preview': CodePreview,
+  'code-group': CodeGroup,
+  card: ProseCard,
 
   // Prose components for standard HTML elements
   p: ProseP,
