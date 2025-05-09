@@ -23,6 +23,10 @@ const defaultAppConfig = {
       hash: 'i-heroicons-hashtag',
       copyCheck: 'i-heroicons-check',
       copy: 'i-heroicons-document-duplicate',
+      caution: 'i-heroicons-exclamation',
+      info: 'i-heroicons-information-circle',
+      tip: 'i-heroicons-light-bulb',
+      warning: 'i-heroicons-exclamation-triangle',
     },
   },
   toc: {

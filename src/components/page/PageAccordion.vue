@@ -15,7 +15,8 @@ const pageAccordion = tv({
   ...(appConfigPageAccordion.uiPro?.pageAccordion || {}),
 })
 
-export interface PageAccordionProps<T> extends /** @vue-ignore */ Omit<AccordionProps<T>, 'type'> {
+export interface PageAccordionProps<T extends AccordionItem>
+  extends /** @vue-ignore */ Omit<AccordionProps<T>, 'type'> {
   type?: AccordionProps<T>['type']
   ui?: Partial<typeof pageAccordion.slots>
 }
