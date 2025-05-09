@@ -27,7 +27,7 @@ onBeforeMount(async () => {
   <AppHeader />
   <Suspense>
     <template #default>
-      <Main class="relative">
+      <Main class="relative" v-if="ast">
         <HeroBackground
           class="absolute w-full -top-px transition-all shrink-0"
           :class="[
