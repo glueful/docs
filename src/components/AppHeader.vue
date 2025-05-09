@@ -1,24 +1,30 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useScrollspy } from './composables/useScrollspy'
+import { ref } from 'vue'
 
 // Import the logo images
 import logoLight from '../assets/logo_full.svg'
 import { useRouter } from 'vue-router'
 
-const { activeHeadings } = useScrollspy()
 const router = useRouter()
-const items = computed(() => [
-  {
-    label: 'Documentation',
-    to: '#docs',
-    active: activeHeadings.value.includes('docs') && !activeHeadings.value.includes('extensions'),
-  },
-  {
-    label: 'Extensions',
-    to: '#extensions',
-    active: activeHeadings.value.includes('extensions'),
-  },
+const items = ref([
+  [
+    {
+      label: 'Docs',
+      icon: 'i-lucide-book-open',
+      to: '/docs/getting-started',
+    },
+    {
+      label: 'Extensions',
+      icon: 'i-lucide-blocks',
+      to: '/extensions',
+    },
+    // {
+    //   label: '',
+    //   icon: 'i-tabler-brand-github-filled',
+    //   target: '_blank',
+    //   to: 'https://github.com/glueful',
+    // },
+  ],
 ])
 const handleLogoClick = () => {
   // Scroll to the top of the page
@@ -39,8 +45,18 @@ const handleLogoClick = () => {
       </div>
     </template>
     <template #right>
-      <UNavigationMenu :items="items" variant="link" class="hidden lg:block" />
-      <UButton icon="i-tabler-brand-github-filled" size="md" color="primary" variant="ghost" />
+      <UNavigationMenu :items="items" class="hidden lg:block" color="neutral" />
+      <UButton
+        icon="i-tabler-brand-github-filled"
+        size="md"
+        color="primary"
+        variant="ghost"
+        to="https://github.com/glueful/glueful"
+        target="_blank"
+      />
+    </template>
+    <template #body>
+      <UNavigationMenu :items="items" orientation="vertical" class="-mx-2.5" color="neutral" />
     </template>
   </Header>
 </template>

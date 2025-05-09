@@ -20,7 +20,7 @@ Glueful is a modern, secure, and scalable PHP API framework designed for buildin
   :::u-button
   ---
   size: xl
-  to: /getting-started
+  to: /docs/getting-started
   trailing-icon: i-lucide-arrow-right
   color: neutral
   ---
@@ -33,7 +33,7 @@ Glueful is a modern, secure, and scalable PHP API framework designed for buildin
   icon: i-tabler-brand-github-filled
   size: xl
   target: _blank
-  to: https://github.com/glueful
+  to: https://github.com/glueful/glueful
   variant: subtle
   ---
   :::
@@ -141,19 +141,17 @@ php glueful extensions enable MyExtension
 
 ::u-separator{class="border-primary/30"}
 ::
-
-  ::u-page-section
  
-  :::u-page-c-t-a
+  ::u-page-c-t-a
   ---
   links:
     - label:  Get started
-      to: /getting-started
+      to: /docs/getting-started
       trailing-icon: i-lucide-arrow-right
       color: neutral
       size: xl
     - label: ''
-      to: https://github.com/glueful
+      to: https://github.com/glueful/glueful
       icon: i-tabler-brand-github-filled
       target: _blank
       color: neutral
@@ -166,10 +164,6 @@ php glueful extensions enable MyExtension
   <div class="hidden lg:block"><img src="/images/light/line-7.svg" alt="Line Decoration" class="absolute right-0 bottom-0 h-full" alt="line-7"></div>
 
   #title
-  <spna class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-primary-500 font-medium">APIs</span> is easy<span>
+  <span class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-primary-500 font-medium">APIs</span> Faster<span>
 
-  :::
-::
-
-::u-separator{class="border-primary/30"}
-::
+  ::
