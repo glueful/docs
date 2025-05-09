@@ -26,7 +26,7 @@ const defaultAppConfig = {
     },
   },
   toc: {
-    title: 'Table of Contents',
+    title: 'On this page',
     bottom: {
       title: 'Community',
       edit: 'https://github.com/glueful/docs/tree/main/src/content',
@@ -35,6 +35,17 @@ const defaultAppConfig = {
           icon: 'i-lucide-star',
           label: 'Star on GitHub',
           to: 'https://github.com/glueful/glueful',
+          target: '_blank',
+        },
+        {
+          label: 'Roadmap',
+          icon: 'i-lucide-flag',
+          to: '/docs/community/roadmap',
+        },
+        {
+          icon: 'i-lucide-disc',
+          label: 'Releases',
+          to: 'https://github.com/glueful/glueful/releases',
           target: '_blank',
         },
       ],

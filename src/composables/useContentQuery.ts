@@ -1,8 +1,11 @@
 import useMarkdownParser from '@/components/content/composables/useMarkdownParser'
 
 // Use Vite's glob import feature to get all markdown files
-const contentModules = import.meta.glob('/src/content/**/*.md', { as: 'raw', eager: true })
-
+const contentModules = {
+  ...import.meta.glob('/src/content/**/*.md', { as: 'raw', eager: true }),
+  // Include other common content directories if they exist
+  ...import.meta.glob('/src/extensions/**/*.md', { as: 'raw', eager: true }),
+}
 /**
  * Maps a route path to possible content file paths
  * For example: "/getting-started/installation" -> [
@@ -91,6 +94,46 @@ export default function useContentQuery() {
   }
 
   /**
+   * Find content by exact file path
+   * @param filePath The exact path of the markdown file (e.g., '/src/content/index.md' or '/src/extensions/index.md')
+   * @returns The parsed content or null if not found
+   */
+  async function findByPath(filePath: string) {
+    try {
+      // Normalize the file path
+      const normalizedPath = filePath.startsWith('/') ? filePath : `/${filePath}`
+
+      // Check direct match in pre-loaded content modules
+      if (contentModules[normalizedPath]) {
+        // Direct match found
+        const content = contentModules[normalizedPath]
+        const ast = await parse(content)
+        return { ast }
+      }
+
+      // Try to find a matching path with numeric prefixes
+      const allContentPaths = Object.keys(contentModules)
+      const matchingPath = allContentPaths.find((path) => {
+        // Remove numeric prefixes for matching
+        const strippedPath = path.replace(/\/\d+\./g, '/')
+        return strippedPath === normalizedPath || strippedPath.endsWith(normalizedPath)
+      })
+
+      if (matchingPath) {
+        const content = contentModules[matchingPath]
+        const ast = await parse(content)
+        return { ast }
+      }
+
+      // Not found
+      return null
+    } catch (error) {
+      console.error(`Failed to load content from path ${filePath}:`, error)
+      return null
+    }
+  }
+
+  /**
    * Find all content matching a path pattern
    */
   async function find(pathPattern: string) {
@@ -111,5 +154,6 @@ export default function useContentQuery() {
   return {
     findOne,
     find,
+    findByPath,
   }
 }

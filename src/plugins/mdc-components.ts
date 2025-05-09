@@ -33,6 +33,7 @@ import ProseEm from '@/components/content/Prose/ProseEm.vue'
 import CodePreview from '@/components/content/Prose/ProseCodePreview.vue'
 import CodeGroup from '@/components/content/Prose/ProseCodeGroup.vue'
 import ProseCard from '@/components/content/Prose/ProseCard.vue'
+import CardGroup from '@/components/content/Prose/ProseCardGroup.vue'
 
 // Component map for MDC
 export const mdcComponents = {
@@ -49,6 +50,7 @@ export const mdcComponents = {
   'code-group': CodeGroup,
   card: ProseCard,
   'u-page-c-t-a': PageCTA,
+  'card-group': CardGroup,
 
   // Prose components for standard HTML elements
   // p: ProseP,

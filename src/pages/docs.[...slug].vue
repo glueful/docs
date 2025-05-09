@@ -2,7 +2,7 @@
 import { useRoute } from 'vue-router'
 import { useAsync } from '@/composables/asyncData'
 import useContentQuery from '@/composables/useContentQuery'
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useAppConfig } from '@/components/composables/appConfig'
 
 const route = useRoute()
@@ -33,13 +33,6 @@ const { data } = useAsync(
 
 // We can derive the AST directly from content.data
 const ast: any = computed(() => data.value?.ast || null)
-
-onMounted(() => {
-  // This will run when the component is mounted
-  // You can perform any additional setup here if needed
-  // console.log('Component mounted, current path:', currentPath.value)
-  console.log('toc:', toc)
-})
 </script>
 
 <template>

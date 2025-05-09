@@ -4,11 +4,11 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 const items: NavigationMenuItem[] = [
   {
     label: 'Roadmap',
-    to: '/',
+    to: '/docs/community/roadmap',
   },
   {
     label: 'Releases',
-    to: 'https://github.com/nuxt/ui/releases',
+    to: 'https://github.com/glueful/glueful/releases',
     target: '_blank',
   },
 ]
