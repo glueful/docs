@@ -3,28 +3,19 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 
 const items: NavigationMenuItem[] = [
   {
-    label: 'Figma Kit',
-    to: 'https://www.figma.com/community/file/1288455405058138934',
-    target: '_blank',
-  },
-  {
-    label: 'Playground',
-    to: 'https://stackblitz.com/edit/nuxt-ui',
-    target: '_blank',
-  },
-  {
     label: 'Roadmap',
-    to: '/',
+    to: '/docs/community/roadmap',
   },
   {
     label: 'Releases',
-    to: 'https://github.com/nuxt/ui/releases',
+    to: 'https://github.com/glueful/glueful/releases',
     target: '_blank',
   },
 ]
 </script>
 
 <template>
+  <USeparator class="border-primary/30" />
   <Footer>
     <template #left>
       <p class="text-muted text-sm">Copyright © {{ new Date().getFullYear() }}</p>
@@ -33,7 +24,13 @@ const items: NavigationMenuItem[] = [
     <UNavigationMenu :items="items" variant="link" />
 
     <template #right>
-      <UButton icon="i-tabler-brand-github-filled" size="md" color="primary" variant="ghost" />
+      <UButton
+        icon="i-tabler-brand-github-filled"
+        size="md"
+        color="primary"
+        variant="ghost"
+        to="https://github.com/glueful/glueful"
+      />
     </template>
   </Footer>
 </template>

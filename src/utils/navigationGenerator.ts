@@ -140,7 +140,7 @@ export async function generateNavigation() {
     // Create section item
     const sectionItem = {
       title: formatTitle(sectionName),
-      path: `/${sectionName}`,
+      path: `/docs/${sectionName}`,
       icon: sectionMeta.navigation?.icon || navConfig.icon,
       children: processSection(section, sectionName),
     }
@@ -201,7 +201,8 @@ function processSection(section: any, sectionBaseName: any) {
 
       items.push({
         title: data.title || formatTitle(fileName),
-        path: fileName != 'index' ? `/${sectionBaseName}/${fileName}` : `/${sectionBaseName}`,
+        path:
+          fileName != 'index' ? `/docs/${sectionBaseName}/${fileName}` : `/docs/${sectionBaseName}`,
         icon: data.navigation?.icon,
         badge: data.navigation?.badge,
       })
@@ -222,7 +223,7 @@ function processSection(section: any, sectionBaseName: any) {
 
       items.push({
         title: dirMeta.title || formatTitle(cleanDirName),
-        path: `/${sectionBaseName}/${cleanDirName}`,
+        path: `/docs/${sectionBaseName}/${cleanDirName}`,
         icon: dirMeta.navigation?.icon,
         children,
       })
@@ -270,7 +271,7 @@ function processDirFiles(filePaths: any, basePath: string) {
 
       items.push({
         title: data.title || formatTitle(fileName),
-        path: `${basePath}/${fileName}`,
+        path: `/docs/${basePath}/${fileName}`,
         icon: data.navigation?.icon,
         badge: data.navigation?.badge,
       })

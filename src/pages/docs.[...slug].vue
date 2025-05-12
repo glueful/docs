@@ -3,12 +3,14 @@ import { useRoute } from 'vue-router'
 import { useAsync } from '@/composables/asyncData'
 import useContentQuery from '@/composables/useContentQuery'
 import { computed } from 'vue'
+import { useAppConfig } from '@/components/composables/appConfig'
 
 const route = useRoute()
 const { findOne } = useContentQuery()
-const { toc } = useAppConfig()
+const toc: any = useAppConfig().toc
+
 // Create a computed property for the route path to ensure reactivity
-const currentPath: any = computed(() => route.path)
+const currentPath: any = computed(() => route.path.replace(/^\/docs/, ''))
 
 // Use the computed route path as part of the key to ensure it changes on route navigation
 const { data } = useAsync(
@@ -53,10 +55,10 @@ const ast: any = computed(() => data.value?.ast || null)
         color="neutral"
       >
         <template v-if="toc?.bottom" #bottom>
-          <div class="hidden lg:block space-y-6" :class="{ '!mt-6': ast.toc?.links?.length }">
-            <USeparator v-if="ast.toc?.links?.length" type="dashed" />
+          <div class="hidden lg:block space-y-6" :class="{ '!mt-6': toc?.links?.length }">
+            <USeparator v-if="toc?.bottom.links?.length" type="dashed" />
 
-            <PageLinks :title="ast.toc?.bottom.title" :links="ast.toc?.links" />
+            <PageLinks :title="toc.bottom.title" :links="toc?.bottom.links" />
           </div>
         </template>
       </ContentToc>

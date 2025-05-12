@@ -45,7 +45,16 @@ export default defineConfig({
     },
   },
   define: {
-    // Provide a polyfill for process.env
+    // Provide polyfills for Node.js globals
     'process.env': {},
+    // Define process for libraries that use it directly
+    process: JSON.stringify({
+      env: {},
+      platform: '',
+      version: '',
+      versions: {},
+    }),
+    // Define global for libraries that use it
+    global: 'globalThis',
   },
 })

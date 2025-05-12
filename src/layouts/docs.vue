@@ -7,7 +7,6 @@ const isLoaded = ref(false)
 
 onMounted(async () => {
   navigation.value = await generateNavigation()
-  console.log('Generated navigation:', navigation.value)
   isLoaded.value = true
 })
 </script>

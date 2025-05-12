@@ -35,7 +35,11 @@ const props = defineProps({
   noPrefetch: { type: Boolean, required: false },
   activeClass: { type: String, required: false, default: '' },
   exactActiveClass: { type: String, required: false },
-  ariaCurrentValue: { type: String, required: false, default: 'page' },
+  ariaCurrentValue: {
+    type: String as () => 'page' | 'step' | 'location' | 'date' | 'time' | 'true' | 'false',
+    required: false,
+    default: 'page',
+  },
   viewTransition: { type: Boolean, required: false },
   replace: { type: Boolean, required: false },
 })
