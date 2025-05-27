@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 // Import the logo images
 import logoLight from '../assets/logo_full.svg'
+import logoDark from '../assets/logo_full_dark_theme.svg'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -40,6 +41,12 @@ const handleLogoClick = () => {
           :src="logoLight"
           alt="Glueful Logo"
           class="light-logo cursor-pointer"
+          @click="handleLogoClick"
+        />
+        <img
+          :src="logoDark"
+          alt="Glueful Logo"
+          class="dark-logo cursor-pointer"
           @click="handleLogoClick"
         />
       </div>
