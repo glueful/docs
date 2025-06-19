@@ -19,6 +19,7 @@ export default defineConfig({
     }),
     Layouts(),
     ui({
+      colorMode: false,
       ui: {
         icons: {
           loading: 'i-lucide-loader-circle',
