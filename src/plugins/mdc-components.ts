@@ -35,6 +35,10 @@ import CodeGroup from '@/components/content/Prose/ProseCodeGroup.vue'
 import ProseCard from '@/components/content/Prose/ProseCard.vue'
 import CardGroup from '@/components/content/Prose/ProseCardGroup.vue'
 
+// Clean Vite/Tailwind inspired components
+import CleanCodeShowcase from '@/components/CleanCodeShowcase.vue'
+import AdminScreenshot from '@/components/AdminScreenshot.vue'
+
 // Component map for MDC
 export const mdcComponents = {
   // Page components
@@ -51,6 +55,14 @@ export const mdcComponents = {
   card: ProseCard,
   'u-page-c-t-a': PageCTA,
   'card-group': CardGroup,
+
+  // Interactive landing page components
+
+  // Clean Vite/Tailwind inspired components
+  CleanCodeShowcase: CleanCodeShowcase,
+  AdminScreenshot: AdminScreenshot,
+  'clean-code-showcase': CleanCodeShowcase,
+  'admin-screenshot': AdminScreenshot,
 
   // Prose components for standard HTML elements
   // p: ProseP,
