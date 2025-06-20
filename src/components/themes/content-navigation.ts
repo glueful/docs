@@ -27,19 +27,19 @@ export default {
   "slots": {
     "root": "",
     "content": "data-[state=open]:animate-[accordion-down_200ms_ease-out] data-[state=closed]:animate-[accordion-up_200ms_ease-out] overflow-hidden focus:outline-none",
-    "list": "isolate -mx-2.5 -mt-1.5",
-    "item": "ps-1.5 -ms-px",
-    "listWithChildren": "ms-5 border-s border-(--ui-border)",
-    "itemWithChildren": "flex flex-col data-[state=open]:mb-1.5",
-    "trigger": "font-semibold",
-    "link": "group relative w-full px-2.5 py-1.5 before:inset-y-px before:inset-x-0 flex items-center gap-1.5 text-sm before:absolute before:z-[-1] before:rounded-[calc(var(--ui-radius)*1.5)] focus:outline-none focus-visible:outline-none focus-visible:before:ring-inset focus-visible:before:ring-2",
-    "linkLeadingIcon": "shrink-0 size-5",
+    "list": "space-y-1",
+    "item": "",
+    "listWithChildren": "mt-2 ml-3 pl-3",
+    "itemWithChildren": "flex flex-col relative",
+    "trigger": "font-medium text-gray-900 dark:text-gray-100",
+    "link": "group relative w-full pl-6 pr-3 py-2 flex items-center gap-2 text-sm font-semibold rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+    "linkLeadingIcon": "shrink-0 size-4 text-gray-400 dark:text-gray-500",
     "linkTrailing": "ms-auto inline-flex gap-1.5 items-center",
     "linkTrailingBadge": "shrink-0",
-    "linkTrailingBadgeSize": "sm",
-    "linkTrailingIcon": "size-5 transform transition-transform duration-200 shrink-0 group-data-[state=open]:rotate-180",
+    "linkTrailingBadgeSize": "xs",
+    "linkTrailingIcon": "size-4 transform transition-transform duration-200 shrink-0 text-gray-400 dark:text-gray-500 group-data-[state=open]:rotate-90",
     "linkTitle": "truncate",
-    "linkTitleExternalIcon": "size-3 align-top text-(--ui-text-dimmed)"
+    "linkTitleExternalIcon": "size-3 align-top text-gray-400 dark:text-gray-500 ml-1"
   },
   "variants": {
     "color": {
@@ -87,11 +87,12 @@ export default {
     },
     "active": {
       "true": {
-        "link": "font-medium"
+        "link": "text-blue-600 dark:text-blue-400 font-medium",
+        "linkLeadingIcon": "text-blue-600 dark:text-blue-400"
       },
       "false": {
-        "link": "text-(--ui-text-muted)",
-        "linkLeadingIcon": "text-(--ui-text-dimmed)"
+        "link": "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100",
+        "linkLeadingIcon": "text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400"
       }
     },
     "disabled": {
@@ -104,16 +105,33 @@ export default {
     },
     "level": {
       "true": {}
+    },
+    "showMainBorder": {
+      "true": {},
+      "false": {}
     }
   },
   "compoundVariants": [
+    {
+      "level": true,
+      "class": {
+        "link": "pl-4 font-normal"
+      }
+    },
+    {
+      "showMainBorder": true,
+      "class": {
+        "itemWithChildren": "before:absolute before:left-0 before:top-0 before:bottom-0 before:w-px before:bg-gray-200 dark:before:bg-gray-800"
+      }
+    },
     {
       "highlight": true,
       "level": true,
       "class": {
         "link": [
-          "after:absolute after:-left-1.5 after:inset-y-0.5 after:block after:w-px after:rounded-full",
-          "after:transition-colors"
+          "before:absolute before:-left-6 before:top-1.5 before:bottom-1.5 before:block before:w-[0.15rem] before:z-10 before:scale-y-0 before:origin-center",
+          "before:transition-all before:duration-300 before:ease-out",
+          "hover:before:scale-y-100 hover:before:bg-gray-300 dark:hover:before:bg-gray-600"
         ]
       }
     },
@@ -123,12 +141,12 @@ export default {
       "variant": "pill" as typeof variant[number],
       "class": {
         "link": [
-          "hover:text-(--ui-text-highlighted) hover:before:bg-(--ui-bg-elevated)/50 data-[state=open]:text-(--ui-text-highlighted)",
-          "transition-colors before:transition-colors"
+          "hover:text-gray-900 dark:hover:text-gray-100 data-[state=open]:text-gray-900 dark:data-[state=open]:text-gray-100",
+          "transition-colors duration-200"
         ],
         "linkLeadingIcon": [
-          "group-hover:text-(--ui-text) group-data-[state=open]:text-(--ui-text)",
-          "transition-colors"
+          "group-hover:text-gray-600 dark:group-hover:text-gray-400 group-data-[state=open]:text-gray-600 dark:group-data-[state=open]:text-gray-400",
+          "transition-colors duration-200"
         ]
       }
     },
@@ -200,7 +218,7 @@ export default {
       "active": true,
       "highlight": false,
       "class": {
-        "link": "before:bg-(--ui-bg-elevated)"
+        "link": "text-blue-600 dark:text-blue-400 font-medium"
       }
     },
     {
@@ -298,7 +316,7 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-primary)"
+        "link": "before:bg-(--ui-primary) before:scale-y-100 hover:before:bg-(--ui-primary)"
       }
     },
     {
@@ -307,7 +325,7 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-secondary)"
+        "link": "before:bg-(--ui-secondary) before:scale-y-100 hover:before:bg-(--ui-secondary)"
       }
     },
     {
@@ -316,7 +334,7 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-success)"
+        "link": "before:bg-(--ui-success) before:scale-y-100 hover:before:bg-(--ui-success)"
       }
     },
     {
@@ -325,7 +343,7 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-info)"
+        "link": "before:bg-(--ui-info) before:scale-y-100 hover:before:bg-(--ui-info)"
       }
     },
     {
@@ -334,7 +352,7 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-warning)"
+        "link": "before:bg-(--ui-warning) before:scale-y-100 hover:before:bg-(--ui-warning)"
       }
     },
     {
@@ -343,7 +361,7 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-error)"
+        "link": "before:bg-(--ui-error) before:scale-y-100 hover:before:bg-(--ui-error)"
       }
     },
     {
@@ -352,9 +370,9 @@ export default {
       "level": true,
       "active": true,
       "class": {
-        "link": "after:bg-(--ui-bg-inverted)"
+        "link": "before:bg-(--ui-bg-inverted) before:scale-y-100 hover:before:bg-(--ui-bg-inverted)"
       }
-    }
+    },
   ],
   "defaultVariants": {
     "color": "primary" as typeof color[number],

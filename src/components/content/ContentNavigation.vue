@@ -61,6 +61,20 @@ export interface ContentNavigationProps<T> extends Pick<AccordionRootProps, 'dis
   highlight?: boolean
   highlightColor?: ContentNavigationVariants['highlightColor']
   /**
+   * Custom color for the active border (e.g., 'bg-blue-500', 'bg-red-400')
+   */
+  customHighlightColor?: string
+  /**
+   * Custom width for the active border (e.g., '0.15rem', '3px', 'w-1')
+   * @defaultValue '0.15rem'
+   */
+  customHighlightWidth?: string
+  /**
+   * Whether to show the main container border (vertical line on the left)
+   * @defaultValue true
+   */
+  showMainBorder?: boolean
+  /**
    * When type is "single", allows closing content when clicking trigger for an open item.
    * When type is "multiple", this prop has no effect.
    * @defaultValue true
@@ -107,6 +121,7 @@ const props = withDefaults(defineProps<ContentNavigationProps<T>>(), {
   type: 'multiple',
   collapsible: true,
   highlight: false,
+  showMainBorder: true,
 })
 const emits = defineEmits<ContentNavigationEmits>()
 const slots = defineSlots<ContentNavigationSlots<T>>()
@@ -129,8 +144,35 @@ const ui = computed(() =>
     variant: props.variant,
     highlight: props.highlight,
     highlightColor: props.highlightColor || props.color,
+    showMainBorder: props.showMainBorder,
   }),
 )
+
+const getCustomHighlightClass = (active: boolean) => {
+  if (!active || !props.highlight || props.level === 0) {
+    return ''
+  }
+  
+  const colorClass = props.customHighlightColor 
+    ? (props.customHighlightColor.includes('bg-') 
+        ? props.customHighlightColor 
+        : `bg-${props.customHighlightColor}`)
+    : ''
+    
+  const widthClass = props.customHighlightWidth
+    ? (props.customHighlightWidth.startsWith('w-')
+        ? props.customHighlightWidth
+        : `w-[${props.customHighlightWidth}]`)
+    : 'w-[0.15rem]'
+    
+  const classes = [`before:scale-y-100`, `before:${widthClass}`]
+  
+  if (colorClass) {
+    classes.push(`before:${colorClass}`, `hover:before:${colorClass}`)
+  }
+  
+  return classes.join(' ')
+}
 
 const defaultValue = computed(() => {
   // When `defaultOpen` is `false`, return `undefined` to close all items
@@ -157,11 +199,11 @@ const defaultValue = computed(() => {
   <DefineLinkTemplate v-slot="{ link, active }">
     <slot name="link" :link="link as T" :active="active">
       <slot name="link-leading" :link="link as T" :active="active">
-        <UIcon
+        <!-- <UIcon
           v-if="link.icon"
           :name="link.icon"
           :class="ui.linkLeadingIcon({ class: props.ui?.linkLeadingIcon, active })"
-        />
+        /> -->
       </slot>
 
       <span
@@ -265,6 +307,9 @@ const defaultValue = computed(() => {
               :variant="variant"
               :highlight="highlight"
               :highlight-color="highlightColor"
+              :custom-highlight-color="customHighlightColor"
+              :custom-highlight-width="customHighlightWidth"
+              :show-main-border="showMainBorder"
               :ui="props.ui"
             >
               <template v-for="(_, name) in slots" #[name]="slotData: any">
@@ -282,14 +327,15 @@ const defaultValue = computed(() => {
           >
             <ULinkBase
               v-bind="slotProps"
-              :class="
+              :class="[
                 ui.link({
                   class: [props.ui?.link, link.class],
                   active,
                   disabled: !!link.disabled,
                   level: true,
-                })
-              "
+                }),
+                getCustomHighlightClass(active)
+              ]"
             >
               <ReuseLinkTemplate :link="link" :active="active" />
             </ULinkBase>

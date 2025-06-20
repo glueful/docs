@@ -4,6 +4,7 @@ import { useAsync } from '@/composables/asyncData'
 import useContentQuery from '@/composables/useContentQuery'
 import { computed } from 'vue'
 import { useAppConfig } from '@/components/composables/appConfig'
+import DocsPagination from '@/components/DocsPagination.vue'
 
 const route = useRoute()
 const { findOne } = useContentQuery()
@@ -45,14 +46,14 @@ const ast: any = computed(() => data.value?.ast || null)
     />
     <PageBody>
       <ContentRenderer :value="ast" />
+      <DocsPagination />
     </PageBody>
     <template v-if="ast?.toc?.links?.length" #right>
       <ContentToc
         :title="toc?.title"
         :links="ast.toc?.links"
-        highlight
-        highlight-color="neutral"
         color="neutral"
+        class="pl-2 border-l border-gray-200 dark:border-gray-800"
       >
         <template v-if="toc?.bottom" #bottom>
           <div class="hidden lg:block space-y-6" :class="{ '!mt-6': toc?.links?.length }">

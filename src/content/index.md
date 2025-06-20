@@ -76,13 +76,13 @@ seo:
 
 ::
 
-::div{class="hidden lg:block fixed right-32 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-400/60 to-transparent dark:via-blue-600/60 z-10"}
+::div{class="hidden lg:block fixed right-56 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-400/60 to-transparent dark:via-blue-600/60 z-10"}
 ::
-::div{class="hidden lg:block fixed right-28 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-purple-400/40 to-transparent dark:via-purple-600/40 z-10"}
+::div{class="hidden lg:block fixed right-52 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-purple-400/40 to-transparent dark:via-purple-600/40 z-10"}
 ::
-::div{class="hidden lg:block fixed left-32 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-purple-400/60 to-transparent dark:via-purple-600/60 z-10"}
+::div{class="hidden lg:block fixed left-48 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-purple-400/60 to-transparent dark:via-purple-600/60 z-10"}
 ::
-::div{class="hidden lg:block fixed left-28 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-400/40 to-transparent dark:via-blue-600/40 z-10"}
+::div{class="hidden lg:block fixed left-44 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-blue-400/40 to-transparent dark:via-blue-600/40 z-10"}
 ::
 
 ::div{class="h-px bg-gradient-to-r from-transparent via-blue-400/50 via-purple-400/50 to-transparent dark:via-blue-600/50 dark:via-purple-600/50"}
