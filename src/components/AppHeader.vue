@@ -34,7 +34,7 @@ const handleLogoClick = () => {
 </script>
 
 <template>
-  <Header>
+  <Header :ui="{ container: 'max-w-[95rem]' }">
     <template #left>
       <div class="logo">
         <img
