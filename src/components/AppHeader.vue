@@ -5,8 +5,14 @@ import { ref } from 'vue'
 import logoLight from '../assets/logo_full.svg'
 import logoDark from '../assets/logo_full_dark_theme.svg'
 import { useRouter } from 'vue-router'
+import { useContentSearch } from './composables/index'
 
 const router = useRouter()
+const { open } = useContentSearch()
+
+const handleSearchClick = () => {
+  open.value = true
+}
 const items = ref([
   [
     {
@@ -53,6 +59,17 @@ const handleLogoClick = () => {
     </template>
     <template #right>
       <UNavigationMenu :items="items" class="hidden lg:block" color="neutral" />
+      <UButton
+        icon="i-lucide-search"
+        size="md"
+        color="primary"
+        variant="ghost"
+        @click="handleSearchClick"
+        class="mr-2"
+      >
+        <span class="hidden md:inline">Search</span>
+        <kbd class="hidden md:inline-flex ml-2 text-xs">⌘K</kbd>
+      </UButton>
       <UButton
         icon="i-tabler-brand-github-filled"
         size="md"

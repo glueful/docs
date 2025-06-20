@@ -124,7 +124,7 @@ onBeforeMount(async () => {
   }, 400)
 })
 
-onMounted(() => {
+onMounted(async () => {
   setupTypingAnimation()
   setupScrollAnimations()
 })
@@ -136,7 +136,7 @@ onMounted(() => {
     <template #default>
       <Main class="relative overflow-hidden" v-if="ast">
         <!-- Content with enhanced animations -->
-        <div class="relative z-10">
+        <div class="relative">
           <ContentRenderer :value="ast" />
         </div>
 
