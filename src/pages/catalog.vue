@@ -185,7 +185,12 @@ const clearFilters = () => {
                   View Details
                 </UButton>
                 <div class="flex space-x-2">
-                  <UButton :to="extension.readme" external variant="ghost" size="sm">
+                  <UButton
+                    :to="`/catalog/${extension.name.toLowerCase()}`"
+                    external
+                    variant="ghost"
+                    size="sm"
+                  >
                     <UIcon name="i-heroicons-book-open-solid" class="w-4 h-4" />
                   </UButton>
                   <UButton :to="extension.repository" external variant="ghost" size="sm">
