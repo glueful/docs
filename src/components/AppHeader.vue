@@ -7,6 +7,7 @@ import logoDark from '../assets/logo_full_dark_theme.svg'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
 const items = ref([
   [
     {
@@ -15,16 +16,10 @@ const items = ref([
       to: '/docs/getting-started',
     },
     {
-      label: 'Extensions',
+      label: 'Catalog',
       icon: 'i-lucide-blocks',
-      to: '/extensions',
+      to: '/catalog',
     },
-    // {
-    //   label: '',
-    //   icon: 'i-tabler-brand-github-filled',
-    //   target: '_blank',
-    //   to: 'https://github.com/glueful',
-    // },
   ],
 ])
 const handleLogoClick = () => {
@@ -34,7 +29,7 @@ const handleLogoClick = () => {
 </script>
 
 <template>
-  <Header :ui="{ container: 'max-w-[95rem]' }">
+  <Header :ui="{ container: 'max-w-[95rem]', center: 'flex-1' }">
     <template #left>
       <div class="logo">
         <img
@@ -51,6 +46,7 @@ const handleLogoClick = () => {
         />
       </div>
     </template>
+    <ContentSearchButton :collapsed="false" class="w-full" />
     <template #right>
       <UNavigationMenu :items="items" class="hidden lg:block" color="neutral" />
       <UButton

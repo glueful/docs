@@ -301,3 +301,5 @@ function sortByNumericPrefix(a: any, b: any) {
 function formatTitle(slug: any) {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (char: any) => char.toUpperCase())
 }
+
+export { parseFrontmatter, parseYaml, parseValue, formatTitle }
