@@ -27,6 +27,7 @@ const defaultAppConfig = {
       info: 'i-heroicons-information-circle',
       tip: 'i-heroicons-light-bulb',
       warning: 'i-heroicons-exclamation-triangle',
+      search: 'i-heroicons-magnifying-glass',
     },
   },
   toc: {

@@ -62,7 +62,7 @@ seo:
   GitHub
   :::
 
-  :::u-button
+  <!-- :::u-button
   ---
   color: neutral
   icon: i-lucide-play-circle
@@ -72,7 +72,7 @@ seo:
   variant: ghost
   ---
   Live Demo
-  :::
+  ::: -->
 
 ::
 
