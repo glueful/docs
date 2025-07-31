@@ -216,7 +216,7 @@ seo:
 
 ```bash [Terminal]
 # Generate CRUD APIs for all database tables
-php glueful generate:json api-definitions
+php glueful generate:api-definitions
 
 # Output: Auto-generated APIs with documentation
 ✓ Generated CRUD APIs for 12 tables
@@ -242,7 +242,7 @@ php glueful generate:json api-definitions
 ::div
 ```bash [Terminal]
 # Create a new extension with full scaffolding
-php glueful extensions create PaymentGateway
+php glueful extensions:create PaymentGateway
 
 ✓ Created extension directory: extensions/PaymentGateway/
 ✓ Generated controller, service, and routes
@@ -250,11 +250,11 @@ php glueful extensions create PaymentGateway
 ✓ Created README and tests
 
 # Enable and use immediately
-php glueful extensions enable PaymentGateway
+php glueful extensions:enable PaymentGateway
 ✓ Extension enabled successfully
 
 # See all available extensions
-php glueful extensions list
+php glueful extensions:info
 ```
 
 ::
