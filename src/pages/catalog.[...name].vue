@@ -76,6 +76,37 @@ const { data: readmeContent } = useAsync(
   },
 )
 
+// Fetch and parse changelog content
+const { data: changelogContent } = useAsync(
+  () => `changelog-${extensionName.value}`,
+  async () => {
+    // Wait for extension data to load
+    if (!extensionData.value?.changelog) {
+      return null
+    }
+    
+    try {
+      const response = await fetch(extensionData.value.changelog)
+      if (!response.ok) {
+        throw new Error('Failed to fetch changelog')
+      }
+      const markdownText = await response.text()
+      
+      // Parse the markdown content using the project's parser
+      const parsedContent = await parseMarkdown(markdownText)
+      return parsedContent
+    } catch (error) {
+      console.error('Error fetching changelog:', error)
+      return null
+    }
+  },
+  {
+    immediate: false,
+    default: () => null,
+    watch: [() => extensionData.value?.changelog],
+  },
+)
+
 // Tab management
 const tabs = ref<TabsItem[]>([
   {
@@ -84,44 +115,12 @@ const tabs = ref<TabsItem[]>([
     slot: 'details-tab' as const,
   },
   {
-    label: 'Features',
-    icon: 'i-heroicons-sparkles',
-    slot: 'features-tab' as const,
-  },
-  {
     label: 'Changelog',
     icon: 'i-heroicons-document-text',
     slot: 'changelog-tab' as const,
   },
 ])
 
-// Mock data for features and changelog (in real app, this would come from the API)
-const features = computed(() => {
-  if (!extensionData.value) return []
-  return [
-    'Easy to configure and customize',
-    'Lightweight and performant',
-    'Well-documented API',
-    'Regular updates and maintenance',
-    'Community support',
-  ]
-})
-
-const changelog = computed(() => {
-  if (!extensionData.value) return []
-  return [
-    {
-      version: extensionData.value.version,
-      date: new Date().toISOString().split('T')[0],
-      changes: ['Initial release', 'Core functionality implemented', 'Documentation added'],
-    },
-    {
-      version: '1.0.0',
-      date: '2024-01-01',
-      changes: ['First stable release', 'Performance improvements', 'Bug fixes'],
-    },
-  ]
-})
 </script>
 
 <template>
@@ -309,42 +308,36 @@ const changelog = computed(() => {
             </div>
           </template>
 
-          <template #features-tab>
-            <div class="py-6">
-              <h3 class="text-lg font-semibold mb-4">Key Features</h3>
-              <ul class="space-y-3">
-                <li v-for="(feature, index) in features" :key="index" class="flex items-start">
-                  <UIcon
-                    name="i-heroicons-check-circle-solid"
-                    class="w-5 h-5 text-green-500 mr-3 mt-0.5"
-                  />
-                  <span class="text-gray-700 dark:text-gray-300">{{ feature }}</span>
-                </li>
-              </ul>
-            </div>
-          </template>
-
           <template #changelog-tab>
-            <div class="py-6 space-y-6">
-              <div
-                v-for="(release, index) in changelog"
-                :key="index"
-                class="border-l-2 border-gray-200 dark:border-gray-700 pl-4"
-              >
-                <div class="flex items-center space-x-2 mb-2">
-                  <h4 class="text-lg font-semibold">v{{ release.version }}</h4>
-                  <span class="text-sm text-gray-500 dark:text-gray-400">{{ release.date }}</span>
-                </div>
-                <ul class="space-y-1">
-                  <li
-                    v-for="(change, changeIndex) in release.changes"
-                    :key="changeIndex"
-                    class="text-sm text-gray-700 dark:text-gray-300 flex items-start"
-                  >
-                    <span class="mr-2">•</span>
-                    {{ change }}
-                  </li>
-                </ul>
+            <div class="py-6">
+              <!-- Changelog Content -->
+              <div v-if="changelogContent" class="prose prose-gray dark:prose-invert max-w-none">
+                <ContentRenderer :value="changelogContent" />
+              </div>
+              
+              <!-- Fallback message if no changelog -->
+              <div v-else-if="!extensionData.changelog" class="text-center py-8">
+                <UIcon
+                  name="i-heroicons-document-text"
+                  class="w-12 h-12 mx-auto text-gray-400 mb-4"
+                />
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+                  No Changelog Available
+                </h3>
+                <p class="text-gray-600 dark:text-gray-400">
+                  This extension doesn't have a changelog yet.
+                </p>
+              </div>
+              
+              <!-- Loading state -->
+              <div v-else class="text-center py-8">
+                <UIcon
+                  name="i-heroicons-arrow-path-solid"
+                  class="w-8 h-8 mx-auto text-gray-400 mb-4 animate-spin"
+                />
+                <p class="text-gray-600 dark:text-gray-400">
+                  Loading changelog...
+                </p>
               </div>
             </div>
           </template>
