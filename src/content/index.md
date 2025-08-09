@@ -13,18 +13,18 @@ seo:
 <span class="font-bold text-blue-600">Glueful</span>
 
 #title
-<span class="font-light text-gray-900 dark:text-white text-5xl lg:text-6xl">The <span class="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Next-Generation</span></span><br><span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 text-5xl lg:text-6xl">API Framework</span>
+<span class="font-light text-gray-900 dark:text-white text-5xl lg:text-6xl">The <span class="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">Modern</span></span><br><span class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 text-5xl lg:text-6xl">API Framework</span>
 
 #description
 
 <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-  Build modern, secure APIs with <strong class="text-blue-600">unparalleled speed</strong> and <strong class="text-indigo-600">developer experience</strong>. Glueful combines the power of PHP 8.2+ with modern tooling and enterprise-grade security.
+  Build modern, secure APIs with <strong class="text-blue-600">unparalleled speed</strong> and <strong class="text-indigo-600">developer experience</strong>. This open-source framework combines the power of PHP 8.2+ with modern tooling and enterprise-grade security.
 </p>
 
 <div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
   <div class="flex items-center gap-2">
     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-    <span>5ms avg response time</span>
+    <span>Open Source</span>
   </div>
   <div class="flex items-center gap-2">
     <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
