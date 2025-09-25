@@ -1,0 +1,3 @@
+title: Security (API)
+icon: i-lucide-shield
+description: Authentication, permissions, and middleware APIs
