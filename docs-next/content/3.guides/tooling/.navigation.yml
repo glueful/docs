@@ -1,3 +1,9 @@
 title: Tooling
 icon: i-lucide-wrench
 description: CLI, testing, configuration, and deployment
+
+children:
+  - 1.cli-and-console
+  - 2.testing
+  - 3.configuration
+  - 4.deployment
