@@ -1,9 +1,0 @@
-title: Guides
-icon: i-lucide-compass
-description: Task-oriented guides for building with Glueful
-
-children:
-	- http
-	- data
-	- core-services
-	- tooling

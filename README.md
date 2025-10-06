@@ -1,39 +1,62 @@
-# .
+# Nuxt Docs Template
 
-This template should help get you started developing with Vue 3 in Vite.
+[![Nuxt UI](https://img.shields.io/badge/Made%20with-Nuxt%20UI-00DC82?logo=nuxt&labelColor=020420)](https://ui.nuxt.com)
 
-## Recommended IDE Setup
+Use this template to build your own documentation with [Nuxt UI](https://ui.nuxt.com) quickly.
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- [Live demo](https://docs-template.nuxt.dev/)
+- [Documentation](https://ui.nuxt.com/docs/getting-started/installation)
 
-## Type Support for `.vue` Imports in TS
+<a href="https://docs-template.nuxt.dev/" target="_blank">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://ui.nuxt.com/assets/templates/nuxt/docs-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="https://ui.nuxt.com/assets/templates/nuxt/docs-light.png">
+    <img alt="Nuxt Docs Template" src="https://ui.nuxt.com/assets/templates/nuxt/docs-light.png">
+  </picture>
+</a>
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+## Quick Start
 
-## Customize configuration
+```bash [Terminal]
+npm create nuxt@latest -- -t github:nuxt-ui-templates/docs
+```
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## Deploy your own
 
-## Project Setup
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-name=docs&repository-url=https%3A%2F%2Fgithub.com%2Fnuxt-ui-templates%2Fdocs&demo-image=https%3A%2F%2Fui.nuxt.com%2Fassets%2Ftemplates%2Fnuxt%2Fdocs-dark.png&demo-url=https%3A%2F%2Fdocs-template.nuxt.dev%2F&demo-title=Nuxt%20Docs%20Template&demo-description=A%20documentation%20template%20powered%20by%20Nuxt%20Content.)
 
-```sh
+## Setup
+
+Make sure to install the dependencies:
+
+```bash
 pnpm install
 ```
 
-### Compile and Hot-Reload for Development
+## Development Server
 
-```sh
+Start the development server on `http://localhost:3000`:
+
+```bash
 pnpm dev
 ```
 
-### Type-Check, Compile and Minify for Production
+## Production
 
-```sh
+Build the application for production:
+
+```bash
 pnpm build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+Locally preview production build:
 
-```sh
-pnpm lint
+```bash
+pnpm preview
 ```
+
+Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+
+## Renovate integration
+
+Install [Renovate GitHub app](https://github.com/apps/renovate/installations/select_target) on your repository and you are good to go.

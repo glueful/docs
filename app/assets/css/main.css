@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@source "../../../content/**/*";
+
+@theme static {
+  --container-8xl: 90rem;
+  --font-sans: 'Public Sans', sans-serif;
+
+
+  --color-raspberry-50: #fdf2f7;
+  --color-raspberry-100: #fce7f2;
+  --color-raspberry-200: #fccee5;
+  --color-raspberry-300: #fba6ce;
+  --color-raspberry-400: #f76fad;
+  --color-raspberry-500: #ee3182;
+  --color-raspberry-600: #df236b;
+  --color-raspberry-700: #c21451;
+  --color-raspberry-800: #a01443;
+  --color-raspberry-900: #85163c;
+  --color-raspberry-950: #52051f;
+
+
+
+  --color-shakespeare-50: #ebfdff;
+  --color-shakespeare-100: #cefaff;
+  --color-shakespeare-200: #a2f2ff;
+  --color-shakespeare-300: #63e7fd;
+  --color-shakespeare-400: #1cd1f4;
+  --color-shakespeare-500: #00bae1;
+  --color-shakespeare-600: #038fb7;
+  --color-shakespeare-700: #0a7294;
+  --color-shakespeare-800: #125c78;
+  --color-shakespeare-900: #144d65;
+  --color-shakespeare-950: #063246;
+
+
+
+
+}
+
+:root {
+  --ui-container: var(--container-8xl);
+
+   /* Brand Colors */
+  --brand-dark: #231f20;
+  --brand-medium: #747474;
+  --brand-light: #a3a3a3;
+
+  /* App Variables */
+  --ui-header-height: --spacing(16);
+}
+
+.home-page-hero .text-center {
+  text-align: left !important;
+}
+.home-page-hero .justify-center,
+.get-started .justify-center {
+  justify-content: flex-start !important;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+
+.logo img {
+  height: 100%;
+  width: auto;
+}
+
+/* Show/hide logos based on color mode */
+.dark-logo {
+  display: none;
+}
+
+:root.dark .light-logo {
+  display: none;
+}
+
+:root.dark .dark-logo {
+  display: block;
+}

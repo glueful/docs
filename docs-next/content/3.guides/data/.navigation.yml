@@ -1,9 +1,0 @@
-title: Data
-icon: i-lucide-database
-description: Query builder, migrations, schema, models, repositories, pagination, seeding
-
-children:
-	- 1.query-builder-and-transactions
-	- 2.migrations-and-schema
-	- 3.models-and-repositories
-	- 4.pagination-and-seeding
