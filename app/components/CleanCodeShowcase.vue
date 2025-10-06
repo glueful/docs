@@ -6,16 +6,14 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="flex gap-1.5">
-            <div class="w-3 h-3 bg-red-500 rounded-full"/>
-            <div class="w-3 h-3 bg-yellow-500 rounded-full"/>
-            <div class="w-3 h-3 bg-green-500 rounded-full"/>
+            <div class="w-3 h-3 bg-red-500 rounded-full" />
+            <div class="w-3 h-3 bg-yellow-500 rounded-full" />
+            <div class="w-3 h-3 bg-green-500 rounded-full" />
           </div>
-          <span class="text-sm font-medium text-gray-600 dark:text-gray-400"
-            >UserController.php</span
-          >
+          <span class="text-sm font-medium text-gray-600 dark:text-gray-400">UserController.php</span>
         </div>
         <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <div class="w-2 h-2 bg-blue-500 rounded-full"/>
+          <div class="w-2 h-2 bg-blue-500 rounded-full" />
           <span>PHP 8.2+</span>
         </div>
       </div>
@@ -43,15 +41,15 @@
     <div class="border-t border-gray-200 dark:border-gray-700 px-6 py-4">
       <div class="grid grid-cols-3 gap-2">
         <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <div class="w-2 h-2 bg-green-500 rounded-full"/>
+          <div class="w-2 h-2 bg-green-500 rounded-full" />
           <span>Type Safety</span>
         </div>
         <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <div class="w-2 h-2 bg-blue-500 rounded-full"/>
+          <div class="w-2 h-2 bg-blue-500 rounded-full" />
           <span>Auto DI</span>
         </div>
         <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-          <div class="w-2 h-2 bg-purple-500 rounded-full"/>
+          <div class="w-2 h-2 bg-purple-500 rounded-full" />
           <span>Attributes</span>
         </div>
       </div>
@@ -61,6 +59,6 @@
 
 <script setup lang="ts">
 defineOptions({
-  name: 'CleanCodeShowcase',
+  name: 'CleanCodeShowcase'
 })
 </script>
