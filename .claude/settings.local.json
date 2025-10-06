@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/michaeltawiahsowah/Sites/glueful/docs-/docs-next/content/3.guides/http/**)",
+      "Read(//Users/michaeltawiahsowah/Sites/glueful/docs-/docs-next/content/3.guides/core-services/**)",
+      "Read(//Users/michaeltawiahsowah/Sites/glueful/docs-/docs-next/content/3.guides/**)",
+      "Read(//Users/michaeltawiahsowah/Sites/glueful/docs-/docs-next/content-new/**)",
+      "Read(//Users/michaeltawiahsowah/Sites/glueful/docs-/docs-next/content/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
