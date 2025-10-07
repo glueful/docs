@@ -40,18 +40,10 @@ Get up and running with Glueful in under 5 minutes using the API skeleton:
 ### Installation
 
 ```bash
-# Clone the API skeleton (recommended)
+# Create a new Glueful project from the API skeleton (recommended)
 composer create-project glueful/api-skeleton my-api
 cd my-api
-
-# Install dependencies
-composer install
-
-# Initialize the application
-php glueful install --quiet
-
 # Start the development server
-php glueful serve
 ```
 
 ### Your First Request
@@ -144,7 +136,7 @@ my-api/
 
 Now that you have Glueful running:
 
-1. **[Installation Guide](/start/installation)** - Detailed installation and setup
+1. **[Installation Guide](/getting-started/installation)** - Detailed installation and setup
 2. **[Configuration](/guides/tooling/configuration)** - Environment setup and config options  
 3. **[Quick Tutorial](/tutorial)** - Build your first complete API
 4. **[Core Concepts](/concepts/architecture)** - Understanding Glueful's architecture

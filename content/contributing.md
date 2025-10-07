@@ -7,24 +7,24 @@ Thank you for considering contributing to Glueful! This guide will help you get 
 
 ## Ways to Contribute
 
-- 🐛 **Report bugs** - Help us identify and fix issues
-- ✨ **Suggest features** - Share ideas for improvements
-- 📖 **Improve documentation** - Help others learn Glueful
-- 💻 **Submit code** - Fix bugs or implement features
-- 🧪 **Write tests** - Improve code coverage
-- 💬 **Answer questions** - Help community members
+-  **Report bugs** - Help us identify and fix issues
+-  **Suggest features** - Share ideas for improvements
+-  **Improve documentation** - Help others learn Glueful
+-  **Submit code** - Fix bugs or implement features
+-  **Write tests** - Improve code coverage
+-  **Answer questions** - Help community members
 
 ## Getting Started
 
 ### Fork & Clone
 
 ```bash
-# Fork the repository on GitHub, then:
-git clone https://github.com/YOUR_USERNAME/glueful.git
-cd glueful
+# Fork the framework repository on GitHub, then:
+git clone https://github.com/YOUR_USERNAME/framework.git glueful-framework
+cd glueful-framework
 
 # Add upstream remote
-git remote add upstream https://github.com/glueful/glueful.git
+git remote add upstream https://github.com/glueful/framework.git
 ```
 
 ### Install Dependencies
@@ -45,14 +45,16 @@ git checkout -b fix/bug-description
 
 ### Code Style
 
-Glueful follows PSR-12 coding standards:
+Glueful follows PSR-12 coding standards (phpcs config in `phpcs.xml`):
 
 ```bash
 # Check code style
-composer check-style
+composer phpcs
 
 # Fix code style
-composer fix-style
+composer phpcbf
+# or
+composer format
 ```
 
 ### Writing Tests
@@ -87,7 +89,11 @@ composer test
 ./vendor/bin/phpunit tests/Feature/ExampleTest.php
 
 # Run with coverage
-composer test-coverage
+composer test:coverage
+
+# Run a suite
+composer test:unit
+composer test:integration
 ```
 
 ### Documentation
@@ -110,13 +116,15 @@ Before submitting:
 composer test
 
 # Check code style
-composer check-style
+composer phpcs
 
 # Fix code style issues
-composer fix-style
+composer phpcbf
 
-# Run static analysis (if available)
-composer analyze
+# Run static analysis
+composer analyse
+# or
+composer phpstan
 ```
 
 ### 2. Commit Your Changes
@@ -259,16 +267,14 @@ cp .env.example .env
 # Run migrations
 php glueful migrate:run
 
-# Start dev server
-php glueful serve
 ```
 
 ### Running Documentation Locally
 
 ```bash
 cd docs
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 ## Coding Standards
