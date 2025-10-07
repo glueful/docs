@@ -78,7 +78,12 @@ const links = computed(() => {
 
       <USeparator v-if="surround?.length" />
 
-      <UContentSurround :surround="surround" />
+      <UContentSurround
+        :surround="surround"
+        :ui="{ link: 'border-0' }"
+        prev-icon="i-lucide-chevron-left"
+        next-icon="i-lucide-chevron-right"
+      />
     </UPageBody>
 
     <template

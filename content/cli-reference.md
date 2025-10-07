@@ -8,16 +8,16 @@ Complete reference for all Glueful CLI commands.
 ## Getting Started
 
 ```bash
-# List all commands
-php glueful
+# List all commands (installed via Composer)
+ php glueful
 
 # Get help for a command
-php glueful help <command>
+ php glueful help <command>
 
 # List commands by namespace
-php glueful list extensions
-php glueful list security
-php glueful list system
+ php glueful list extensions
+ php glueful list security
+ php glueful list system
 ```
 
 ## Database & Migrations
@@ -26,115 +26,86 @@ php glueful list system
 Run pending migrations
 
 ```bash
-php glueful migrate:run
-php glueful migrate:run --force  # Skip confirmation in production
+ php glueful migrate:run
+ php glueful migrate:run --force   # Skip confirmation in production
+ php glueful migrate:run --dry-run # Show operations without running
 ```
 
 ### migrate:rollback
 Rollback the last migration batch
 
 ```bash
-php glueful migrate:rollback
-php glueful migrate:rollback --steps=2  # Rollback 2 batches
+ php glueful migrate:rollback
+ php glueful migrate:rollback --steps=2   # Rollback N steps
+ php glueful migrate:rollback --dry-run   # Preview rollbacks
 ```
 
 ### migrate:status
 Show migration status
 
 ```bash
-php glueful migrate:status
+ php glueful migrate:status
 ```
 
 ### migrate:create
 Create a new migration
 
 ```bash
-php glueful migrate:create CreateUsersTable
+ php glueful migrate:create CreateUsersTable
 ```
 
-### migrate:fresh
-Drop all tables and re-run migrations
+### db:reset
+Drop all tables (use with care)
 
 ```bash
-php glueful migrate:fresh
-php glueful migrate:fresh --seed  # Run seeders after
+ php glueful db:reset
+ php glueful db:reset --dry-run  # Preview tables to be dropped
+ php glueful db:reset --force    # Skip confirmations
 ```
 
-### db:seed
-Run database seeders
+### db:status
+Show database status and connectivity
 
 ```bash
-php glueful db:seed
-php glueful db:seed --class=UserSeeder
+ php glueful db:status
+```
+
+### db:profile
+Profile slow queries and database health
+
+```bash
+ php glueful db:profile
 ```
 
 ## Queue & Jobs
 
 ### queue:work
-Process queue jobs
+Start and manage workers (multi-worker)
 
 ```bash
-# Process default queue
-php glueful queue:work
+# Default (2 workers on 'default' queue)
+ php glueful queue:work
 
-# Process specific queue
-php glueful queue:work --queue=emails
+# Queues and worker count
+ php glueful queue:work --queue=emails,reports --workers=4
 
-# Process once then exit
-php glueful queue:work --once
+# Limits and behavior
+ php glueful queue:work --memory=256 --timeout=90 --max-jobs=1000 --stop-when-empty
 
-# Stop after max jobs
-php glueful queue:work --max-jobs=100
-
-# Stop after max time (seconds)
-php glueful queue:work --max-time=3600
+# Other actions
+ php glueful queue:work status --json
+ php glueful queue:work spawn --count=2 --queue=emails
+ php glueful queue:work restart --all
 ```
 
-### queue:listen
-Listen for new jobs (restarts after each job)
+### queue:autoscale
+Auto-scale workers with monitoring and scheduling
 
 ```bash
-php glueful queue:listen
-php glueful queue:listen --queue=emails
-```
-
-### queue:restart
-Gracefully restart queue workers
-
-```bash
-php glueful queue:restart
-```
-
-### queue:failed
-List failed jobs
-
-```bash
-php glueful queue:failed
-```
-
-### queue:retry
-Retry failed jobs
-
-```bash
-# Retry all failed jobs
-php glueful queue:retry all
-
-# Retry specific job
-php glueful queue:retry <job-id>
-```
-
-### queue:forget
-Delete a failed job
-
-```bash
-php glueful queue:forget <job-id>
-```
-
-### queue:flush
-Delete all failed jobs
-
-```bash
-php glueful queue:flush
+ php glueful queue:autoscale               # Run autoscaler
+ php glueful queue:autoscale status --json # Show status as JSON
+ php glueful queue:autoscale config --show --validate
+ php glueful queue:autoscale schedule --list --preview --days=7
 ```
 
 ### queue:scheduler
@@ -142,7 +113,7 @@ Advanced job scheduling and management system
 
 ```bash
 # Run the scheduler
-php glueful queue:scheduler
+ php glueful queue:scheduler
 ```
 
 ## Cache
@@ -151,14 +122,63 @@ php glueful queue:scheduler
 Clear application cache
 
 ```bash
-php glueful cache:clear
+ php glueful cache:clear
 ```
 
-### cache:forget
+### cache:delete
 Remove specific cache key
 
 ```bash
-php glueful cache:forget users:active
+ php glueful cache:delete users:active
+```
+
+### cache:get
+Get cache value
+
+```bash
+ php glueful cache:get users:active
+```
+
+### cache:set
+Set cache value
+
+```bash
+ php glueful cache:set users:active '{"ids":[1,2,3]}' --ttl=3600
+```
+
+### cache:ttl
+Show TTL for a key
+
+```bash
+ php glueful cache:ttl users:active
+```
+
+### cache:expire
+Expire a key in N seconds
+
+```bash
+ php glueful cache:expire users:active 120
+```
+
+### cache:status
+Show cache driver status and capabilities
+
+```bash
+ php glueful cache:status
+```
+
+### cache:purge
+Clear all cache entries (driver-specific)
+
+```bash
+ php glueful cache:purge
+```
+
+### cache:maintenance
+Run or queue cache maintenance tasks
+
+```bash
+ php glueful cache:maintenance
 ```
 
 ## Development Server
@@ -168,10 +188,13 @@ Start development server
 
 ```bash
 # Default: localhost:8000
-php glueful serve
+ php glueful serve
 
 # Custom host and port
-php glueful serve --host=0.0.0.0 --port=9000
+ php glueful serve --host=0.0.0.0 --port=9000
+
+# Open in browser
+ php glueful serve --open
 ```
 
 ## Code Generation
@@ -180,22 +203,87 @@ php glueful serve --host=0.0.0.0 --port=9000
 Generate a REST API controller from template
 
 ```bash
-php glueful generate:controller UserController
-php glueful generate:controller Api/UserController  # Nested
+ php glueful generate:controller UserController
+ php glueful generate:controller Api/UserController  # Nested
 ```
 
 ### generate:key
 Generate secure encryption keys for the framework
 
 ```bash
-php glueful generate:key
+ php glueful generate:key
+```
+
+### generate:api-definitions
+Generate OpenAPI/route definitions
+
+```bash
+ php glueful generate:api-definitions
+```
+
+### event:create
+Create a new event class
+
+```bash
+ php glueful event:create UserRegistered
+```
+
+### event:listener
+Create a new event listener class
+
+```bash
+ php glueful event:listener SendWelcomeEmail
 ```
 
 ### create:extension
 Create new local extension
 
 ```bash
-php glueful create:extension MyExtension
+ php glueful create:extension MyExtension
+```
+
+## Extensions
+
+```bash
+ php glueful extensions:list
+ php glueful extensions:info <slug>
+ php glueful extensions:enable <slug>
+ php glueful extensions:disable <slug>
+ php glueful extensions:cache
+ php glueful extensions:clear
+ php glueful extensions:summary
+ php glueful extensions:why <Provider\Class>
+```
+
+## System
+
+```bash
+ php glueful install
+ php glueful system:check
+ php glueful system:production
+ php glueful system:memory
+ php glueful version
+```
+
+## Container (DI)
+
+```bash
+ php glueful di:container:debug
+ php glueful di:container:compile
+ php glueful di:container:validate
+ php glueful di:lazy:status
+```
+
+## Security
+
+```bash
+ php glueful security:check
+ php glueful security:scan
+ php glueful security:vulnerabilities
+ php glueful security:lockdown
+ php glueful security:reset-password --email=user@example.com
+ php glueful security:report
+ php glueful security:revoke-tokens --all
 ```
 
 ## Inspection & Debugging

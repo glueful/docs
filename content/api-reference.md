@@ -15,20 +15,24 @@ $db = app('database'); // or app(DatabaseInterface::class)
 $cache = app('cache'); // or app(CacheInterface::class)
 ```
 
-### db()
-Get database connection
+### database (via container)
+Get database connection (no `db()` helper; use the container)
 
 ```php
-// Query builder entrypoint (uses from())
-$users = db()->from('users')->where('status', 'active')->get();
+$db = app('database'); // Glueful\Database\Connection
+
+// Query builder entrypoints
+$users = $db->table('users')->where('status', 'active')->get();
+$users = $db->query()->from('users')->where('status', 'active')->get();
 ```
 
-### cache()
-Get cache instance
+### cache (via container)
+Get cache instance (no `cache()` helper; use the container)
 
 ```php
-cache()->set('key', 'value', 3600);
-$value = cache()->get('key');
+$cache = app('cache.store'); // or app(Glueful\Cache\CacheStore::class)
+$cache->set('key', 'value', 3600);
+$value = $cache->get('key');
 ```
 
 ### config()
@@ -47,12 +51,13 @@ $apiKey = env('API_KEY');
 $debug = env('APP_DEBUG', false);
 ```
 
-### logger()
-Get logger instance
+### logger (via container)
+Get logger instance (no `logger()` helper; use the container)
 
 ```php
-logger()->info('Message', ['context' => 'value']);
-logger()->error('Error occurred', ['error' => $e->getMessage()]);
+$logger = app('logger'); // or app(Psr\Log\LoggerInterface::class)
+$logger->info('Message', ['context' => 'value']);
+$logger->error('Error occurred', ['error' => $e->getMessage()]);
 ```
 
 ## Database
@@ -60,32 +65,35 @@ logger()->error('Error occurred', ['error' => $e->getMessage()]);
 ### Query Builder
 
 ```php
-// Basic select
-db()->from('users')->get();
-db()->from('users')->where('status', 'active')->get();
+// Entrypoints
+$db = app('database');
+$db->table('users')->get();
+$db->table('users')->where('status', 'active')->get();
 
-// Insert (returns boolean or result depending on implementation)
-db()->from('users')->insert(['name' => 'John', 'email' => 'john@example.com']);
+// Insert/Update/Delete (return ints)
+$db->table('users')->insert(['name' => 'John', 'email' => 'john@example.com']);
+$db->table('users')->where('id', $id)->update(['name' => 'Jane']);
+$db->table('users')->where('id', $id)->delete();
 
-// Update
-db()->from('users')->where('id', $id)->update(['name' => 'Jane']);
+// Using query()->from(...)
+$db->query()->from('users')->select(['id','name'])->get();
 
-// Delete
-db()->from('users')->where('id', $id)->delete();
+// Joins
+$db->query()
+    ->from('users')
+    ->join('orders', 'users.id', '=', 'orders.user_id')
+    ->select(['users.*', 'orders.total'])
+    ->get();
 
-// (Joins supported via dedicated join component – API name may differ; adjust if join() differs)
-// Example (verify actual method name):
-// db()->from('users')
-//     ->join('orders', 'users.id', '=', 'orders.user_id')
-//     ->select(['users.*', 'orders.total'])
-//     ->get();
+// Aggregates
+$db->query()->from('orders')->count();
+$db->query()->from('orders')->max('total');
 
-// Aggregates (if implemented)
-// db()->from('orders')->count();
-// db()->from('orders')->sum('total');
-// db()->from('orders')->avg('total');
-// db()->from('orders')->max('total');
-// db()->from('orders')->min('total');
+// Pagination
+$db->query()->from('orders')->paginate(page: 1, perPage: 15);
+
+// Optional: enable query result caching
+$db->query()->from('users')->where('active', 1)->cache(3600)->get();
 ```
 
 See [Database Guide](essentials/database) for full reference.
@@ -94,26 +102,27 @@ See [Database Guide](essentials/database) for full reference.
 
 ```php
 // Set
-cache()->set('key', 'value', 3600);
+$cache = app('cache.store');
+$cache->set('key', 'value', 3600);
 
 // Get
-$value = cache()->get('key');
-$value = cache()->get('key', 'default');
+$value = $cache->get('key');
+$value = $cache->get('key', 'default');
 
 // Remember pattern (pseudo if implemented)
-$users = cache()->remember('users:active', function() {
-    return db()->from('users')->where('status', 'active')->get();
+$users = $cache->remember('users:active', function() use ($db) {
+    return $db->table('users')->where('status', 'active')->get();
 }, 3600);
 
 // Check existence
-if (cache()->has('key')) { /* ... */ }
+if ($cache->has('key')) { /* ... */ }
 
 // Delete
-cache()->delete('key');
-// cache()->deletePattern('users:*'); // If pattern deletion supported
+$cache->delete('key');
+// $cache->deletePattern('users:*'); // If pattern deletion supported by driver (Redis/File)
 
 // Clear all
-cache()->clear();
+$cache->clear();
 ```
 
 See [Caching Guide](features/caching) for full reference.
@@ -121,20 +130,22 @@ See [Caching Guide](features/caching) for full reference.
 ## Queue
 
 ```php
-// Obtain queue manager (service id may differ)
-$queue = app('queue'); // or app(QueueManager::class)
+// Obtain queue manager
+$queue = app('queue'); // or app(Glueful\Queue\QueueManager::class)
 
-// Push job
-$queue->push(new SendEmailJob($userId));
-$queue->push(new ProcessImageJob($path), delay: 60);
+// Push job (use job class name + payload)
+$queue->push(SendEmailJob::class, ['userId' => $userId]);
+
+// Delayed job
+$queue->later(60, ProcessImageJob::class, ['path' => $path]);
 
 // Push to specific queue
-$queue->push(new SendEmailJob($userId), queue: 'emails');
+$queue->push(SendEmailJob::class, ['userId' => $userId], queue: 'emails');
 
-// Bulk (if supported)
+// Bulk
 $queue->bulk([
-    new Job1(),
-    new Job2(),
+    ['job' => Job1::class, 'data' => ['id' => 1]],
+    ['job' => Job2::class, 'data' => ['id' => 2]],
 ]);
 ```
 
@@ -170,8 +181,8 @@ $request->files->get('avatar');       // Uploaded file
 $request->headers->get('Authorization'); // Header
 $request->getClientIp();              // Client IP
 $request->headers->get('User-Agent'); // User agent
-// Authenticated user (via auth manager)
-$authUser = app(Glueful\Auth\AuthenticationManager::class)->user();
+// Authenticated user (via auth helper/service)
+$authUser = auth()?->user(); // or app(Glueful\Auth\AuthenticationService::class)->getCurrentUser()
 ```
 
 ### Response
@@ -179,14 +190,14 @@ $authUser = app(Glueful\Auth\AuthenticationManager::class)->user();
 ```php
 // Success
 Response::success($data);
-Response::success($data, 201);
+Response::created($data); // 201 Created
 
 // Error
 Response::error('Not found', 404);
 Response::error('Validation failed', 422, ['errors' => $errors]);
 
 // Headers
-$response->headers->set('X-Custom', 'value');
+$resp = Response::success($data)->header('X-Custom', 'value');
 ```
 
 See [Requests & Responses Guide](essentials/requests-responses) for full reference.
@@ -194,59 +205,58 @@ See [Requests & Responses Guide](essentials/requests-responses) for full referen
 ## Validation
 
 ```php
-// Example pseudo-validation (depends on validator service binding)
-$input = Glueful\Helpers\RequestHelper::getRequestData($request);
-$validated = validator()->validate($input, [
-    'name' => 'required|string|min:3|max:255',
-    'email' => 'required|email|unique:users,email',
-    'password' => 'required|min:8|confirmed',
-    'age' => 'required|integer|min:18',
-]);
+// Rule-object validation via ValidatorInterface
+use Glueful\Helpers\RequestHelper;
+use Glueful\Validation\Validator;
+use Glueful\Validation\Rules\{Required, Type, Length, Email, Range};
+
+$input = RequestHelper::getRequestData($request);
+
+$rules = [
+    'name' => [new Required(), new Type('string'), new Length(min: 3, max: 255)],
+    'email' => [new Required(), new Email()],
+    'password' => [new Required(), new Length(min: 8)],
+    'age' => [new Required(), new Type('integer'), new Range(min: 18)],
+];
+
+$validator = new Validator($rules);
+$errors = $validator->validate($input);
+if ($errors !== []) {
+    return Response::validation($errors);
+}
 ```
 
-### Available Rules
+### Available Rules (objects)
 
-- `required` - Field must be present
-- `nullable` - Field can be null
-- `string` - Must be string
-- `integer` - Must be integer
-- `numeric` - Must be numeric
-- `email` - Must be valid email
-- `url` - Must be valid URL
-- `min:n` - Minimum value/length
-- `max:n` - Maximum value/length
-- `between:min,max` - Between values
-- `in:foo,bar` - Must be in list
-- `unique:table,column` - Must be unique
-- `exists:table,column` - Must exist
-- `confirmed` - Must match `field_confirmation`
-- `date` - Must be valid date
-- `before:date` - Before date
-- `after:date` - After date
-- `alpha` - Only letters
-- `alpha_num` - Letters and numbers
-- `regex:pattern` - Match regex
+- `Required` - Field must be present
+- `Type('string'|'integer'|...)` - Type check
+- `Length(min?, max?)` - String length
+- `Range(min?, max?)` - Numeric range
+- `Email()` - Valid email
+- `InArray([...])` - Must be in list
+- `DbUnique(...)` - Database uniqueness
+- `Sanitize(...)` - Value sanitization
 
 See [Validation Guide](essentials/validation) for full reference.
 
 ## Authentication
 
 ```php
-$auth = app(Glueful\Auth\AuthenticationManager::class);
+$authService = app(Glueful\Auth\AuthenticationService::class);
 
-// Login
-$token = $auth->attempt(['email' => $email, 'password' => $password]);
+// Login (username or email)
+$session = $authService->authenticate(['username' => $email, 'password' => $password]);
 
-// Get authenticated user
-$user = $auth->user();
+// Get authenticated user (object) from context
+$user = auth()?->user();
 
 // Check authentication
-if ($auth->check()) {
+if (auth()?->check()) {
     // Authenticated
 }
 
-// Logout
-$auth->logout();
+// Logout / terminate session
+$authService->terminateSession($token);
 ```
 
 See [Authentication Guide](essentials/authentication) for full reference.
@@ -254,14 +264,23 @@ See [Authentication Guide](essentials/authentication) for full reference.
 ## File Storage
 
 ```php
-// Storage abstraction not currently exposed as 'Storage' facade in codebase scan.
-// Placeholder examples (adjust to actual implementation once available):
-// $storage = app(StorageManager::class);
-// $path = $storage->put('avatars', $file);
-// $contents = $storage->get($path);
-// if ($storage->exists($path)) { /* ... */ }
-// $storage->delete($path);
-// $url = $storage->url($path);
+// Storage via services
+$storage = app(Glueful\Storage\StorageManager::class);
+$disk = $storage->disk(); // default disk from config
+
+// Write/read using Flysystem operator
+$disk->write('avatars/user-1.png', $binaryContents);
+$contents = $disk->read('avatars/user-1.png');
+if ($disk->fileExists('avatars/user-1.png')) { /* ... */ }
+$disk->delete('avatars/user-1.png');
+
+// JSON helpers
+$storage->putJson('data/users/1.json', ['id' => 1]);
+$data = $storage->getJson('data/users/1.json');
+
+// Public URL
+$url = app(Glueful\Storage\Support\UrlGenerator::class)
+    ->url('avatars/user-1.png');
 ```
 
 See [File Uploads Guide](features/file-uploads) for full reference.
