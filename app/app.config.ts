@@ -37,7 +37,7 @@ export default defineAppConfig({
     colorMode: true,
     links: [{
       'icon': 'i-simple-icons-github',
-      'to': 'https://github.com/glueful/docs',
+      'to': 'https://github.com/glueful',
       'target': '_blank',
       'aria-label': 'GitHub'
     }]
