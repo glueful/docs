@@ -3,7 +3,8 @@ seo:
   title: Glueful — Modern API Framework
   description: Build secure, high‑throughput PHP APIs with first‑class DX, JWT auth, OpenAPI generation, rate limiting, and RBAC.
 ---
-::u-page-hero{class="home-page-hero"}
+::u-page-hero{orientation = "horizontal" class="home-page-hero"}
+
 
 ::div{class="absolute inset-0 bg-gradient-to-br from-shakespeare-50/20 via-rose-50/15 to-raspberry-50/20 dark:from-shakespeare-950/10 dark:via-rose-950/8 dark:to-raspberry-950/10 -z-10"}
 ::
@@ -56,7 +57,16 @@ seo:
   ---
   GitHub
   :::
-
+#default
+  :::prose-pre{code = "composer create-project glueful/api-skeleton my-project" filename = "Terminal"}
+  ```bash [Terminal]
+  # Create a new Glueful project from the API skeleton (recommended)
+  composer create-project glueful/api-skeleton my-project
+  cd my-project
+  # Start the development server
+  php glueful serve
+  ```
+  :::
 ::
 
 ::div{class="hidden lg:block fixed right-56 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-shakespeare-400/60 to-transparent dark:via-shakespeare-600/60 z-10"}
@@ -184,9 +194,9 @@ seo:
 
 #title
 
-<h2 class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-center mb-4">
+<span class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-center mb-4">
   <span class="text-gray-900 dark:text-white font-light">From Database to <span class="text-raspberry-600 font-semibold">API in Seconds</span></span>
-</h2>
+</span>
 
 #description
 

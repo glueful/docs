@@ -10,6 +10,16 @@ export default defineAppConfig({
         root: 'border-t border-default',
         left: 'text-sm text-muted'
       }
+    },
+    button: {
+      slots: {
+        base: ['cursor-pointer']
+      }
+    },
+    dropdownMenu: {
+      slots: {
+        item: ['cursor-pointer']
+      }
     }
   },
   seo: {
@@ -35,22 +45,24 @@ export default defineAppConfig({
   footer: {
     credits: `Glueful • © ${new Date().getFullYear()}`,
     colorMode: false,
-    links: [{
-      'icon': 'i-simple-icons-discord',
-      'to': 'https://go.nuxt.com/discord',
-      'target': '_blank',
-      'aria-label': 'Glueful on Discord'
-    }, {
-      'icon': 'i-simple-icons-x',
-      'to': 'https://go.nuxt.com/x',
-      'target': '_blank',
-      'aria-label': 'Glueful on X'
-    }, {
-      'icon': 'i-simple-icons-github',
-      'to': 'https://github.com/glueful',
-      'target': '_blank',
-      'aria-label': 'Glueful on GitHub'
-    }]
+    links: [
+    //   {
+    //   'icon': 'i-simple-icons-discord',
+    //   'to': 'https://go.nuxt.com/discord',
+    //   'target': '_blank',
+    //   'aria-label': 'Glueful on Discord'
+    // }, {
+    //   'icon': 'i-simple-icons-x',
+    //   'to': 'https://go.nuxt.com/x',
+    //   'target': '_blank',
+    //   'aria-label': 'Glueful on X'
+    // },
+      {
+        'icon': 'i-simple-icons-github',
+        'to': 'https://github.com/glueful',
+        'target': '_blank',
+        'aria-label': 'Glueful on GitHub'
+      }]
   },
   toc: {
     title: 'Table of Contents',

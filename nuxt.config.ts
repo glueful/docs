@@ -6,7 +6,8 @@ export default defineNuxtConfig({
     '@nuxt/ui',
     '@nuxt/content',
     'nuxt-og-image',
-    'nuxt-llms'
+    'nuxt-llms',
+    '@nuxtjs/color-mode'
   ],
 
   devtools: {
@@ -16,6 +17,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   content: {
+    experimental: { sqliteConnector: 'native' },
     build: {
       markdown: {
         toc: {
@@ -51,12 +53,12 @@ export default defineNuxtConfig({
   },
 
   llms: {
-    domain: 'https://docs-template.nuxt.dev/',
-    title: 'Nuxt Docs Template',
-    description: 'A template for building documentation with Nuxt UI and Nuxt Content.',
+    domain: 'https://glueful.com/docs/',
+    title: 'Glueful Docs',
+    description: 'Glueful framework docs',
     full: {
-      title: 'Nuxt Docs Template - Full Documentation',
-      description: 'This is the full documentation for the Nuxt Docs Template.'
+      title: 'Glueful Docs - Full Documentation',
+      description: 'This is the full documentation for the Glueful framework.'
     },
     sections: [
       {
@@ -71,6 +73,55 @@ export default defineNuxtConfig({
         contentCollection: 'docs',
         contentFilters: [
           { field: 'path', operator: 'LIKE', value: '/essentials%' }
+        ]
+      },
+      {
+        title: 'Features',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/features%' }
+        ]
+      },
+      {
+        title: 'Advanced',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/advanced%' }
+        ]
+      },
+      {
+        title: 'Deployment',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/deployment%' }
+        ]
+      },
+      {
+        title: 'Cookbook',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/cookbook%' }
+        ]
+      },
+      {
+        title: 'API Reference',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/api-reference%' }
+        ]
+      },
+      {
+        title: 'CLI Reference',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/cli-reference%' }
+        ]
+      },
+      {
+        title: 'Contributing',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/contributing%' }
         ]
       }
     ]
