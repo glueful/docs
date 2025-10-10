@@ -52,7 +52,7 @@ seo:
   icon: i-tabler-brand-github-filled
   size: xl
   target: _blank
-  to: https://github.com/glueful/glueful
+  to: https://github.com/glueful
   variant: solid
   ---
   GitHub
@@ -272,7 +272,7 @@ php glueful extensions:info
       size: xl
       class: "bg-shakespeare-600 hover:bg-shakespeare-700 text-white hover:shadow-shakespeare-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"
     - label: 'Github'
-      to: https://github.com/glueful/glueful
+      to: https://github.com/glueful
       icon: i-tabler-brand-github-filled
       target: _blank
       color: neutral
