@@ -9,12 +9,50 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.3.1 | Altair  | 2025-10-10 | Patch   | Low  | Install UX (CI non-interactive) |
 | 1.3.0 | Deneb   | 2025-10-06 | Feature | Low  | HTTP client retries |
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
 
 Risk scale: High = architectural changes / broad API shifts; Medium = targeted breaking or migration; Low = additive or internal refactors.
+
+## v1.3.1 - Altair
+**Released: October 10, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+**Altair** improves CI/automation ergonomics: the installation command now runs truly non-interactive for scripted environments, and static analysis warnings are cleaned up.
+::
+
+### Key Highlights
+
+::card
+**Install Command: Non-Interactive Mode**
+- `php glueful install` skips the environment confirmation prompt when any of these flags are present: `--quiet`, `--no-interaction`, or `--force`.
+- Keeps helpful output; add Symfony's global `-q` if you want near-silent runs.
+::
+
+### What's Changed
+
+- Unattended installs: skip `Have you set all required environment variables?` when running with `--quiet`, `--no-interaction`, or `--force`.
+- DX: remove redundant `method_exists()` check around `InputInterface::isInteractive()` to satisfy PHPStan.
+
+### Quick Usage
+
+```bash
+# CI-safe, non-interactive install
+php glueful install --quiet --force
+
+# Or use Symfony's global flag to reduce verbosity further
+php glueful install --quiet --force -q
+```
+
+### Migration
+
+- No action required. For CI pipelines, prefer `--quiet --force` to avoid prompts.
+
+---
 
 ## v1.3.0 - Deneb
 **Released: October 6, 2025**
