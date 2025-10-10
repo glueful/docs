@@ -590,5 +590,5 @@ $this->processImage($result['path']); // Slow!
 ## Next Steps
 
 - [Queues & Jobs](/features/queues-jobs) - Process uploads async
-- [Storage](/advanced/storage) - Advanced storage features
-- [Security](/advanced/security) - Upload security
+- [Storage](/cookbook/storage) - Advanced storage features
+- [Security](/cookbook/security) - Upload security

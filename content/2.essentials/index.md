@@ -76,4 +76,4 @@ return Response::success($data);
 After mastering the essentials, explore:
 - [Features](/features) - Caching, queues, events, file uploads
 - [Advanced](/advanced) - DI, middleware, testing
-- [Examples](/examples) - Real-world implementations
+- [Examples](/cookbook) - Real-world implementations

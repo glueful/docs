@@ -266,7 +266,7 @@ php glueful extensions:info
   ---
   links:
     - label: Get started
-      to: /docs/getting-started
+      to: /getting-started
       trailing-icon: i-lucide-rocket
       color: neutral
       size: xl
