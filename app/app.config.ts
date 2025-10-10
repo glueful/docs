@@ -58,6 +58,12 @@ export default defineAppConfig({
     //   'aria-label': 'Glueful on X'
     // },
       {
+        'icon': 'i-tabler-ad-2',
+        'to': 'https://github.com/glueful/framework/releases',
+        'target': '_blank',
+        'aria-label': 'Glueful releases'
+      },
+      {
         'icon': 'i-simple-icons-github',
         'to': 'https://github.com/glueful',
         'target': '_blank',
