@@ -46,20 +46,22 @@ Risk scale: High = architectural changes / broad API shifts; Medium = targeted b
 
 ```php
 use Glueful\Http\Client;
+use Glueful\Http\Builders\ApiClientBuilder;
 
-// Configure retries with custom settings
-$client = Client::create('https://api.example.com')
+// Configure retries with custom settings via DI + scoped client
+$client = app(Client::class)
+    ->createScopedClient(['base_uri' => 'https://api.example.com'])
     ->withRetry([
         'max_retries' => 3,
-        'delay' => 1000, // milliseconds
-        'multiplier' => 2,
-        'status_codes' => [429, 500, 502, 503, 504]
+        'delay_ms' => 1000,
+        'multiplier' => 2.0,
+        'status_codes' => [429, 500, 502, 503, 504],
     ]);
 
 // Or use builder with presets
-$apiClient = ApiClientBuilder::create()
-    ->baseUrl('https://payment-gateway.com')
-    ->retries(['preset' => 'payment'])
+$apiClient = (new ApiClientBuilder(app(Client::class)))
+    ->baseUri('https://payment-gateway.com')
+    ->forPayments()
     ->buildWithRetries();
 ```
 
@@ -109,7 +111,10 @@ Reliable queue integration with dedicated job classes:
 #### Enhanced Console Commands
 ```bash
 # New cache maintenance command with improved options
-php glueful cache:maintenance --driver=redis --action=clear
+php glueful cache:maintenance --operation=clearExpiredKeys
+
+# Enqueue instead of running immediately
+php glueful cache:maintenance --operation=fullCleanup --queue
 ```
 
 #### Comprehensive Testing Suite
@@ -157,11 +162,13 @@ $container->set('cron.cache', CacheMaintenance::class);
 
 **After:**
 ```php
-// Tasks are now auto-registered via TasksProvider
-// For queued execution, dispatch the Job wrapper:
+// Tasks are auto-registered via TasksProvider
+// For queued execution, push the Job wrapper via QueueManager:
 use Glueful\Queue\Jobs\CacheMaintenanceJob;
+use Glueful\Queue\QueueManager;
 
-$queue->dispatch(new CacheMaintenanceJob(['action' => 'clear']));
+$queue = app(QueueManager::class);
+$queue->push(CacheMaintenanceJob::class, ['operation' => 'clearExpiredKeys'], 'maintenance');
 ```
 
 #### Step 3: Update Direct Execution
@@ -174,8 +181,9 @@ $cronJob->execute();
 
 **After:**
 ```php
-$task = new CacheMaintenanceTask($cacheManager, $logger);
-$task->execute(['driver' => 'redis', 'action' => 'clear']);
+/** @var CacheMaintenanceTask $task */
+$task = app(CacheMaintenanceTask::class);
+$task->handle(['driver' => 'redis', 'operation' => 'clearExpiredKeys']);
 ```
 
 ### Related Documentation
@@ -344,17 +352,20 @@ php glueful security:vulnerabilities
 - Configurable ACL (private by default)
 
 ```php
-use Glueful\Storage\FileUploader;
+use Glueful\Uploader\FileUploader;
 
-$uploader = new FileUploader($storage, $repository);
-$file = $uploader->upload(
-    $request->files->get('document'),
-    'documents',
-    ['visibility' => 'private']
+// Upload using the framework uploader (validates and stores metadata)
+$uploader = app(FileUploader::class);
+$result = $uploader->handleUpload(
+    $token,                   // your upload token / CSRF guard
+    ['user_id' => $userId, 'key' => 'document'],
+    $request->files->all()    // or $_FILES
 );
 
-// Generate signed URL for private files
-$url = $storage->signedUrl($file->path, '+1 hour');
+// $result contains: ['uuid' => '...', 'url' => 'https://...']
+// To create a presigned link for a known path on S3:
+// $signedUrl = app(Glueful\Uploader\Storage\FlysystemStorage::class)
+//     ->getSignedUrl('documents/example.pdf', 3600);
 ```
 
 #### Observability & Metrics
@@ -433,19 +444,22 @@ $events->listen('user.created', function($event) {
 **After:**
 ```php
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Glueful\Events\BaseEvent;
+use Glueful\Events\Contracts\BaseEvent;
+use Glueful\Events\ListenerProvider;
 
 class UserCreated extends BaseEvent
 {
     public function __construct(public User $user) {}
 }
 
-// Register listener
-$dispatcher->addListener(UserCreated::class, function(UserCreated $event) {
+// Register listener via ListenerProvider
+$provider = app(ListenerProvider::class);
+$provider->addListener(UserCreated::class, function (UserCreated $event) {
     // Handle event
 });
 
-// Dispatch
+// Dispatch via PSR-14 dispatcher
+$dispatcher = app(EventDispatcherInterface::class);
 $dispatcher->dispatch(new UserCreated($user));
 ```
 
@@ -470,13 +484,19 @@ return [
 return [
     's3' => [
         'driver' => 's3',
-        'key' => env('AWS_ACCESS_KEY_ID'),
-        'secret' => env('AWS_SECRET_ACCESS_KEY'),
-        'region' => env('AWS_DEFAULT_REGION'),
-        'bucket' => env('AWS_BUCKET'),
+        'key' => env('S3_ACCESS_KEY_ID'),
+        'secret' => env('S3_SECRET_ACCESS_KEY'),
+        'region' => env('S3_REGION', 'us-east-1'),
+        'bucket' => env('S3_BUCKET'),
+        'endpoint' => env('S3_ENDPOINT'),
+        'use_path_style_endpoint' => true,
+
+        // Optional behavior hints
         'acl' => env('S3_ACL', 'private'),
         'signed_urls' => env('S3_SIGNED_URLS', true),
-    ]
+        'signed_ttl' => (int) env('S3_SIGNED_URL_TTL', 3600),
+        'cdn_base_url' => env('S3_CDN_BASE_URL'),
+    ],
 ];
 ```
 
@@ -520,11 +540,14 @@ $validator = new Validator([
 
 **After:**
 ```php
+use Glueful\Validation\Validator;
 use Glueful\Validation\Rules\{Required, Email};
 
-$validator = Validator::make($data, [
+$validator = new Validator([
     'email' => [new Required(), new Email()],
 ]);
+
+$errors = $validator->validate($data);
 ```
 
 #### 6. Router Changes
