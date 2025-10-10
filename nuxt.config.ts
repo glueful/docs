@@ -27,6 +27,11 @@ export default defineNuxtConfig({
     }
   },
 
+  // Disable external font downloads during build (no network)
+  ui: {
+    fonts: false
+  },
+
   compatibilityDate: '2024-07-11',
 
   nitro: {
@@ -36,7 +41,8 @@ export default defineNuxtConfig({
         '/'
       ],
       crawlLinks: true,
-      autoSubfolderIndex: false
+      autoSubfolderIndex: false,
+      failOnError: false
     }
   },
 

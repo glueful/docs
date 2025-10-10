@@ -329,6 +329,6 @@ Low hit ratio usually means:
 
 ## Next Steps
 
-- [Queues & Jobs](features/queues-jobs) - Offload expensive work
+- [Queues & Jobs](/features/queues-jobs) - Offload expensive work
 - [Database](/essentials/database) - Optimize queries before caching
 - [Performance](/advanced/performance) - Advanced optimization

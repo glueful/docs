@@ -137,9 +137,9 @@ my-api/
 Now that you have Glueful running:
 
 1. **[Installation Guide](/getting-started/installation)** - Detailed installation and setup
-2. **[Configuration](/guides/tooling/configuration)** - Environment setup and config options  
-3. **[Quick Tutorial](/tutorial)** - Build your first complete API
-4. **[Core Concepts](/concepts/architecture)** - Understanding Glueful's architecture
+2. **[Configuration](/advanced/configuration)** - Environment setup and config options  
+3. **[Quick Tutorial](/getting-started/quickstart)** - Build your first complete API
+4. **[Core Concepts](/essentials)** - Learn the essentials you’ll use daily
 
 ### FAQ
 

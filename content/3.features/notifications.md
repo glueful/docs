@@ -527,4 +527,4 @@ $channelManager->register('sms', new SmsChannel());
 
 - [Queues & Jobs](/features/queues-jobs) - Queue notifications
 - [Events](/features/events) - Event-driven notifications
-- [Templates](/advanced/templating) - Advanced templates
+- [Templates](/cookbook/notifications) - Advanced templates
