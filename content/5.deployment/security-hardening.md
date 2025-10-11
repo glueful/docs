@@ -9,7 +9,7 @@ Best practices and configurations to secure your Glueful application in producti
 
 - [ ] Disable debug mode in production
 - [ ] Use HTTPS/SSL everywhere
-- [ ] Set strong TOKEN_SALT and JWT_KEY
+- [ ] Set strong TOKEN_SALT and session.jwt_key (env: JWT_KEY or SESSION_JWT_KEY)
 - [ ] Enable CSRF protection
 - [ ] Configure CORS properly
 - [ ] Use prepared statements (default)
@@ -33,10 +33,11 @@ APP_DEBUG=false
 
 # Strong secrets (32+ chars, random)
 TOKEN_SALT=your-strong-random-salt
-JWT_KEY=your-strong-jwt-signing-key
+# Framework reads config('session.jwt_key'); map from either env below as per your config loader
+SESSION_JWT_KEY=your-strong-jwt-signing-key
 JWT_ALGORITHM=HS256
 
-# Token lifetimes
+# Token lifetimes (framework consumes config('session.*_token_lifetime'))
 ACCESS_TOKEN_LIFETIME=3600        # 1 hour
 REFRESH_TOKEN_LIFETIME=604800     # 7 days
 

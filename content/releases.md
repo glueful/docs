@@ -9,6 +9,9 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.4.2 | Rigel   | 2025-10-11 | Patch   | Low    | Docs + PSR-4 tidy-up |
+| 1.4.1 | Rigel   | 2025-10-11 | Patch   | Low    | Install flow hardening (SQLite-first) |
+| 1.4.0 | Rigel   | 2025-10-11 | Minor   | Medium | Unified session store, legacy removal |
 | 1.3.1 | Altair  | 2025-10-10 | Patch   | Low  | Install UX (CI non-interactive) |
 | 1.3.0 | Deneb   | 2025-10-06 | Feature | Low  | HTTP client retries |
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
@@ -16,6 +19,109 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
 
 Risk scale: High = architectural changes / broad API shifts; Medium = targeted breaking or migration; Low = additive or internal refactors.
+
+## v1.4.2 - Rigel (Patch)
+**Released: October 11, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Developer‑facing tidy‑ups; no runtime behavior changes.
+::
+
+### Fixes
+- PSR‑4 autoloading for tests: corrected a test namespace to match `Glueful\\Tests\\…` and remove Composer warnings during autoload generation.
+
+### Documentation
+- Roadmap and this page updated to reflect 1.4.1’s SQLite‑first install flow and non‑interactive flags.
+
+---
+
+## v1.4.1 - Rigel (Patch)
+**Released: October 11, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Installation flow hardening and SQLite‑first defaults. This patch improves non‑interactive installs and avoids fragile checks during initial setup.
+::
+
+### Key Highlights
+
+::card
+**SQLite‑first Install & Non‑Interactive Flags**
+- Install enforces SQLite during setup; other engines can be configured after install
+- `migrate:run` executed with `--force`; in quiet installs also `--no-interaction` and `--quiet`
+- `cache:clear` during install passes `--force` and respects quiet mode flags
+- Removed DB connection health check during install (SQLite does not require network; migrations surface issues)
+::
+
+### Quick Usage
+
+```bash
+# Default (SQLite) install
+php glueful install --quiet --force
+
+# After switching DB in .env, run migrations
+php glueful migrate:run -f --no-interaction
+```
+
+### Notes
+- Post‑install message now includes a brief guide for switching databases and running migrations later.
+
+---
+
+## v1.4.0 - Rigel
+**Released: October 11, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+**Rigel** consolidates session management behind a single, testable SessionStore API and removes the legacy TokenStorageService. It unifies TTL policy, standardizes DI resolution, and hardens cache-key handling for tokens.
+::
+
+### Key Highlights
+
+::card
+**Unified Session Store**
+- New SessionStoreInterface + default SessionStore for create/update/revoke/lookup/health
+- Canonical TTL helpers: `getAccessTtl()`, `getRefreshTtl()` (provider + remember‑me aware)
+- DI consistency with SessionStoreResolver utility and ResolvesSessionStore trait
+- Safe cache keys for token mappings (hashed tokens + sanitized prefixes)
+::
+
+### What's Changed
+
+- TokenManager defers TTL policy to SessionStore and persists sessions via the store.
+- JwtAuthenticationProvider and SessionCacheManager resolve the store via the trait; fewer ad‑hoc `new` calls.
+- SessionAnalytics prefers the store for listing sessions (falls back to cache query when needed).
+- JWTService cleanup; rely on DB‑backed revocation.
+
+### Removed
+
+- TokenStorageService and TokenStorageInterface (fully migrated to SessionStore).
+- Deprecated code paths tied to the legacy storage/invalidation.
+
+### Migration Notes
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+If you previously referenced `TokenStorageService`, migrate to `SessionStoreInterface`:
+::
+
+```php
+use Glueful\\Auth\\Interfaces\\SessionStoreInterface;
+
+/** @var SessionStoreInterface $store */
+$store = container()->get(SessionStoreInterface::class);
+
+// Create
+$created = $store->create($user, $tokens, 'jwt', false);
+
+// Read / Update / Revoke
+$session = $store->getByAccessToken($tokens['access_token']);
+$updated = $store->updateTokens($tokens['refresh_token'], $newTokens);
+$revoked = $store->revoke($newTokens['access_token']);
+```
+
+---
 
 ## v1.3.1 - Altair
 **Released: October 10, 2025**
