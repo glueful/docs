@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.5.0 | Orion   | 2025-10-13 | Minor   | Medium | Notifications DI + safer email flow |
 | 1.4.2 | Rigel   | 2025-10-11 | Patch   | Low    | Docs + PSR-4 tidy-up |
 | 1.4.1 | Rigel   | 2025-10-11 | Patch   | Low    | Install flow hardening (SQLite-first) |
 | 1.4.0 | Rigel   | 2025-10-11 | Minor   | Medium | Unified session store, legacy removal |
@@ -780,3 +781,38 @@ Glueful releases are named after stars and celestial objects:
 - **Polaris** (1.1.0) - The guiding star
 - **Vega** (1.2.0) - Bright and reliable
 - **Deneb** (1.3.0) - Distant but brilliant
+## v1.5.0 - Orion (Minor)
+**Released: October 13, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Notification system wiring improvements with a shared DI provider and a safer email verification flow that avoids hard prechecks.
+::
+
+### Key Highlights
+
+::card
+**Notifications DI Provider**
+- New `NotificationsProvider` binds `ChannelManager` and `NotificationDispatcher` as shared services
+- Extensions can register channels and hooks during boot without ad‑hoc construction
+::
+
+::card
+**Safer Email Verification & Password Reset**
+- EmailVerification/SendNotification resolve dispatcher/channel via DI first (with a clean fallback)
+- Removed `ExtensionManager` prechecks; rely on dispatcher/channel availability at send time
+- Soft diagnostics log when the email channel is unavailable or no channels succeed
+::
+
+### Other Changes
+- Align retry configuration lookup to `email-notification.retry` (consistent with the extension)
+- Namespacing and static analysis fixes; line‑length formatting for diagnostics
+
+### Migration Notes
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+If you referenced `config('extensions.EmailNotification.retry')`, update to `config('email-notification.retry')`. No breaking API changes are introduced in 1.5.0.
+::
+
+---
