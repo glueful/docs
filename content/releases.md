@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.6.0 | Sirius  | 2025-10-13 | Minor   | Low    | DI artifacts + conditional caching + DSN utils |
 | 1.5.0 | Orion   | 2025-10-13 | Minor   | Medium | Notifications DI + safer email flow |
 | 1.4.2 | Rigel   | 2025-10-11 | Patch   | Low    | Docs + PSR-4 tidy-up |
 | 1.4.1 | Rigel   | 2025-10-11 | Patch   | Low    | Install flow hardening (SQLite-first) |
@@ -20,6 +21,69 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
 
 Risk scale: High = architectural changes / broad API shifts; Medium = targeted breaking or migration; Low = additive or internal refactors.
+
+## v1.6.0 - Sirius
+**Released: October 13, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Minor features and DX improvements. This release focuses on compiled DI artifacts, conditional HTTP caching helpers, and configuration utilities.
+::
+
+### Key Highlights
+
+::card
+**Compiled Container Artifacts**
+- `di:container:compile` now emits `services.json` at `storage/cache/container/services.json` with fields: `shared`, `tags`, `provider`, `type`, `alias_of`.
+- `di:container:map` prefers the compiled `services.json` in production (no reflection overhead).
+- `ContainerFactory` prefers a precompiled container class in production when available.
+::
+
+::card
+**Conditional HTTP Caching**
+- New `ConditionalCacheMiddleware` handles ETag/If‑None‑Match and Last‑Modified/If‑Modified‑Since to return 304 efficiently.
+- `Response::withLastModified(DateTimeInterface)` helper for setting validators.
+::
+
+::card
+**DSN Utilities**
+- `Glueful\\Config\\DsnParser` with `parseDbDsn()` and `parseRedisDsn()`.
+- New CLI: `config:dsn:validate` validates DSNs from flags or environment (e.g., `DATABASE_URL`, `REDIS_URL`).
+::
+
+### Notes
+- OpenTelemetry support is planned as a Glueful extension package (not part of the core framework).
+
+---
+
+## v1.5.0 - Orion
+**Released: October 13, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Notifications DI wiring and safer email flows. This release introduces a shared notifications provider and makes email verification/password reset flows more robust.
+::
+
+### Key Highlights
+
+::card
+**Notifications DI Provider**
+- New `NotificationsProvider` registers shared `ChannelManager` and `NotificationDispatcher` in the container.
+- Extensions can register channels/hooks against the dispatcher during boot.
+::
+
+::card
+**Safer Email Flows**
+- Email verification and SendNotification now prefer DI‑resolved dispatcher/channel with safe fallbacks.
+- Removed hard `ExtensionManager` prechecks; channel availability is evaluated at send time.
+- Soft diagnostics when the email channel is unavailable or when no channels succeeded.
+::
+
+### What's Changed
+- Retry configuration aligned to `email-notification.retry`.
+
+---
+
 
 ## v1.4.2 - Rigel (Patch)
 **Released: October 11, 2025**

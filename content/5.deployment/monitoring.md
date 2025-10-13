@@ -15,6 +15,7 @@ Glueful provides production-ready health routes out of the box; no custom route 
 - Overall health: `GET /health`
 - Readiness: `GET /ready` (IP allowlist via `HEALTH_IP_ALLOWLIST`)
 - Detailed metrics: `GET /health/detailed` (requires auth + permissions)
+- Queue health: `GET /health/queue` (pending jobs, worker activity, reserved jobs, issues)
 
 Quick checks:
 
@@ -22,6 +23,7 @@ Quick checks:
 curl -fsS http://localhost/healthz
 curl -fsS http://localhost/health | jq '.data.status'
 curl -I http://localhost/ready
+curl -fsS http://localhost/health/queue | jq '.'
 ```
 
 ### Liveness vs Readiness
