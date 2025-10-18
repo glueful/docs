@@ -307,6 +307,7 @@ Registered aliases you can use directly in routes/groups:
 - `request_logging` — Request/response logging
 - `metrics` — Metrics collection
 - `tracing` — Distributed tracing
+- `async` — Inject FiberScheduler for per-route concurrency
 - `lockdown` — Emergency lockdown
 - `gate_permissions` — Gate-based permission checks
 - `auth_to_request` — Attach auth context to request attributes
