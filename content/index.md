@@ -18,7 +18,7 @@ seo:
 #description
 
 <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-  Build modern, secure APIs with <strong class="text-shakespeare-600">speed</strong> and <strong class="text-raspberry-600">developer experience</strong>. This open-source framework combines the power of PHP 8.2+ with modern tooling and enterprise-grade security.
+  Build modern, secure APIs with <strong class="text-shakespeare-600">speed</strong> and <strong class="text-raspberry-600">quality developer experience</strong>. Glueful brings <strong class="text-shakespeare-600">first‑class async concurrency</strong> to PHP 8.2+, alongside modern tooling and enterprise‑grade security.
 </p>
 
   <div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
@@ -33,6 +33,10 @@ seo:
     <div class="flex items-center gap-2">
       <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
       <span>High‑Throughput Routing</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="w-2 h-2 bg-purple-500 rounded-full"></div>
+      <span>Async Concurrency</span>
     </div>
   </div>
 
@@ -81,6 +85,57 @@ seo:
 ::div{class="h-px bg-gradient-to-r from-transparent via-raspberry-400/50 via-purple-400/50 to-transparent dark:via-raspberry-600/50 dark:via-purple-600/50"}
 ::
 
+::u-page-section{orientation = "horizontal" class="bg-gradient-to-br from-purple-50/40 via-white to-blue-50/40 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16"}
+
+#title
+<span class="leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300">
+  <span class="text-raspberry-600 font-semibold">Async & Concurrency</span> for faster endpoints
+</span>
+
+#description
+
+<div class="space-y-3">
+  <p>Parallelize I/O with fiber‑based async. Opt in per route, keep code readable, and shave p95 latency on I/O‑heavy endpoints.</p>
+  <ul class="list-disc pl-5 text-lg">
+    <li>Per‑route opt‑in via <code>async</code> middleware</li>
+    <li>Helpers: <code>async()</code>, <code>await_all()</code>, <code>await_race()</code></li>
+    <li>Parallel HTTP with retries/backoff</li>
+    <li>Limits + metrics for safe scaling</li>
+  </ul>
+</div>
+
+:::u-button{to="/features/async" class="mt-6 hover:shadow-primary-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none" trailing-icon="i-lucide-arrow-right" size="xl"}
+Explore Async
+:::
+
+#default
+  :::prose-pre{ filename="AsyncEndpointExample.php" }
+    ```php
+    // routes/api.php
+    $router->get('/users', [UserController::class, 'index'])
+      ->middleware(['async']);
+
+    // UserController.php
+    use Symfony\Component\HttpFoundation\Request;
+    use Glueful\Http\Response;
+
+    class UserController extends BaseController
+    {
+        public function index(Request $request)
+        {
+          $u = async(fn() => $this->fetchUsers());
+          $s = async(fn() => $this->fetchStats());
+          [$users, $stats] = await_all([$u, $s]);
+
+          return Response::success(['users' => $users, 'stats' => $stats]);
+        }
+    }
+    ```
+  :::
+::
+
+::div{class="h-px bg-gradient-to-r from-transparent via-shakespeare-400/50 via-purple-400/50 to-transparent dark:via-shakespeare-600/50 dark:via-purple-600/50"}
+::
 
 
 ::u-page-section{class="relative overflow-x-hidden bg-white dark:bg-gray-950 py-0"}
@@ -183,6 +238,16 @@ seo:
 
   #description
   <div>JWT authentication with dual‑layer sessions, fine‑grained RBAC, and configurable rate limiting. Built‑in vulnerability scanning, audit trails, and emergency lockdown mode. OWASP‑aligned protections (CSRF, security headers, rate limits).</div>
+
+  :::
+
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">Async & Concurrency</span>
+
+  #description
+  <div>Fiber‑based async that parallelizes I/O for faster endpoints. Opt‑in per route with the <code>async</code> middleware, ergonomic helpers (<code>async()</code>, <code>await_all()</code>) and a parallel HTTP client. <a href="/features/async" class="text-shakespeare-600 underline">Learn more →</a></div>
 
   :::
 ::

@@ -9,6 +9,9 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.7.0 | Procyon | 2025-10-18 | Minor  | Medium | Async & concurrency subsystem |
+| 1.6.2 | Capella | 2025-10-14 | Patch  | Low    | Mail templates config ownership |
+| 1.6.1 | Arcturus | 2025-10-14 | Patch  | Low    | JWT RS256 signing |
 | 1.6.0 | Sirius  | 2025-10-13 | Minor   | Low    | DI artifacts + conditional caching + DSN utils |
 | 1.5.0 | Orion   | 2025-10-13 | Minor   | Medium | Notifications DI + safer email flow |
 | 1.4.2 | Rigel   | 2025-10-11 | Patch   | Low    | Docs + PSR-4 tidy-up |
@@ -19,6 +22,80 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.7.0 - Procyon
+**Released: October 18, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Major async/concurrency subsystem. Fiber‑based scheduler, async HTTP client with streaming/pooling, buffered I/O, cooperative cancellation, metrics instrumentation, and a Promise‑style wrapper. Centralized configuration and DI wiring included.
+::
+
+### Key Highlights
+
+::card
+**Fiber‑Based Async Scheduler**
+- `Glueful\\Async\\FiberScheduler` with `spawn`, `all`, `race`, `sleep`
+- Resource‑limit guards (max concurrent tasks, per‑task execution time, optional memory/FDS caps)
+- Rich metrics hooks (suspend/resume, queue depth, cancellations, resource limits)
+::
+
+::card
+**Async HTTP + Streaming**
+- `Glueful\\Async\\Http\\CurlMultiHttpClient` with cooperative polling and optional `max_concurrent`
+- `poolAsync()` for concurrent requests; `HttpStreamingClient::sendAsyncStream()` for chunked callbacks
+- `FakeHttpClient` for test isolation
+::
+
+::card
+**Async I/O + Helpers**
+- `AsyncStream` and `BufferedAsyncStream` with line/whole‑read helpers and buffered reads/writes
+- Helpers: `scheduler()`, `async()`, `await()`, `await_all()`, `await_race()`, `async_sleep()`, `async_sleep_default()`, `async_stream()`, `cancellation_token()`
+- Promise wrapper: `Glueful\\Async\\Promise` with `then/catch/finally`, `all/race`
+::
+
+### Configuration & DI
+- New `config/async.php` for `scheduler`, `http`, `streams`, `limits`
+- `AsyncProvider` wires `Metrics`, `Scheduler`, `HttpClient`; registers `AsyncMiddleware` (alias `async`)
+
+### Migration Notes
+- Backward‑compatible defaults: limits disabled when set to 0
+- To adopt in routes, add middleware alias `async` or use helpers (`async()`, `await_all()`, etc.)
+
+---
+
+## v1.6.2 - Capella
+**Released: October 14, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Template configuration responsibility moved to the Email Notification extension.
+::
+
+### What's Changed
+- The primary templates directory is now controlled by the Email Notification extension configuration
+- Framework no longer sets a default `services.mail.templates.path`
+- Custom paths, caching, layout, mappings, and globals remain supported
+
+### Migration Notes
+- If you relied on the framework default templates path, configure `email-notification.templates.extension_path` in the extension
+- Or set `services.mail.templates.path` in your app config
+
+---
+
+## v1.6.1 - Arcturus
+**Released: October 14, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+JWT RS256 signing support for generating JWTs using an RSA private key.
+::
+
+### Key Highlights
+- Auth/JWT: `JWTService::signRS256(array $claims, string $privateKey)`
+- Requires PHP `openssl` extension
+
+---
 
 Risk scale: High = architectural changes / broad API shifts; Medium = targeted breaking or migration; Low = additive or internal refactors.
 

@@ -16,6 +16,8 @@ Glueful ships production-ready features with sensible defaults. Many work out of
 - **[CORS & CSRF](/features/cors-csrf)** - Secure cross-origin requests
 - **[Task Scheduling](/features/scheduling)** - Run tasks on a schedule with cron-like syntax
 - **[Distributed Locks](/features/distributed-locks)** - Coordinate tasks across servers
+- **[Async & Concurrency](/features/async)** - Fiber-based concurrency, helpers, and parallel HTTP client
+- **[Field Selection](/features/field-selection)** - GraphQL-style field selection and projection for REST
 
 ## Quick Example
 
