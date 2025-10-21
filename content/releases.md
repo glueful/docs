@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.7.2 | Antares | 2025-10-21 | Patch  | Low    | Route loading resilience + dev server logs |
 | 1.7.1 | Canopus | 2025-10-21 | Patch  | Low    | Extension discovery/boot fix |
 | 1.7.0 | Procyon | 2025-10-18 | Minor  | Medium | Async & concurrency subsystem |
 | 1.6.2 | Capella | 2025-10-14 | Patch  | Low    | Mail templates config ownership |
@@ -973,5 +974,22 @@ Patch release that fixes extension discovery and boot sequencing so enabled exte
 
 ### Impact
 - If you saw “EXCLUDED from final provider list” or “No pending migrations found” for extension migrations, this patch resolves it. No configuration changes required.
+
+---
+## v1.7.2 - Antares
+**Released: October 21, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Patch release improving route loading resilience in extensions and reducing noise in the development server logs.
+::
+
+### What’s Fixed
+- Extensions: `ServiceProvider::loadRoutesFrom()` is now idempotent and exception‑safe.
+  - Prevents duplicate route registration when a routes file would otherwise be loaded twice.
+  - Catches exceptions from route files; logs and continues in production, rethrows in non‑production for fast feedback.
+
+### Developer Experience
+- CLI `serve`: Reclassifies PHP built‑in server access/startup lines (written to STDERR) as normal output to avoid false `[ERROR]` entries while preserving real error reporting.
 
 ---
