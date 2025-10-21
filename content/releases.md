@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.7.1 | Canopus | 2025-10-21 | Patch  | Low    | Extension discovery/boot fix |
 | 1.7.0 | Procyon | 2025-10-18 | Minor  | Medium | Async & concurrency subsystem |
 | 1.6.2 | Capella | 2025-10-14 | Patch  | Low    | Mail templates config ownership |
 | 1.6.1 | Arcturus | 2025-10-14 | Patch  | Low    | JWT RS256 signing |
@@ -955,5 +956,22 @@ Notification system wiring improvements with a shared DI provider and a safer em
 #description
 If you referenced `config('extensions.EmailNotification.retry')`, update to `config('email-notification.retry')`. No breaking API changes are introduced in 1.5.0.
 ::
+
+---
+## v1.7.1 - Canopus
+**Released: October 21, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Patch release that fixes extension discovery and boot sequencing so enabled extensions reliably load at runtime.
+::
+
+### What’s Fixed
+- Framework initializes extensions by calling `ExtensionManager::discover()` before `::boot()`.
+- Extension migrations registered via `loadMigrationsFrom()` are now discovered by `migrate:status` / `migrate:run`.
+- CLI `extensions:why` and `extensions:list` now accurately reflect included providers after boot.
+
+### Impact
+- If you saw “EXCLUDED from final provider list” or “No pending migrations found” for extension migrations, this patch resolves it. No configuration changes required.
 
 ---
