@@ -26,6 +26,56 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
 
+## v1.7.3 - Pollux (Patch)
+**Released: October 21, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+QueryBuilder 2‑argument where/orWhere fix and clearer dev‑server logs.
+::
+
+### Key Highlights
+- Database/QueryBuilder: Normalize 2‑argument `where($column, $value)` and `orWhere($column, $value)` to use `=` internally.
+  - Prevents a TypeError when non‑string values were misread as the operator.
+  - Improves portability for boolean filters across PostgreSQL/MySQL/SQLite.
+- CLI: `serve` further reclassifies PHP built‑in server access/lifecycle lines written to STDERR (e.g., “Accepted”, “Closed without sending a request”, “[200]: GET /…”) as normal output, while preserving real errors.
+
+---
+
+## v1.7.2 - Antares (Patch)
+**Released: October 21, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Route loading resilience and quieter dev‑server logs.
+::
+
+### Key Highlights
+- Extensions: `ServiceProvider::loadRoutesFrom()` is idempotent and exception‑safe now.
+  - Prevents duplicate route registration if a routes file is loaded more than once.
+  - Catches exceptions from route files; logs and continues in production, rethrows in non‑production for fast feedback.
+- CLI: `serve` reclassifies common PHP built‑in server access/startup lines from STDERR as normal output, reducing false `[ERROR]` noise.
+
+---
+
+## v1.7.1 - Canopus (Patch)
+**Released: October 21, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Fixes extension discovery/boot sequencing so extensions reliably load and their migrations appear.
+::
+
+### Key Highlights
+- Extensions: Call `ExtensionManager::discover()` before `::boot()` during framework initialization so enabled providers load correctly.
+- Migrations: Extension migrations registered via `loadMigrationsFrom()` are discovered by `migrate:status`/`migrate:run` once providers are discovered at boot.
+- CLI: `extensions:why`/`extensions:list` now reflect included providers after boot, improving diagnostics.
+
+### Impact
+- Apps that previously saw “No pending migrations found” for extension migrations should now see them once the provider is enabled. No config changes required.
+
+---
+
 ## v1.7.0 - Procyon
 **Released: October 18, 2025**
 
