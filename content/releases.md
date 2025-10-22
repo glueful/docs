@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.7.3 | Pollux  | 2025-10-21 | Patch  | Low    | QueryBuilder 2-arg where/orWhere fix |
 | 1.7.2 | Antares | 2025-10-21 | Patch  | Low    | Route loading resilience + dev server logs |
 | 1.7.1 | Canopus | 2025-10-21 | Patch  | Low    | Extension discovery/boot fix |
 | 1.7.0 | Procyon | 2025-10-18 | Minor  | Medium | Async & concurrency subsystem |
@@ -991,5 +992,20 @@ Patch release improving route loading resilience in extensions and reducing nois
 
 ### Developer Experience
 - CLI `serve`: Reclassifies PHP built‑in server access/startup lines (written to STDERR) as normal output to avoid false `[ERROR]` entries while preserving real error reporting.
+
+---
+## v1.7.3 - Pollux
+**Released: October 21, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Patch release fixing 2‑argument where/orWhere handling and refining dev‑server logging.
+::
+
+### What’s Fixed
+- Database/QueryBuilder: The 2‑argument forms `where($column, $value)` and `orWhere($column, $value)` now normalize to `=` internally, avoiding a `TypeError` and improving portability of boolean and integer filters across PostgreSQL/MySQL/SQLite.
+
+### Developer Experience
+- CLI `serve`: Additional refinement of PHP built‑in server access/lifecycle lines (written to STDERR) so they appear as normal output instead of false `[ERROR]` entries; real errors remain highlighted.
 
 ---
