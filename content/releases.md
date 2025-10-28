@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.7.4 | Arcturus | 2025-10-28 | Patch  | Low    | Auth status gate + migration docs |
 | 1.7.3 | Pollux  | 2025-10-21 | Patch  | Low    | QueryBuilder 2-arg where/orWhere fix |
 | 1.7.2 | Antares | 2025-10-21 | Patch  | Low    | Route loading resilience + dev server logs |
 | 1.7.1 | Canopus | 2025-10-21 | Patch  | Low    | Extension discovery/boot fix |
@@ -25,6 +26,25 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.7.4 - Arcturus (Patch)
+**Released: October 28, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Minimal, configurable account‑status gate in AuthenticationService (secure by default).
+::
+
+### Key Highlights
+- Auth: Enforce allowed statuses during username/password login and refresh‑token flows via `security.auth.allowed_login_statuses` (default `['active']`).
+  - Fails silently to prevent account enumeration.
+  - Policy intentionally lean for app‑level extension.
+- Docs: Added `docs/migration-examples-views-functions.md` covering three approaches to create views/functions in migrations (SchemaBuilder queue, direct PDO exec, QueryBuilder DDL).
+
+### Migration Notes
+- If you experimented with `auth.allowed_login_statuses`, move it to `security.auth.allowed_login_statuses`.
+
+---
 
 ## v1.7.3 - Pollux (Patch)
 **Released: October 21, 2025**
