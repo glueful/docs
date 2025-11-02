@@ -6,7 +6,7 @@ seo:
 ::u-page-hero{orientation = "horizontal" class="home-page-hero"}
 
 
-::div{class="absolute inset-0 bg-gradient-to-br from-shakespeare-50/20 via-rose-50/15 to-raspberry-50/20 dark:from-shakespeare-950/10 dark:via-rose-950/8 dark:to-raspberry-950/10 -z-10"}
+::div{class="absolute inset-0 bg-gradient-to-br from-azure-radiance-50/20 via-rose-50/15 to-raspberry-50/20 dark:from-azure-radiance-950/10 dark:via-rose-950/8 dark:to-raspberry-950/10 -z-10"}
 ::
 
 #headline
@@ -18,7 +18,7 @@ seo:
 #description
 
 <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-  Build modern, secure APIs with <strong class="text-shakespeare-600">speed</strong> and <strong class="text-raspberry-600">quality developer experience</strong>. Glueful brings <strong class="text-shakespeare-600">first‑class async concurrency</strong> to PHP 8.2+, alongside modern tooling and enterprise‑grade security.
+  Build modern, secure APIs with <strong class="text-azure-radiance-600">speed</strong> and <strong class="text-raspberry-600">quality developer experience</strong>. Glueful brings <strong class="text-azure-radiance-600">first‑class async concurrency</strong> to PHP 8.2+, alongside modern tooling and enterprise‑grade security.
 </p>
 
   <div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
@@ -41,7 +41,7 @@ seo:
   </div>
 
 #links
-  :::u-button{class="bg-shakespeare-500 hover:bg-shakespeare-600 text-white hover:shadow-shakespeare-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
+  :::u-button{class="bg-azure-radiance-500 hover:bg-azure-radiance-600 text-white hover:shadow-azure-radiance-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
   ---
   size: xl
   to: /getting-started
@@ -73,13 +73,13 @@ seo:
   :::
 ::
 
-::div{class="hidden lg:block fixed right-56 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-shakespeare-400/60 to-transparent dark:via-shakespeare-600/60 z-10"}
+::div{class="hidden lg:block fixed right-56 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-azure-radiance-400/60 to-transparent dark:via-azure-radiance-600/60 z-10"}
 ::
 ::div{class="hidden lg:block fixed right-52 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-raspberry-400/40 to-transparent dark:via-raspberry-600/40 z-10"}
 ::
 ::div{class="hidden lg:block fixed left-48 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-raspberry-400/60 to-transparent dark:via-raspberry-600/60 z-10"}
 ::
-::div{class="hidden lg:block fixed left-44 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-shakespeare-400/40 to-transparent dark:via-shakespeare-600/40 z-10"}
+::div{class="hidden lg:block fixed left-44 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-azure-radiance-400/40 to-transparent dark:via-azure-radiance-600/40 z-10"}
 ::
 
 ::div{class="h-px bg-gradient-to-r from-transparent via-raspberry-400/50 via-purple-400/50 to-transparent dark:via-raspberry-600/50 dark:via-purple-600/50"}
@@ -134,7 +134,7 @@ Explore Async
   :::
 ::
 
-::div{class="h-px bg-gradient-to-r from-transparent via-shakespeare-400/50 via-purple-400/50 to-transparent dark:via-shakespeare-600/50 dark:via-purple-600/50"}
+::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
 ::
 
 
@@ -143,7 +143,7 @@ Explore Async
 #title
 <div class="mt-12 mb-6 scroll-mt-[calc(48px+45px+var(--ui-header-height))] lg:scroll-mt-[calc(48px+var(--ui-header-height))] [&>a]:focus-visible:outline-(--ui-primary) [&>a>code]:border-dashed hover:[&>a>code]:border-(--ui-primary) hover:[&>a>code]:text-(--ui-primary) [&>a>code]:text-xl/7 [&>a>code]:font-bold [&>a>code]:transition-colors text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
   <div class="*:leading-9">
-    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300 ">Write <span class="text-shakespeare-600 font-semibold">Beautiful Code</span></p>
+    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300 ">Write <span class="text-azure-radiance-600 font-semibold">Beautiful Code</span></p>
   </div>
   <div class="hidden @min-[1020px]:block"><img src="/images/light/line-2.svg" alt="Line Decoration" class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" alt="line-2"></div>
 </div>
@@ -174,15 +174,15 @@ Explore Async
 
 ::
 
-::div{class="h-px bg-gradient-to-r from-transparent via-shakespeare-400/50 via-purple-400/50 to-transparent dark:via-shakespeare-600/50 dark:via-purple-600/50"}
+::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
 ::
 
-::u-page-section{class="isolate relative overflow-hidden bg-gradient-to-br from-shakespeare-50/50 via-purple-50/30 to-white dark:from-gray-900/50 dark:via-shakespeare-950/30 dark:to-gray-950 py-16"}
+::u-page-section{class="isolate relative overflow-hidden bg-gradient-to-br from-azure-radiance-50/50 via-purple-50/30 to-white dark:from-gray-900/50 dark:via-azure-radiance-950/30 dark:to-gray-950 py-16"}
 
 #title
 <div class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
   <div class="*:leading-9">
-    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300">Why developers choose <span class="text-shakespeare-500 font-semibold">Glueful</span></p>
+    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300">Why developers choose <span class="text-azure-radiance-500 font-semibold">Glueful</span></p>
   </div>
   <div class="hidden @min-[1020px]:block">
     <img  class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" alt="Line Decoration"/>
@@ -197,15 +197,15 @@ Explore Async
 
 <div class="flex items-center gap-8 mb-12 text-sm text-gray-500 dark:text-gray-400">
   <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-shakespeare-600">Faster</span>
+    <span class="text-2xl font-bold text-azure-radiance-600">Faster</span>
     <span>Developer Velocity</span>
   </div>
   <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-shakespeare-600">Proactive</span>
+    <span class="text-2xl font-bold text-azure-radiance-600">Proactive</span>
     <span>Security Tooling</span>
   </div>
   <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-shakespeare-600">Strong</span>
+    <span class="text-2xl font-bold text-azure-radiance-600">Strong</span>
     <span>Type‑Hinted APIs</span>
   </div>
 </div>
@@ -247,7 +247,7 @@ Explore Async
   <span class="font-bold text-raspberry-600">Async & Concurrency</span>
 
   #description
-  <div>Fiber‑based async that parallelizes I/O for faster endpoints. Opt‑in per route with the <code>async</code> middleware, ergonomic helpers (<code>async()</code>, <code>await_all()</code>) and a parallel HTTP client. <a href="/features/async" class="text-shakespeare-600 underline">Learn more →</a></div>
+  <div>Fiber‑based async that parallelizes I/O for faster endpoints. Opt‑in per route with the <code>async</code> middleware, ergonomic helpers (<code>async()</code>, <code>await_all()</code>) and a parallel HTTP client. <a href="/features/async" class="text-azure-radiance-600 underline">Learn more →</a></div>
 
   :::
 ::
@@ -324,7 +324,7 @@ php glueful extensions:info
 :::
 ::
 
-::div{class="h-px bg-gradient-to-r from-transparent via-shakespeare-400/50 via-purple-400/50 to-transparent dark:via-shakespeare-600/50 dark:via-purple-600/50"}
+::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
 ::
 
   ::u-page-c-t-a
@@ -335,7 +335,7 @@ php glueful extensions:info
       trailing-icon: i-lucide-rocket
       color: neutral
       size: xl
-      class: "bg-shakespeare-600 hover:bg-shakespeare-700 text-white hover:shadow-shakespeare-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"
+      class: "bg-azure-radiance-600 hover:bg-azure-radiance-700 text-white hover:shadow-azure-radiance-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"
     - label: 'Github'
       to: https://github.com/glueful
       icon: i-tabler-brand-github-filled
@@ -349,6 +349,6 @@ php glueful extensions:info
   ---
 
   #title
-  <span class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-shakespeare-600 font-semibold">APIs</span> <span class="text-shakespeare-600 font-semibold">Faster</span></span>
+  <span class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-azure-radiance-600 font-semibold">APIs</span> <span class="text-azure-radiance-600 font-semibold">Faster</span></span>
 
   ::
