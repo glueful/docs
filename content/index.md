@@ -177,7 +177,7 @@ Explore Async
 ::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
 ::
 
-::u-page-section{class="isolate relative overflow-hidden bg-gradient-to-br from-azure-radiance-50/50 via-purple-50/30 to-white dark:from-gray-900/50 dark:via-azure-radiance-950/30 dark:to-gray-950 py-16"}
+::u-page-section{class="isolate relative overflow-hidden bg-gradient-to-br from-raspberry-50/50 via-white to-purple-50/50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16"}
 
 #title
 <div class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
