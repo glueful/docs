@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.8.0 | Spica   | 2025-11-13 | Minor  | Low    | Session + login response events |
 | 1.7.4 | Arcturus | 2025-10-28 | Patch  | Low    | Auth status gate + migration docs |
 | 1.7.3 | Pollux  | 2025-10-21 | Patch  | Low    | QueryBuilder 2-arg where/orWhere fix |
 | 1.7.2 | Antares | 2025-10-21 | Patch  | Low    | Route loading resilience + dev server logs |
@@ -26,6 +27,31 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.8.0 - Spica (Minor)
+**Released: November 13, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+First-class session and login response events. Safely enrich cached session payloads and shape login responses without modifying framework code.
+::
+
+### Key Highlights
+- Events/Auth:
+  - `SessionCachedEvent`: Dispatched after a session is written to cache (and DB). Listeners can augment the cached payload (e.g., `user.organization`) or warm caches.
+  - `LoginResponseBuildingEvent`: Dispatched just before returning the login JSON. Provides a mutable response map so apps can add fields (e.g., `context.organization`).
+  - `LoginResponseBuiltEvent`: Dispatched after the response is finalized for analytics/metrics.
+- Wiring:
+  - Session cached hook in `SessionCacheManager::storeSession()` after successful `cache->set`.
+  - Login response hooks in `AuthController::login()` just before returning.
+- Docs: Proposal updated with final API (setter-based mutation, paths under `src/...`) and example listeners.
+
+### Migration Notes
+- Backward compatible: No behavior change unless listeners are registered.
+- Performance: Events are synchronous; offload heavy work to queues.
+- Guidance: Prefer adding app-specific fields under `context.*` to avoid collisions.
+
+---
 
 ## v1.7.4 - Arcturus (Patch)
 **Released: October 28, 2025**
