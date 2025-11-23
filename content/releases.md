@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.8.1 | Vega    | 2025-11-23 | Patch  | Low    | Password policy + async stream helper |
 | 1.8.0 | Spica   | 2025-11-13 | Minor  | Low    | Session + login response events |
 | 1.7.4 | Arcturus | 2025-10-28 | Patch  | Low    | Auth status gate + migration docs |
 | 1.7.3 | Pollux  | 2025-10-21 | Patch  | Low    | QueryBuilder 2-arg where/orWhere fix |
@@ -27,6 +28,23 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.8.1 - Vega (Patch)
+**Released: November 23, 2025**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Tightens password policy helpers with lowercase enforcement and makes the async stream helper smarter about buffering existing async transports.
+::
+
+### Key Highlights
+- Security: `Utils::validatePassword()` now supports a `$requireLowercase` flag alongside existing numeric, special-character, and uppercase toggles, enabling mixed-case enforcement without custom validators.
+- Async I/O: `async_stream()` accepts raw resources, `AsyncStream`, or `BufferedAsyncStream` instances and normalizes them before optionally wrapping in a buffer. This keeps buffered helpers type-safe and resolves analyzer warnings about expected vs. actual types.
+
+### Migration Notes
+- No breaking changes. Opt into the lowercase flag when updating password policies, and the stream helper works seamlessly with existing calls.
+
+---
 
 ## v1.8.0 - Spica (Minor)
 **Released: November 13, 2025**
