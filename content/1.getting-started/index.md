@@ -4,7 +4,7 @@ description: Overview, quickstart, project structure, and FAQs
 ---
 # Getting Started with Glueful
 
-Glueful is a modern, enterprise-grade PHP API framework designed for building secure, scalable, and high-performance applications. Built with PHP 8.2+ and leveraging cutting-edge development practices, Glueful provides a comprehensive toolkit for professional API development with minimal configuration overhead.
+Glueful is a modern, enterprise-grade PHP API framework designed for building secure, scalable, and high-performance applications. Built with PHP 8.3+ and leveraging cutting-edge development practices, Glueful provides a comprehensive toolkit for professional API development with minimal configuration overhead.
 
 ## What is Glueful?
 
@@ -23,7 +23,7 @@ Glueful is perfect for:
 
 - **API-first applications** - REST APIs, microservices, and backend services
 - **Enterprise applications** - Applications requiring robust security, performance, and scalability
-- **Modern PHP development** - Projects leveraging PHP 8.2+ features and modern practices
+- **Modern PHP development** - Projects leveraging PHP 8.3+ features and modern practices
 - **Rapid prototyping** - Quick API development with built-in tooling
 - **Team collaboration** - Standardized structure and comprehensive documentation
 
@@ -33,7 +33,7 @@ Get up and running with Glueful in under 5 minutes using the API skeleton:
 
 ### Prerequisites
 
-- PHP 8.2 or higher
+- PHP 8.3 or higher
 - Composer 2+
 - SQLite (default) or your preferred database
 
@@ -103,7 +103,7 @@ my-api/
 ## Core Features Overview
 
 ### Foundation
-- Modern PHP 8.2+ architecture with attributes and typed properties
+- Modern PHP 8.3+ architecture with attributes and typed properties
 - Powerful Dependency Injection container with service providers
 - Advanced routing system with PSR-15 middleware support
 - Request Context architecture eliminating superglobal dependencies

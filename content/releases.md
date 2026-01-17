@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.9.0 | Betelgeuse | 2026-01-17 | Minor | Medium | PHP 8.3 minimum + Symfony 7.3 compat |
 | 1.8.1 | Vega    | 2025-11-23 | Patch  | Low    | Password policy + async stream helper |
 | 1.8.0 | Spica   | 2025-11-13 | Minor  | Low    | Session + login response events |
 | 1.7.4 | Arcturus | 2025-10-28 | Patch  | Low    | Auth status gate + migration docs |
@@ -28,6 +29,41 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.9.0 - Betelgeuse (Minor)
+**Released: January 17, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+Raises minimum PHP version to 8.3 and addresses Symfony Console 7.3 compatibility. Review the upgrade guide before updating.
+::
+
+### Breaking Changes
+- **PHP 8.3 Required**: Minimum PHP version raised from 8.2 to 8.3. Ensure your environment is updated before upgrading.
+- **Console Method Renamed**: `Application::addCommand(string $class)` renamed to `Application::registerCommandClass(string $class)` due to Symfony Console 7.3 adding a conflicting `addCommand(Command|callable)` method.
+
+### Key Highlights
+- **Routing**: `RouteManifest::load()` now prevents double-loading routes during framework initialization, eliminating "Route already defined" warnings in CLI commands.
+- **Security**: Fixed PHPStan strict boolean check in `CSRFMiddleware` for explicit cookie token validation.
+- **Tests**: Added missing PSR-4 namespace declarations to async test files for proper autoloading.
+- **CI**: Test matrix now targets PHP 8.3 and 8.4 (dropped PHP 8.2 support).
+
+### New APIs
+- `RouteManifest::reset()` - Reset loaded state (for testing)
+- `RouteManifest::isLoaded()` - Check if routes have been loaded
+
+### Migration Notes
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Action Required**: Update your PHP environment to 8.3+ before upgrading.
+::
+
+1. **Environment**: Ensure PHP 8.3 or higher is installed
+2. **Method Rename**: If you called `$app->addCommand(MyCommand::class)`, update to `$app->registerCommandClass(MyCommand::class)`
+3. **Dependencies**: Run `composer update` to refresh the lock file
+
+---
 
 ## v1.8.1 - Vega (Patch)
 **Released: November 23, 2025**
@@ -1039,6 +1075,7 @@ Glueful releases are named after stars and celestial objects:
 - **Polaris** (1.1.0) - The guiding star
 - **Vega** (1.2.0) - Bright and reliable
 - **Deneb** (1.3.0) - Distant but brilliant
+- **Betelgeuse** (1.9.0) - A red supergiant marking a new era
 ## v1.5.0 - Orion (Minor)
 **Released: October 13, 2025**
 

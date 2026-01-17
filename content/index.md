@@ -18,7 +18,7 @@ seo:
 #description
 
 <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-  Build modern, secure APIs with <strong class="text-azure-radiance-600">speed</strong> and <strong class="text-raspberry-600">quality developer experience</strong>. Glueful brings <strong class="text-azure-radiance-600">first‑class async concurrency</strong> to PHP 8.2+, alongside modern tooling and enterprise‑grade security.
+  Build modern, secure APIs with <strong class="text-azure-radiance-600">speed</strong> and <strong class="text-raspberry-600">quality developer experience</strong>. Glueful brings <strong class="text-azure-radiance-600">first‑class async concurrency</strong> to PHP 8.3+, alongside modern tooling and enterprise‑grade security.
 </p>
 
   <div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
@@ -217,7 +217,7 @@ Explore Async
   <span class="font-bold text-raspberry-600">Modern Architecture</span>
 
   #description
-  <div>PHP 8.2+ foundation with attributes, typed properties, and constructor promotion. RESTful by default with route annotations and generators that produce OpenAPI specs. Built‑in request/response validation helpers and type‑hinted code throughout.</div>
+  <div>PHP 8.3+ foundation with attributes, typed properties, and constructor promotion. RESTful by default with route annotations and generators that produce OpenAPI specs. Built‑in request/response validation helpers and type‑hinted code throughout.</div>
 
   :::
 
