@@ -12,7 +12,7 @@ Deploy your Glueful application using Docker containers for consistent, reproduc
 `Dockerfile`:
 
 ```dockerfile
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -204,7 +204,7 @@ docker-compose logs -f worker
 `Dockerfile.prod`:
 
 ```dockerfile
-FROM php:8.2-fpm AS base
+FROM php:8.3-fpm AS base
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -369,7 +369,7 @@ Optimized Dockerfile with multi-stage build:
 
 ```dockerfile
 # Build stage
-FROM php:8.2-cli AS builder
+FROM php:8.3-cli AS builder
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -382,7 +382,7 @@ COPY . .
 RUN composer dump-autoload --optimize --classmap-authoritative
 
 # Production stage
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 RUN apt-get update && apt-get install -y \
     libpng-dev \
@@ -406,7 +406,7 @@ CMD ["php-fpm"]
 PostgreSQL users: add the PostgreSQL extension in the production stage
 
 ```dockerfile
-# In the production stage (after php:8.2-fpm)
+# In the production stage (after php:8.3-fpm)
 RUN apt-get update && apt-get install -y libpq-dev \
     && docker-php-ext-install pdo_pgsql \
     && rm -rf /var/lib/apt/lists/*

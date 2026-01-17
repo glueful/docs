@@ -7,7 +7,7 @@ Deploy Glueful to a production server with proper configuration and optimization
 
 ## Server Requirements
 
-- PHP 8.2+
+- PHP 8.3+
 - Composer
 - Database (MySQL 8.0+, PostgreSQL 13+, or SQLite)
 - Web server (Nginx recommended)
@@ -104,7 +104,7 @@ server {
     error_page 404 /index.php;
 
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.3-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
     }
@@ -153,14 +153,14 @@ server {
 
 ## PHP-FPM Configuration
 
-`/etc/php/8.2/fpm/pool.d/www.conf`:
+`/etc/php/8.3/fpm/pool.d/www.conf`:
 
 ```ini
 [www]
 user = www-data
 group = www-data
 
-listen = /run/php/php8.2-fpm.sock
+listen = /run/php/php8.3-fpm.sock
 listen.owner = www-data
 listen.group = www-data
 
@@ -175,7 +175,7 @@ pm.max_requests = 500
 Restart PHP-FPM:
 
 ```bash
-systemctl restart php8.2-fpm
+systemctl restart php8.3-fpm
 ```
 
 ## Queue Workers
@@ -263,7 +263,7 @@ systemctl restart redis
 
 ## PHP Configuration
 
-`/etc/php/8.2/fpm/php.ini`:
+`/etc/php/8.3/fpm/php.ini`:
 
 ```ini
 memory_limit = 256M
@@ -473,8 +473,8 @@ chmod +x deploy.sh
 ### Check PHP-FPM Status
 
 ```bash
-systemctl status php8.2-fpm
-tail -f /var/log/php8.2-fpm.log
+systemctl status php8.3-fpm
+tail -f /var/log/php8.3-fpm.log
 ```
 
 ### Check Nginx Status

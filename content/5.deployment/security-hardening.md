@@ -376,7 +376,7 @@ function securePath(string $userPath): string
 
 ### PHP Security Settings
 
-`/etc/php/8.2/fpm/php.ini`:
+`/etc/php/8.3/fpm/php.ini`:
 
 ```ini
 ; Disable dangerous functions

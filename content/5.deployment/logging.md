@@ -326,7 +326,7 @@ logger()->critical('Account locked', [
     sharedscripts
     postrotate
         # Optionally reload PHP-FPM
-        systemctl reload php8.2-fpm > /dev/null 2>&1 || true
+        systemctl reload php8.3-fpm > /dev/null 2>&1 || true
     endscript
 }
 ```
