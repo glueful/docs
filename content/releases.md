@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.9.1 | Castor | 2026-01-19 | Patch | Low | OpenAPI documentation refactor + UI generation |
 | 1.9.0 | Betelgeuse | 2026-01-17 | Minor | Medium | PHP 8.3 minimum + Symfony 7.3 compat |
 | 1.8.1 | Vega    | 2025-11-23 | Patch  | Low    | Password policy + async stream helper |
 | 1.8.0 | Spica   | 2025-11-13 | Minor  | Low    | Session + login response events |
@@ -29,6 +30,57 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.9.1 - Castor (Patch)
+**Released: January 19, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-ad-2"}
+#description
+Major refactor of the OpenAPI documentation system with interactive UI generation support for Scalar, Swagger UI, and Redoc.
+::
+
+### Key Highlights
+
+::card
+**Documentation UI Generation**
+- New `DocumentationUIGenerator` class generates interactive HTML documentation
+- Supports Scalar (default), Swagger UI, and Redoc
+- New `--ui` option for `generate:openapi` command
+- Centralized configuration in `config/documentation.php`
+::
+
+::card
+**Documentation Architecture Refactor**
+- Replaced `ApiDefinitionGenerator` with focused `TableDefinitionGenerator` and `OpenApiGenerator`
+- Renamed `ApiDefinitionsCommand` to `OpenApiDocsCommand`
+- `CommentsDocGenerator` now uses `phpDocumentor/ReflectionDocBlock` for robust PHPDoc parsing
+- Extension routes discovered via `ExtensionManager::getProviders()` for Composer packages
+::
+
+### New Validation Rules
+- `Numeric` - Validates numeric values with optional range, integer-only, and positive-only constraints
+- `Regex` - Validates values against regular expression patterns
+
+### Dependencies
+- Updated Symfony packages from `^7.3` to `^7.4`
+- Added `phpdocumentor/reflection-docblock: ^6.0`
+
+### Quick Usage
+
+```bash
+# Generate docs with default UI (Scalar)
+php glueful generate:openapi --ui
+
+# Generate with specific UI
+php glueful generate:openapi --ui=swagger-ui
+php glueful generate:openapi --ui=redoc
+```
+
+### Migration Notes
+- No breaking changes. The old `ApiDefinitionGenerator` is removed but the command interface remains compatible.
+- If you referenced internal documentation classes directly, update to use `OpenApiGenerator` and `TableDefinitionGenerator`.
+
+---
 
 ## v1.9.0 - Betelgeuse (Minor)
 **Released: January 17, 2026**
@@ -1076,6 +1128,7 @@ Glueful releases are named after stars and celestial objects:
 - **Vega** (1.2.0) - Bright and reliable
 - **Deneb** (1.3.0) - Distant but brilliant
 - **Betelgeuse** (1.9.0) - A red supergiant marking a new era
+- **Castor** (1.9.1) - One of the twin stars, bringing documentation clarity
 ## v1.5.0 - Orion (Minor)
 **Released: October 13, 2025**
 
