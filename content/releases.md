@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.9.2 | Deneb | 2026-01-20 | Patch | Low | OpenAPI 3.1 + resource route expansion |
 | 1.9.1 | Castor | 2026-01-19 | Patch | Low | OpenAPI documentation refactor + UI generation |
 | 1.9.0 | Betelgeuse | 2026-01-17 | Minor | Medium | PHP 8.3 minimum + Symfony 7.3 compat |
 | 1.8.1 | Vega    | 2025-11-23 | Patch  | Low    | Password policy + async stream helper |
@@ -30,6 +31,54 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.9.2 - Deneb (Patch)
+**Released: January 20, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-api"}
+#description
+OpenAPI 3.1 support with automatic resource route expansion from database schemas and documentation UI improvements.
+::
+
+### Key Highlights
+
+::card
+**OpenAPI 3.1 Support**
+- Full JSON Schema draft 2020-12 alignment
+- Nullable types use array syntax (`type: ["string", "null"]`)
+- License supports SPDX `identifier` field
+- `jsonSchemaDialect` declaration included
+- Default version changed from 3.0.0 to 3.1.0
+::
+
+::card
+**Resource Route Expansion**
+- New `ResourceRouteExpander` class automatically expands `{resource}` routes
+- Generates table-specific endpoints with full database schemas
+- No more intermediate JSON files - schemas expand directly from database
+- Resource tags renamed from "Resources - {table}" to "Table - {table}"
+::
+
+::card
+**Documentation UI Improvements**
+- Scalar: Added `hideClientButton` and `showDeveloperTools` options
+- Tags in sidebar now sorted alphabetically
+- Output file renamed from `swagger.json` to `openapi.json`
+::
+
+### Bug Fixes
+- **Database**: Fixed `SchemaBuilder::getTableColumns()` returning empty arrays due to incorrect `array_is_list()` check on associative column data.
+
+### Removed
+- `TableDefinitionGenerator` class - resource routes now expand directly from database schemas
+- `--database` and `--table` options from `generate:openapi` command (no longer needed)
+
+### Migration Notes
+- No breaking changes. The output file is now `openapi.json` instead of `swagger.json`.
+- If you had custom scripts referencing `swagger.json`, update the path.
+- Config key `paths.swagger` renamed to `paths.openapi`.
+
+---
 
 ## v1.9.1 - Castor (Patch)
 **Released: January 19, 2026**
