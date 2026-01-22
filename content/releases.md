@@ -9,6 +9,16 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.19.0 | Canopus | 2026-01-22 | Minor | Low | Search & Filtering DSL |
+| 1.18.0 | Hadar | 2026-01-22 | Minor | Low | Webhooks System |
+| 1.17.0 | Alnitak | 2026-01-22 | Minor | Low | Rate Limiting Enhancements |
+| 1.16.0 | Meissa | 2026-01-22 | Minor | Low | API Versioning Strategy |
+| 1.15.0 | Rigel | 2026-01-22 | Minor | Low | Real-Time Development Server |
+| 1.14.0 | Bellatrix | 2026-01-22 | Minor | Low | Interactive CLI Wizards |
+| 1.13.0 | Saiph | 2026-01-22 | Minor | Low | Enhanced Scaffold Commands + Factories/Seeders |
+| 1.12.0 | Mintaka | 2026-01-21 | Minor | Low | API Resource Transformers |
+| 1.11.0 | Alnilam | 2026-01-21 | Minor | Low | ORM / Active Record |
+| 1.10.0 | Elnath | 2026-01-21 | Minor | Low | Exception Handler + Request Validation |
 | 1.9.2 | Deneb | 2026-01-20 | Patch | Low | OpenAPI 3.1 + resource route expansion |
 | 1.9.1 | Castor | 2026-01-19 | Patch | Low | OpenAPI documentation refactor + UI generation |
 | 1.9.0 | Betelgeuse | 2026-01-17 | Minor | Medium | PHP 8.3 minimum + Symfony 7.3 compat |
@@ -31,6 +41,1406 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.19.0 - Canopus (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-filter"}
+#description
+Feature release introducing a powerful Search & Filtering DSL with multiple search engine adapters, QueryFilter classes, and comprehensive filtering operators for building flexible API queries.
+::
+
+### Key Highlights
+
+::card
+**Search Engine Adapters**
+- Pluggable search backends: Database (LIKE), Elasticsearch, Meilisearch
+- Unified `SearchAdapterInterface` for consistent API
+- Auto-migration for search index tracking table
+- Optional dependency support (no extra packages required for basic usage)
+::
+
+::card
+**QueryFilter Classes**
+- Reusable filter classes for API resources
+- Support for 20+ operators (eq, ne, gt, lt, in, between, like, etc.)
+- Automatic query building with secure parameter binding
+- Field whitelisting for security
+::
+
+::card
+**Searchable ORM Trait**
+- Add search functionality to any ORM model
+- Automatic index synchronization on model changes
+- Custom searchable fields configuration
+- Batch indexing support
+::
+
+::card
+**scaffold:filter Command**
+- Generate QueryFilter classes from CLI
+- Automatic field detection from models
+- Customizable operator sets per field
+::
+
+### Search Engine Adapters
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `SearchAdapterInterface` | Contract for search adapters |
+| `SearchAdapter` | Base class with auto-migration |
+| `SearchResult` | Value object for search results |
+| `DatabaseAdapter` | SQL LIKE search (default) |
+| `ElasticsearchAdapter` | Elasticsearch integration |
+| `MeilisearchAdapter` | Meilisearch integration |
+
+**Optional Packages:**
+```bash
+# For Elasticsearch support
+composer require elasticsearch/elasticsearch:^8.0
+
+# For Meilisearch support
+composer require meilisearch/meilisearch-php:^1.0
+```
+
+### Filtering Operators
+
+| Operator | Aliases | Description | Example |
+|----------|---------|-------------|---------|
+| `eq` | `=` | Equal to | `filter[status]=active` |
+| `ne` | `!=`, `<>` | Not equal | `filter[status][ne]=deleted` |
+| `gt` | `>` | Greater than | `filter[age][gt]=18` |
+| `gte` | `>=` | Greater or equal | `filter[price][gte]=100` |
+| `lt` | `<` | Less than | `filter[stock][lt]=10` |
+| `lte` | `<=` | Less or equal | `filter[rating][lte]=5` |
+| `in` | | In array | `filter[status][in]=active,pending` |
+| `nin` | `not_in` | Not in array | `filter[type][nin]=draft,archived` |
+| `like` | `contains` | Contains substring | `filter[name][like]=john` |
+| `starts` | | Starts with | `filter[email][starts]=admin` |
+| `ends` | | Ends with | `filter[domain][ends]=.com` |
+| `between` | | Range (inclusive) | `filter[price][between]=10,100` |
+| `null` | `is_null` | Is null | `filter[deleted_at][null]=1` |
+| `not_null` | | Is not null | `filter[verified_at][not_null]=1` |
+
+### Quick Usage
+
+```php
+use Glueful\Api\Filtering\QueryFilter;
+use Glueful\Api\Filtering\Adapters\DatabaseAdapter;
+use Glueful\Api\Filtering\Concerns\Searchable;
+
+// Create a QueryFilter
+class UserFilter extends QueryFilter
+{
+    protected array $filterable = [
+        'name' => ['eq', 'like', 'starts'],
+        'email' => ['eq', 'like'],
+        'status' => ['eq', 'in', 'nin'],
+        'created_at' => ['gt', 'gte', 'lt', 'lte', 'between'],
+    ];
+
+    protected array $sortable = ['name', 'email', 'created_at'];
+}
+
+// Apply filter to query
+$filter = new UserFilter($request);
+$users = $filter->apply(QueryBuilder::table('users'))->get();
+
+// Use Searchable trait in models
+class User extends Model
+{
+    use Searchable;
+
+    protected array $searchableFields = ['name', 'email', 'bio'];
+}
+
+// Search users
+$results = User::search('john doe', [
+    'fields' => ['name', 'email'],
+    'limit' => 20,
+]);
+
+// Use search adapter directly
+$adapter = new DatabaseAdapter('users');
+$results = $adapter->search('john', [
+    'fields' => ['name', 'email'],
+    'limit' => 10,
+]);
+```
+
+### Configuration
+
+```php
+// config/api.php
+'filtering' => [
+    'default_limit' => 25,
+    'max_limit' => 100,
+    'allow_all_fields' => false,
+    'strict_mode' => true,
+
+    // Search engine configuration
+    'search' => [
+        // Options: 'database', 'elasticsearch', 'meilisearch'
+        'driver' => env('API_SEARCH_DRIVER', 'database'),
+        'index_prefix' => env('SEARCH_INDEX_PREFIX', ''),
+        'auto_index' => env('SEARCH_AUTO_INDEX', false),
+
+        // Elasticsearch (requires: elasticsearch/elasticsearch:^8.0)
+        'elasticsearch' => [
+            'hosts' => [env('ELASTICSEARCH_HOST', 'localhost:9200')],
+        ],
+
+        // Meilisearch (requires: meilisearch/meilisearch-php:^1.0)
+        'meilisearch' => [
+            'host' => env('MEILISEARCH_HOST', 'http://localhost:7700'),
+            'key' => env('MEILISEARCH_KEY'),
+        ],
+    ],
+],
+```
+
+### CLI Commands
+
+```bash
+# Generate a filter class
+php glueful scaffold:filter UserFilter
+
+# Generate with specific model
+php glueful scaffold:filter UserFilter --model=User
+
+# Generate with custom fields
+php glueful scaffold:filter ProductFilter --fields=name,price,category,status
+```
+
+---
+
+## v1.18.0 - Hadar (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-webhook"}
+#description
+Feature release introducing a comprehensive Webhooks System with event-driven integrations, subscription management, HMAC signature verification, and reliable delivery with exponential backoff retry.
+::
+
+### Key Highlights
+
+::card
+**Event-Based Subscriptions**
+- Subscribe to specific events or wildcard patterns (`user.*`, `*`)
+- Multiple event patterns per subscription
+- `WebhookSubscription` ORM model with `listensTo()` wildcard matching
+::
+
+::card
+**HMAC-SHA256 Signatures**
+- Stripe-style signature format (`t=timestamp,v1=signature`)
+- Timing-safe comparison to prevent timing attacks
+- Timestamp validation to prevent replay attacks
+- Configurable tolerance for signature expiration
+::
+
+::card
+**Reliable Delivery System**
+- Queue-based delivery via `DeliverWebhookJob`
+- Exponential backoff retry: 1m, 5m, 30m, 2h, 12h
+- Maximum 5 retry attempts (configurable)
+- `WebhookDelivery` ORM model for tracking
+::
+
+::card
+**Auto-Migration**
+- Database tables created automatically on first use
+- Follows `DatabaseLogHandler` pattern
+- Zero configuration required
+::
+
+### Webhooks Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `WebhookDispatcher` | Central dispatcher with auto-migration |
+| `WebhookSubscription` | ORM model for subscriptions |
+| `WebhookDelivery` | ORM model for delivery tracking |
+| `WebhookSignature` | HMAC signature generation/verification |
+| `WebhookPayload` | Standardized payload builder |
+| `Webhook` | Static facade for easy access |
+
+**Event Integration:**
+| Class | Purpose |
+|-------|---------|
+| `DispatchesWebhooks` | Trait for webhookable events |
+| `#[Webhookable]` | PHP 8 attribute for marking events |
+| `WebhookEventListener` | Bridge app events to webhooks |
+| `WebhookDispatchedEvent` | Event fired when webhooks queued |
+
+**CLI Commands:**
+| Command | Purpose |
+|---------|---------|
+| `webhook:list` | List all webhook subscriptions |
+| `webhook:test` | Test a webhook endpoint |
+| `webhook:retry` | Retry failed webhook deliveries |
+
+### REST API Endpoints
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| `POST` | `/api/webhooks/subscriptions` | Create subscription |
+| `GET` | `/api/webhooks/subscriptions` | List subscriptions |
+| `GET` | `/api/webhooks/subscriptions/{id}` | Get subscription |
+| `PATCH` | `/api/webhooks/subscriptions/{id}` | Update subscription |
+| `DELETE` | `/api/webhooks/subscriptions/{id}` | Delete subscription |
+| `POST` | `/api/webhooks/subscriptions/{id}/test` | Send test webhook |
+| `GET` | `/api/webhooks/deliveries` | List deliveries |
+| `POST` | `/api/webhooks/deliveries/{id}/retry` | Retry delivery |
+
+### Quick Usage
+
+```php
+use Glueful\Api\Webhooks\Webhook;
+use Glueful\Api\Webhooks\WebhookSignature;
+
+// Dispatch a webhook
+Webhook::dispatch('user.created', ['user' => $userData]);
+
+// Create a subscription
+$subscription = Webhook::subscribe(
+    ['user.*', 'order.completed'],
+    'https://example.com/webhooks'
+);
+
+// Make an event webhookable
+class UserCreated extends BaseEvent
+{
+    use DispatchesWebhooks;
+
+    public function webhookEventName(): string
+    {
+        return 'user.created';
+    }
+
+    public function webhookPayload(): array
+    {
+        return ['user' => $this->user];
+    }
+}
+
+// Verify webhook signature (for receiving webhooks)
+$isValid = WebhookSignature::verify(
+    $payload,
+    $request->headers->get('X-Webhook-Signature'),
+    $secret
+);
+```
+
+### Webhook Payload Structure
+
+```json
+{
+    "id": "wh_evt_01HXYZ123456789ABCDEF",
+    "event": "user.created",
+    "created_at": "2026-01-22T12:00:00+00:00",
+    "data": {
+        "user": {
+            "id": "usr_01HXYZ987654321FEDCBA",
+            "email": "john@example.com",
+            "name": "John Doe"
+        }
+    }
+}
+```
+
+### Webhook Headers
+
+| Header | Description | Example |
+|--------|-------------|---------|
+| `X-Webhook-ID` | Unique delivery ID | `wh_del_01HXYZ...` |
+| `X-Webhook-Event` | Event name | `user.created` |
+| `X-Webhook-Timestamp` | Unix timestamp | `1706011200` |
+| `X-Webhook-Signature` | HMAC signature | `t=1706011200,v1=abc...` |
+| `Content-Type` | Always JSON | `application/json` |
+| `User-Agent` | Glueful identifier | `Glueful-Webhooks/1.0` |
+
+### Configuration
+
+```php
+// config/api.php
+'webhooks' => [
+    'enabled' => true,
+    'queue' => 'webhooks',
+    'connection' => null,
+    'signature_header' => 'X-Webhook-Signature',
+    'signature_algorithm' => 'sha256',
+    'timeout' => 30,
+    'user_agent' => 'Glueful-Webhooks/1.0',
+    'retry' => [
+        'max_attempts' => 5,
+        'backoff' => [60, 300, 1800, 7200, 43200],
+    ],
+    'require_https' => true,
+    'cleanup' => [
+        'keep_successful_days' => 7,
+        'keep_failed_days' => 30,
+    ],
+]
+```
+
+### Migration Notes
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+No breaking changes. The Webhooks System is opt-in and additive. Database tables are created automatically on first use.
+::
+
+- Auto-migration creates `webhook_subscriptions` and `webhook_deliveries` tables
+- Webhooks are delivered asynchronously via the queue system
+- Integrates with existing `WebhookDeliveredEvent` and `WebhookFailedEvent`
+
+---
+
+## v1.17.0 - Alnitak (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-shield-check"}
+#description
+Feature release introducing comprehensive Rate Limiting Enhancements with per-route limits, tiered access, cost-based limiting, and multiple algorithms.
+::
+
+### Key Highlights
+
+::card
+**Per-Route Rate Limiting**
+- `#[RateLimit]` attribute for declarative rate limiting on controllers and methods
+- IS_REPEATABLE for defining multiple time windows (e.g., per-minute AND per-hour limits)
+- Configurable by tier, key pattern, algorithm, and identifier (IP, user, custom)
+::
+
+::card
+**Tiered Rate Limiting**
+- Built-in tiers: `anonymous`, `free`, `pro`, `enterprise`
+- Per-tier limits for minute, hour, and day windows
+- `TierResolver` for automatic tier detection from request user data
+- Unlimited tier support for enterprise users
+::
+
+::card
+**Multiple Algorithms**
+- Fixed Window - Simple time-window counting
+- Sliding Window - More accurate request distribution using sorted sets
+- Token Bucket - Burst-friendly with refill rate calculation
+::
+
+::card
+**Cost-Based Limiting**
+- `#[RateLimitCost]` attribute for expensive operations
+- Consume multiple units per request (e.g., exports cost 100 units)
+- Reason tracking for cost documentation
+::
+
+### Rate Limiting Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `RateLimitManager` | Central orchestrator for rate limiting operations |
+| `TierManager` | Tier configuration and limit lookup |
+| `TierResolver` | Resolve user tier from request |
+| `RateLimitHeaders` | IETF-compliant header generation |
+| `RateLimitResult` | Immutable result value object |
+
+**Limiters:**
+| Class | Algorithm |
+|-------|-----------|
+| `FixedWindowLimiter` | Simple fixed time window |
+| `SlidingWindowLimiter` | Sliding window using sorted sets |
+| `TokenBucketLimiter` | Token bucket with burst support |
+
+**Storage Backends:**
+| Class | Purpose |
+|-------|---------|
+| `CacheStorage` | Production storage using `CacheStore` |
+| `MemoryStorage` | In-memory storage for testing |
+
+### Attributes
+
+**RateLimit Attribute:**
+```php
+#[RateLimit(
+    attempts: 60,           // Max requests
+    perMinutes: 1,          // Time window (or perHours, perDays)
+    tier: 'free',           // Optional tier restriction
+    key: 'custom:{ip}',     // Custom key pattern
+    algorithm: 'sliding',   // fixed, sliding, or bucket
+    by: 'ip'                // Identifier: ip, user, or custom
+)]
+```
+
+**RateLimitCost Attribute:**
+```php
+#[RateLimitCost(
+    cost: 100,
+    reason: 'Full data export operation'
+)]
+```
+
+### IETF-Compliant Headers
+
+The middleware adds standardized rate limit headers:
+
+```
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1706011260
+RateLimit-Limit: 60
+RateLimit-Remaining: 45
+RateLimit-Reset: 1706011260
+RateLimit-Policy: 60;w=60
+Retry-After: 30  (when rate limited)
+```
+
+### Quick Usage
+
+```php
+use Glueful\Api\RateLimiting\Attributes\{RateLimit, RateLimitCost};
+
+class UserController
+{
+    // 60 requests per minute, 1000 per hour
+    #[RateLimit(attempts: 60, perMinutes: 1)]
+    #[RateLimit(attempts: 1000, perHours: 1)]
+    public function index(): Response { }
+
+    // Tiered limits - different limits per subscription tier
+    #[RateLimit(tier: 'free', attempts: 100, perDays: 1)]
+    #[RateLimit(tier: 'pro', attempts: 10000, perDays: 1)]
+    public function search(): Response { }
+
+    // Cost-based limiting - expensive operations
+    #[RateLimit(attempts: 1000, perDays: 1)]
+    #[RateLimitCost(cost: 100, reason: 'Full data export')]
+    public function export(): Response { }
+}
+
+// Route-level configuration
+$router->get('/api/users', [UserController::class, 'index'])
+    ->middleware(['enhanced_rate_limit']);
+```
+
+### Configuration
+
+```php
+// config/api.php
+'rate_limiting' => [
+    'enabled' => true,
+    'algorithm' => 'sliding',
+    'default_tier' => 'anonymous',
+    'tiers' => [
+        'anonymous' => [
+            'requests_per_minute' => 30,
+            'requests_per_hour' => 500,
+            'requests_per_day' => 5000,
+        ],
+        'free' => [
+            'requests_per_minute' => 60,
+            'requests_per_hour' => 1000,
+            'requests_per_day' => 10000,
+        ],
+        'pro' => [
+            'requests_per_minute' => 300,
+            'requests_per_hour' => 10000,
+            'requests_per_day' => 100000,
+        ],
+        'enterprise' => [
+            'requests_per_minute' => null,  // unlimited
+            'requests_per_hour' => null,
+            'requests_per_day' => null,
+        ],
+    ],
+    'headers' => [
+        'enabled' => true,
+        'include_legacy' => true,  // X-RateLimit-* headers
+        'include_ietf' => true,    // RateLimit-* headers
+    ],
+    'bypass_ips' => '127.0.0.1,::1',
+],
+```
+
+### Migration Notes
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+No breaking changes. The new enhanced rate limiting system is opt-in and coexists with the existing `RateLimiterMiddleware`.
+::
+
+- Existing `rate_limit:100,60,ip` middleware syntax continues to work
+- New `enhanced_rate_limit` middleware is opt-in for attribute-based limiting
+- Both systems can coexist in the same application
+
+---
+
+## v1.16.0 - Meissa (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-versions"}
+#description
+Feature release introducing comprehensive API Versioning with multiple resolution strategies, deprecation system, and sunset headers.
+::
+
+### Key Highlights
+
+::card
+**Multiple Version Strategies**
+- URL Prefix: `/v1/users`, `/v2/users`
+- Header: `X-API-Version: 2.0`
+- Query Parameter: `?api_version=2`
+- Accept Header: `Accept: application/vnd.api+json;version=2`
+::
+
+::card
+**Version Attributes**
+- `#[Version]` for declaring version requirements on routes
+- `#[Deprecated]` for marking deprecated endpoints with messages
+- `#[Sunset]` for specifying retirement dates
+::
+
+::card
+**Version Negotiation**
+- Automatic version detection from request
+- Fallback to default version when not specified
+- Version comparison and constraint matching
+::
+
+### API Versioning Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `VersionManager` | Central manager for version resolution |
+| `ApiVersion` | Value object for version representation |
+| `VersionNegotiationMiddleware` | Automatic version detection |
+
+**Resolvers:**
+| Class | Strategy |
+|-------|----------|
+| `UrlPrefixResolver` | Extract version from URL path (`/v1/`) |
+| `HeaderResolver` | Read `X-API-Version` header |
+| `QueryParameterResolver` | Read `api_version` query param |
+| `AcceptHeaderResolver` | Parse Accept header media type |
+
+**Attributes:**
+| Attribute | Purpose |
+|-----------|---------|
+| `#[Version]` | Declare version requirements |
+| `#[Deprecated]` | Mark deprecated endpoints |
+| `#[Sunset]` | Specify sunset/retirement date |
+
+### Quick Usage
+
+```php
+use Glueful\Api\Versioning\Attributes\{Version, Deprecated, Sunset};
+
+class UserController
+{
+    #[Version('1.0')]
+    public function indexV1(): Response
+    {
+        return $this->json(['users' => $this->legacyFormat()]);
+    }
+
+    #[Version('2.0')]
+    public function indexV2(): Response
+    {
+        return $this->json(['data' => $this->modernFormat()]);
+    }
+
+    #[Version('1.0')]
+    #[Deprecated(message: 'Use v2 endpoint instead', since: '2026-01-01')]
+    #[Sunset(date: '2026-06-01')]
+    public function legacyEndpoint(): Response
+    {
+        // Deprecation warning headers automatically added
+        return $this->json(['legacy' => true]);
+    }
+}
+```
+
+### Response Headers
+
+Deprecation and sunset information is communicated via headers:
+
+```
+Deprecation: true
+Sunset: Sat, 01 Jun 2026 00:00:00 GMT
+X-API-Deprecated-Message: Use v2 endpoint instead
+X-API-Version: 1.0
+```
+
+### Configuration
+
+```php
+// config/api.php
+'versioning' => [
+    'enabled' => true,
+    'default' => 'v1',
+    'strategy' => 'url',  // url, header, query, accept
+    'header' => 'X-API-Version',
+    'query_param' => 'api_version',
+    'deprecation' => [
+        'sunset_header' => true,
+        'warning_header' => true,
+    ],
+],
+```
+
+### Migration Notes
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+No breaking changes. API versioning is opt-in and additive.
+::
+
+- Versioning is entirely opt-in - existing routes continue to work unchanged
+- Apply `#[Version]` attributes only where version-specific behavior is needed
+- Use middleware `version_negotiation` to enable automatic version detection
+
+---
+
+## v1.15.0 - Rigel (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-server"}
+#description
+Feature release introducing Real-Time Development Server with file watching, integrated services, and enhanced logging.
+::
+
+### Key Highlights
+
+::card
+**File Watching**
+- Automatic file change detection with configurable polling
+- Auto-restart on code changes with `--watch` option
+- Configurable poll interval via `--poll-interval`
+::
+
+::card
+**Integrated Services**
+- `--queue` option for integrated queue worker
+- Port auto-selection when preferred port is in use
+- Graceful shutdown handling
+::
+
+::card
+**Enhanced Logging**
+- Colorized HTTP request logging
+- Method and status code highlighting
+- Request timing information
+::
+
+### Development Server Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `FileWatcher` | File change detection with polling |
+| `RequestLogger` | Colorized request logging |
+| `LogEntry` | Structured request log entries |
+
+### Quick Usage
+
+```bash
+# Basic development server
+php glueful serve
+
+# With file watching (auto-restart on changes)
+php glueful serve --watch
+
+# With integrated queue worker
+php glueful serve --queue
+
+# Custom port and poll interval
+php glueful serve --port=8080 --watch --poll-interval=2000
+
+# Full development setup
+php glueful serve --watch --queue --port=8000
+```
+
+### Command Options
+
+| Option | Description |
+|--------|-------------|
+| `--port=8000` | Specify the port (default: 8000) |
+| `--host=localhost` | Specify the host (default: localhost) |
+| `--watch` | Enable file watching for auto-restart |
+| `--queue` | Start integrated queue worker |
+| `--poll-interval=1000` | File watch poll interval in ms |
+
+### Migration Notes
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+No breaking changes. All new features are opt-in via command flags.
+::
+
+- Existing `php glueful serve` continues to work unchanged
+- New features activated via `--watch` and `--queue` flags
+- Completes Priority 2 developer experience features
+
+---
+
+## v1.14.0 - Bellatrix (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-sparkles"}
+#description
+Feature release introducing Interactive CLI Wizards for enhanced developer experience with interactive prompts, progress bars, and spinner animations.
+::
+
+### Key Highlights
+
+::card
+**Prompter Class**
+- Fluent API for CLI prompts with automatic non-interactive fallback
+- `ask()`, `askRequired()` - Text input with validation
+- `secret()` - Hidden input for passwords/secrets
+- `confirm()` - Yes/no confirmation prompts
+- `choice()`, `multiChoice()` - Single and multiple selection menus
+- `suggest()` - Input with auto-completion suggestions
+::
+
+::card
+**Progress Indicators**
+- Enhanced `ProgressBar` wrapper with predefined formats
+- `iterate()` generator for automatic progress tracking
+- `Spinner` class with multiple animation styles
+- Easy `withProgress()` and `withSpinner()` helpers in BaseCommand
+::
+
+::card
+**Interactive Scaffold Commands**
+- Scaffold commands now prompt for arguments when not provided
+- `scaffold:model` supports full interactive mode
+- Maintains CLI compatibility with `--no-interaction` flag
+- Graceful fallback to defaults in CI/CD environments
+::
+
+### Interactive Components
+
+**Prompter Methods:**
+| Method | Description |
+|--------|-------------|
+| `ask(question, default, validator)` | Text input with optional validation |
+| `askRequired(question, default)` | Required text input |
+| `secret(question, validator)` | Hidden input for passwords |
+| `confirm(question, default)` | Yes/no confirmation |
+| `choice(question, choices, default)` | Single selection from options |
+| `multiChoice(question, choices, defaults)` | Multiple selection |
+| `suggest(question, suggestions, default)` | Input with auto-completion |
+
+**Progress Formats:**
+| Format | Description |
+|--------|-------------|
+| `FORMAT_NORMAL` | Basic progress display |
+| `FORMAT_VERBOSE` | Progress with elapsed time |
+| `FORMAT_VERY_VERBOSE` | Progress with elapsed and estimated time |
+| `FORMAT_DEBUG` | Full progress with memory usage |
+| `FORMAT_WITH_MESSAGE` | Progress with custom message |
+
+**Spinner Styles:**
+| Style | Animation |
+|-------|-----------|
+| `dots` | Braille dot animation (default) |
+| `line` | Classic line spinner |
+| `arrows` | Directional arrows |
+| `bouncing` | Bouncing dots |
+| `growing` | Growing bar |
+| `circle` | Circle quadrants |
+| `square` | Square quadrants |
+| `toggle` | Toggle switch |
+| `simple` | Simple dots |
+
+### BaseCommand Helpers
+
+**New Methods:**
+| Method | Description |
+|--------|-------------|
+| `getPrompter()` | Get Prompter instance |
+| `isInteractive()` | Check if running interactively |
+| `prompt()` | Quick text input |
+| `promptRequired()` | Quick required text input |
+| `multiChoice()` | Multi-select from options |
+| `suggest()` | Input with auto-completion |
+| `createEnhancedProgressBar()` | Get enhanced progress bar |
+| `createSpinner()` | Create spinner instance |
+| `withProgress(items, callback)` | Process items with progress |
+| `withSpinner(callback, message)` | Run task with spinner |
+| `confirmDestructive(message)` | Confirmation for destructive ops |
+
+### Migration Notes
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+No breaking changes. All interactive features gracefully fallback to defaults when `--no-interaction` flag is used.
+::
+
+**Non-Interactive Mode:**
+```bash
+# All prompts use defaults in CI/CD
+php glueful scaffold:model User --migration --no-interaction
+```
+
+### Requirements
+- No additional dependencies required
+- All features built on existing Symfony Console components
+
+---
+
+## v1.13.0 - Saiph (Minor)
+**Released: January 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-tools"}
+#description
+Feature release introducing Enhanced Scaffold Commands and Database Factories & Seeders, completing Priority 2 developer experience features.
+::
+
+### Key Highlights
+
+::card
+**Enhanced Scaffold Commands**
+- `scaffold:middleware` - Generate route middleware implementing `RouteMiddleware`
+- `scaffold:job` - Generate queue jobs with configurable retries and timeouts
+- `scaffold:rule` - Generate validation rules with parameter support
+- `scaffold:test` - Generate PHPUnit unit and feature test classes
+::
+
+::card
+**Database Factories**
+- Factory base class with fluent interface for test data generation
+- Factory states for model variations (e.g., `->admin()`, `->unverified()`)
+- Sequences for rotating attribute values across created models
+- Relationship support with `has()` and `for()` methods
+- `HasFactory` trait for ORM models enabling `Model::factory()` syntax
+::
+
+::card
+**Database Seeders**
+- Seeder base class with dependency ordering
+- Transaction support for atomic seeding operations
+- `db:seed` command with production environment protection
+- `scaffold:seeder` command for generating seeder classes
+::
+
+### Scaffold Commands
+
+**New Commands:**
+| Command | Purpose |
+|---------|---------|
+| `scaffold:middleware` | Generate middleware implementing `RouteMiddleware` |
+| `scaffold:job` | Generate queue job classes extending `Job` |
+| `scaffold:rule` | Generate validation rule classes implementing `Rule` |
+| `scaffold:test` | Generate PHPUnit test classes (unit/feature) |
+| `scaffold:factory` | Generate model factory classes |
+| `scaffold:seeder` | Generate database seeder classes |
+| `db:seed` | Run database seeders |
+
+**Command Options:**
+| Command | Options |
+|---------|---------|
+| `scaffold:middleware` | `--force`, `--path` |
+| `scaffold:job` | `--queue`, `--tries`, `--backoff`, `--timeout`, `--unique` |
+| `scaffold:rule` | `--params`, `--implicit` |
+| `scaffold:test` | `--unit`, `--feature`, `--class`, `--methods` |
+| `scaffold:factory` | `--model`, `--force`, `--path` |
+| `scaffold:seeder` | `--model`, `--force`, `--path` |
+| `db:seed` | `--force` (required in production) |
+
+### Factory Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `Factory` | Base class for model factories with fluent interface |
+| `FakerBridge` | Bridge to optional Faker library with availability checking |
+| `HasFactory` | Trait for models to enable `Model::factory()` syntax |
+
+**Factory Methods:**
+| Method | Purpose |
+|--------|---------|
+| `definition()` | Define default model attributes |
+| `count(int $n)` | Set number of models to create |
+| `state(array\|string\|callable)` | Apply state transformations |
+| `sequence(array...)` | Rotate attribute values |
+| `make()` / `create()` | Build models (without/with persistence) |
+| `has(string $relation, int\|Factory)` | Create with has-many relationships |
+| `for(string $relation, Factory\|Model)` | Create with belongs-to relationships |
+| `recycle(Collection\|Model)` | Reuse existing models for relationships |
+
+### Seeder Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `Seeder` | Base class for database seeders |
+| `DatabaseSeeder` | Main orchestrator for all seeders |
+
+**Seeder Methods:**
+| Method | Purpose |
+|--------|---------|
+| `run()` | Abstract method to implement seeding logic |
+| `call(string\|array $class)` | Call other seeders |
+| `withTransaction(callable)` | Wrap operations in database transaction |
+| `truncate(string $table)` | Clear table before seeding |
+
+### Quick Usage
+
+```php
+// Define a factory
+class UserFactory extends Factory
+{
+    protected string $model = User::class;
+
+    public function definition(): array
+    {
+        return [
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
+            'status' => 'active',
+        ];
+    }
+
+    public function admin(): static
+    {
+        return $this->state(['role' => 'admin']);
+    }
+}
+
+// Use the factory
+$user = User::factory()->create();
+$admins = User::factory()->count(5)->admin()->create();
+
+// Create with relationships
+$user = User::factory()
+    ->has('posts', 3)
+    ->create();
+```
+
+```php
+// Define a seeder
+class UserSeeder extends Seeder
+{
+    protected array $dependencies = [RoleSeeder::class];
+
+    public function run(): void
+    {
+        User::factory()->admin()->create([
+            'email' => 'admin@example.com',
+        ]);
+
+        User::factory()->count(50)->create();
+    }
+}
+
+// Run seeders
+// php glueful db:seed
+// php glueful db:seed UserSeeder
+// php glueful db:seed --force (production)
+```
+
+### Console Commands
+
+```bash
+# Generate scaffold classes
+php glueful scaffold:middleware AuthMiddleware
+php glueful scaffold:job ProcessPaymentJob --queue=payments --tries=3
+php glueful scaffold:rule PhoneNumber --params=country
+php glueful scaffold:test UserTest --feature --class=UserController
+
+# Generate factories and seeders
+php glueful scaffold:factory UserFactory --model=User
+php glueful scaffold:seeder UserSeeder --model=User
+
+# Run seeders
+php glueful db:seed
+php glueful db:seed UserSeeder
+php glueful db:seed --force  # Required in production
+```
+
+### Migration Notes
+- No breaking changes. All features are opt-in and additive.
+- Factories require `fakerphp/faker` as a dev dependency: `composer require --dev fakerphp/faker`
+- The `db:seed` command requires `--force` flag to run in production environments.
+- Generated files are placed in `database/factories/` and `database/seeders/`.
+
+---
+
+## v1.12.0 - Mintaka (Minor)
+**Released: January 21, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-transform"}
+#description
+Feature release introducing API Resource Transformers, completing the Priority 1 features for the framework's output layer.
+::
+
+### Key Highlights
+
+::card
+**JSON Resource Transformation**
+- JsonResource base class for transforming any data to JSON
+- Conditional attributes with `when()`, `mergeWhen()`, `whenHas()`, `whenNotNull()`
+- Response wrapping with configurable wrapper key
+- Additional metadata support via `additional()` method
+::
+
+::card
+**Model Resources**
+- ModelResource with ORM-specific helpers
+- `attribute()` and `dateAttribute()` for safe attribute access
+- `relationshipResource()` and `relationshipCollection()` for nested transformations
+- `whenLoaded()`, `whenCounted()`, `whenPivotLoaded()` for relationships
+::
+
+::card
+**Collections & Pagination**
+- ResourceCollection for multiple items with metadata
+- PaginatedResourceResponse with link generation
+- Support for both QueryBuilder and ORM pagination formats
+- `withPaginationFrom()` and `withLinks()` helpers
+::
+
+### Resource Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `JsonResource` | Base class for transforming arrays/objects to JSON |
+| `ModelResource` | Extended resource with ORM-specific helpers |
+| `ResourceCollection` | Collection wrapper with metadata support |
+| `PaginatedResourceResponse` | Pagination handling with link generation |
+| `AnonymousResourceCollection` | Collection without dedicated class |
+| `MissingValue` | Sentinel for conditional attribute omission |
+
+**Conditional Attribute Methods:**
+| Method | Purpose |
+|--------|---------|
+| `when($condition, $value, $default)` | Include attribute conditionally |
+| `mergeWhen($condition, $attributes)` | Merge multiple attributes conditionally |
+| `whenHas($key)` | Include if key exists in source |
+| `whenNotNull($value)` | Include if value is not null |
+| `whenLoaded($relation)` | Include if relationship is loaded |
+| `whenCounted($relation)` | Include relationship count if available |
+| `whenPivotLoaded($table, $key)` | Include pivot table data |
+
+**ModelResource Helpers:**
+| Method | Purpose |
+|--------|---------|
+| `attribute($key, $default)` | Get model attribute with default |
+| `dateAttribute($key)` | Format date as ISO 8601 |
+| `whenDateNotNull($key)` | Include date only if not null |
+| `relationshipResource($relation, $class)` | Transform single relationship |
+| `relationshipCollection($relation, $class)` | Transform collection relationship |
+| `isRelationLoaded($relation)` | Check if relationship is loaded |
+
+### Quick Usage
+
+```php
+use Glueful\Http\Resources\JsonResource;
+use Glueful\Http\Resources\ModelResource;
+
+// Basic resource
+class UserResource extends JsonResource
+{
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->resource['uuid'],
+            'name' => $this->resource['name'],
+            'email' => $this->when(
+                $this->isAdmin(),
+                $this->resource['email']
+            ),
+        ];
+    }
+}
+
+// Model resource with relationships
+class PostResource extends ModelResource
+{
+    public function toArray(): array
+    {
+        return [
+            'id' => $this->attribute('uuid'),
+            'title' => $this->attribute('title'),
+            'created_at' => $this->dateAttribute('created_at'),
+            'author' => $this->relationshipResource('author', UserResource::class),
+            'comments_count' => $this->whenCounted('comments'),
+        ];
+    }
+}
+
+// Controller usage
+public function index(): Response
+{
+    $posts = Post::with('author')->withCount('comments')->paginate(25);
+
+    return PostResource::collection($posts['data'])
+        ->withPaginationFrom($posts)
+        ->withLinks('/api/posts')
+        ->toResponse();
+}
+```
+
+### Console Commands
+
+```bash
+# Generate a basic resource
+php glueful scaffold:resource UserResource
+
+# Generate a model resource
+php glueful scaffold:resource UserResource --model
+
+# Generate a collection
+php glueful scaffold:resource UserCollection --collection
+
+# Overwrite existing
+php glueful scaffold:resource UserResource --force
+```
+
+### Migration Notes
+- No breaking changes. API Resources are opt-in and additive.
+- Existing controllers and responses continue to work unchanged.
+- Resources provide a transformation layer; use them when you need consistent JSON structures.
+
+---
+
+## v1.11.0 - Alnilam (Minor)
+**Released: January 21, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-database"}
+#description
+Feature release introducing the ORM/Active Record system, completing the data layer of Priority 1 features.
+::
+
+### Key Highlights
+
+::card
+**Active Record ORM**
+- Complete Active Record pattern implementation built on QueryBuilder
+- Model base class with CRUD operations and mass assignment protection
+- Builder class with eager loading and global scope support
+- Rich Collection class for model results
+::
+
+::card
+**Relationships**
+- HasOne, HasMany, BelongsTo for basic relationships
+- BelongsToMany with pivot table support
+- HasOneThrough and HasManyThrough for indirect relationships
+- Eager loading to prevent N+1 query problems
+::
+
+::card
+**Model Features**
+- Attribute casting with custom cast classes
+- SoftDeletes trait for recoverable deletion
+- HasTimestamps for automatic date management
+- Model lifecycle events integrated with framework events
+::
+
+### ORM Components
+
+**Core Classes:**
+| Class | Purpose |
+|-------|---------|
+| `Model` | Base class for all models with CRUD, attributes, and relations |
+| `Builder` | Query builder wrapper with model-aware functionality |
+| `Collection` | Rich collection class for model results |
+| `Pivot` | Pivot model for many-to-many relationships |
+
+**Relationships:**
+| Relationship | Use Case |
+|--------------|----------|
+| `HasOne` | One-to-one (owning side) |
+| `HasMany` | One-to-many |
+| `BelongsTo` | Inverse of HasOne/HasMany |
+| `BelongsToMany` | Many-to-many with pivot table |
+| `HasOneThrough` | One-to-one through intermediate model |
+| `HasManyThrough` | One-to-many through intermediate model |
+
+**Traits:**
+| Trait | Purpose |
+|-------|---------|
+| `HasAttributes` | Attribute get/set, casting, dirty tracking |
+| `HasRelationships` | Relationship definition and eager loading |
+| `HasTimestamps` | Automatic `created_at`/`updated_at` |
+| `HasEvents` | Model lifecycle event integration |
+| `HasGlobalScopes` | Global query scope management |
+| `SoftDeletes` | Soft delete with `deleted_at` column |
+
+**Custom Casts:**
+| Cast | Purpose |
+|------|---------|
+| `AsJson` | JSON encode/decode |
+| `AsArrayObject` | JSON to ArrayObject |
+| `AsCollection` | JSON to Collection |
+| `AsDateTime` | String to DateTimeImmutable |
+| `AsEncryptedString` | Transparent encryption |
+| `AsEnum` | Backed enum casting |
+| `Attribute` | Custom getter/setter accessors |
+
+### Quick Usage
+
+```php
+use Glueful\Database\ORM\Model;
+use Glueful\Database\ORM\Concerns\{HasTimestamps, SoftDeletes};
+
+class User extends Model
+{
+    use HasTimestamps, SoftDeletes;
+
+    protected string $table = 'users';
+    protected array $fillable = ['name', 'email'];
+    protected array $casts = [
+        'settings' => 'array',
+        'email_verified_at' => 'datetime',
+    ];
+
+    public function posts(): HasMany
+    {
+        return $this->hasMany(Post::class);
+    }
+}
+
+// CRUD operations
+$user = User::find(1);
+$user = User::create(['name' => 'John', 'email' => 'john@example.com']);
+$user->update(['name' => 'Jane']);
+$user->delete(); // Soft delete
+
+// Eager loading
+$users = User::with('posts')->get();
+
+// Query scopes
+$active = User::where('status', 'active')->get();
+```
+
+### Console Commands
+
+```bash
+# Generate a new model
+php glueful scaffold:model User
+
+# With migration
+php glueful scaffold:model Post --migration
+
+# With soft deletes and timestamps
+php glueful scaffold:model Comment --soft-deletes --timestamps
+
+# With fillable attributes
+php glueful scaffold:model Product --fillable=name,price,description
+```
+
+### Migration Notes
+- No breaking changes. The ORM is opt-in and additive.
+- Existing QueryBuilder code continues to work unchanged.
+- Models require `Model::setContainer()` which is called automatically during framework boot.
+
+---
+
+## v1.10.0 - Elnath (Minor)
+**Released: January 21, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-shield-check"}
+#description
+Feature release introducing centralized exception handling and declarative request validation, completing the foundation layer of Priority 1 features.
+::
+
+### Key Highlights
+
+::card
+**Centralized Exception Handling**
+- New `ExceptionHandlerInterface` contract for customizable exception handling
+- Typed HTTP exceptions for Client (4xx), Server (5xx), and Domain errors
+- `ExceptionMiddleware` for automatic exception-to-response conversion
+- Environment-aware error responses (detailed in dev, safe in production)
+::
+
+::card
+**Declarative Request Validation**
+- `#[Validate]` attribute for inline validation on controller methods
+- `FormRequest` base class with authorization and data preparation hooks
+- `ValidatedRequest` wrapper for type-safe validated data access
+- Laravel-style string rule syntax via `RuleParser`
+::
+
+### Exception Handler
+
+New typed exception classes provide semantic error handling:
+
+**Client Exceptions (4xx):**
+| Exception | HTTP Code | Use Case |
+|-----------|-----------|----------|
+| `BadRequestException` | 400 | Malformed request |
+| `UnauthorizedException` | 401 | Missing/invalid credentials |
+| `ForbiddenException` | 403 | Insufficient permissions |
+| `NotFoundException` | 404 | Resource not found |
+| `MethodNotAllowedException` | 405 | Wrong HTTP method |
+| `ConflictException` | 409 | Resource conflict |
+| `UnprocessableEntityException` | 422 | Validation failed |
+| `TooManyRequestsException` | 429 | Rate limit exceeded |
+
+**Server Exceptions (5xx):**
+| Exception | HTTP Code | Use Case |
+|-----------|-----------|----------|
+| `InternalServerException` | 500 | Unexpected server error |
+| `ServiceUnavailableException` | 503 | Service temporarily down |
+| `GatewayTimeoutException` | 504 | Upstream timeout |
+
+**Domain Exceptions:**
+| Exception | Use Case |
+|-----------|----------|
+| `ModelNotFoundException` | Entity not found in database |
+| `AuthenticationException` | Authentication failure |
+| `AuthorizationException` | Permission denied |
+| `TokenExpiredException` | JWT/session expired |
+
+### Request Validation
+
+**New Validation Rules:**
+- `Confirmed` - Password confirmation matching
+- `Date`, `Before`, `After` - Date validation and comparison
+- `Url`, `Uuid`, `Json` - Format validation
+- `Exists` - Database existence check
+- `Nullable`, `Sometimes` - Conditional validation
+- `File`, `Image`, `Dimensions` - File upload validation
+
+### Quick Usage
+
+```php
+// Throwing typed exceptions
+throw new NotFoundException('User not found', ['id' => $userId]);
+throw new TooManyRequestsException(retryAfter: 60);
+
+// Using #[Validate] attribute
+#[Validate(['email' => 'required|email', 'name' => 'required|max:255'])]
+public function store(ValidatedRequest $request): Response
+{
+    $data = $request->validated();
+}
+
+// Using FormRequest class
+// Generate with: php bin/glueful make:request CreateUserRequest
+public function store(CreateUserRequest $request): Response
+{
+    $data = $request->validated();
+}
+```
+
+### Migration Notes
+- No breaking changes. Both features are opt-in and additive.
+- Existing controllers continue to work unchanged.
+- Add `'validate'` middleware to routes for automatic validation.
+
+---
 
 ## v1.9.2 - Deneb (Patch)
 **Released: January 20, 2026**
@@ -1178,6 +2588,15 @@ Glueful releases are named after stars and celestial objects:
 - **Deneb** (1.3.0) - Distant but brilliant
 - **Betelgeuse** (1.9.0) - A red supergiant marking a new era
 - **Castor** (1.9.1) - One of the twin stars, bringing documentation clarity
+- **Elnath** (1.10.0) - The butting horn, bringing structured error handling and validation
+- **Alnilam** (1.11.0) - The central star of Orion's Belt, bringing the ORM foundation
+- **Mintaka** (1.12.0) - The western star of Orion's Belt, completing the output transformation layer
+- **Saiph** (1.13.0) - The sword of Orion, enhancing developer productivity with scaffolding and factories
+- **Bellatrix** (1.14.0) - The Amazon Star, powering interactive CLI wizards
+- **Rigel** (1.15.0) - The bright foot of Orion, illuminating real-time development
+- **Meissa** (1.16.0) - The head of Orion, governing API versioning strategy
+- **Alnitak** (1.17.0) - The eastern star of Orion's Belt, protecting APIs with rate limiting
+- **Hadar** (1.18.0) - Beta Centauri, a bright beacon enabling event-driven webhook integrations
 ## v1.5.0 - Orion (Minor)
 **Released: October 13, 2025**
 
