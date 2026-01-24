@@ -9,6 +9,8 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.19.2 | Canopus | 2026-01-24 | Patch | Low | ValidationException Consolidation + Query Building |
+| 1.19.1 | Canopus | 2026-01-22 | Patch | Low | Simplified Configuration |
 | 1.19.0 | Canopus | 2026-01-22 | Minor | Low | Search & Filtering DSL |
 | 1.18.0 | Hadar | 2026-01-22 | Minor | Low | Webhooks System |
 | 1.17.0 | Alnitak | 2026-01-22 | Minor | Low | Rate Limiting Enhancements |
@@ -41,6 +43,106 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.19.2 - Canopus (Patch)
+**Released: January 24, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-code"}
+#description
+Patch release consolidating ValidationException classes, improving SQL query building, and enhancing cross-database compatibility.
+::
+
+### Key Highlights
+
+::card
+**ValidationException Consolidation**
+- Unified from 3 exception classes to 1 canonical class
+- Removed legacy `Glueful\Exceptions\ValidationException`
+- Removed empty `Glueful\Uploader\ValidationException`
+- All code now uses `Glueful\Validation\ValidationException`
+- Static factory methods: `forField()`, `forFields()`, `withErrors()`
+::
+
+::card
+**Database Query Building Improvements**
+- `PaginationBuilder` improved regex for ORDER BY and LIMIT removal
+- Handles MySQL offset syntax (`LIMIT 10, 20`) and placeholders (`LIMIT ?`)
+- Added detection for UNION, INTERSECT, EXCEPT, CTEs, and window functions
+- `QueryValidator` now supports `schema.table` format
+::
+
+::card
+**WhereClause Enhancements**
+- Expanded valid operators: `IS`, `IS NOT`, `BETWEEN`, `NOT BETWEEN`, `REGEXP`, `RLIKE`, `ILIKE`
+- Added operator injection protection
+- Invalid NULL comparisons now throw clear exceptions
+::
+
+### Migration
+
+If using the legacy ValidationException directly:
+
+```diff
+- use Glueful\Exceptions\ValidationException;
++ use Glueful\Validation\ValidationException;
+
+- throw new ValidationException('Error message');
++ throw ValidationException::forField('field', 'Error message');
+
+- throw new ValidationException(['field' => 'error']);
++ throw ValidationException::withErrors(['field' => 'error']);
+```
+
+---
+
+## v1.19.1 - Canopus (Patch)
+**Released: January 22, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-settings"}
+#description
+Patch release simplifying API configuration by consolidating URL and version environment variables for cleaner deployment setup.
+::
+
+### Key Changes
+
+::card
+**Simplified URL Configuration**
+- All URLs now derive from single `BASE_URL` variable
+- Removed `API_BASE_URL` — no longer needed
+- Set `BASE_URL` to your deployment URL (e.g., `https://api.example.com`)
+::
+
+::card
+**Simplified Version Configuration**
+- Consolidated to single `API_VERSION` variable (integer format)
+- Removed `API_VERSION_FULL` — docs version derived automatically
+- Removed `API_DEFAULT_VERSION` — use `API_VERSION` instead
+- Changed from `API_VERSION=v1` to `API_VERSION=1`
+::
+
+### Migration
+
+Update your `.env` file:
+
+```diff
+- BASE_URL=http://localhost:8000
+- API_BASE_URL=http://localhost:8000
+- API_VERSION=v1
+- API_VERSION_FULL=1.0.0
+- API_DEFAULT_VERSION=1
++ BASE_URL=http://localhost:8000
++ API_VERSION=1
+```
+
+**Deployment examples:**
+
+| Scenario | BASE_URL |
+|----------|----------|
+| Local development | `http://localhost:8000` |
+| API on subdomain | `https://api.example.com` |
+| API on main domain | `https://example.com` |
+
+---
 
 ## v1.19.0 - Canopus (Minor)
 **Released: January 22, 2026**
