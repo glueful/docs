@@ -133,6 +133,113 @@ public function uploadGallery()
 }
 ```
 
+## Media Uploads
+
+For images, videos, and audio files, use `uploadMedia()` to get automatic thumbnail generation and metadata extraction.
+
+### Basic Media Upload
+
+```php
+public function uploadMedia()
+{
+    $uploader = app(FileUploader::class);
+    $file = $this->request->files->get('file');
+
+    $result = $uploader->uploadMedia($file, 'posts/' . $postUuid);
+
+    // Returns:
+    // [
+    //     'type' => 'image',           // image, video, audio, or file
+    //     'url' => 'https://...',      // Full URL to file
+    //     'thumb_url' => 'https://...', // Thumbnail URL (images only)
+    //     'mime_type' => 'image/jpeg',
+    //     'size_bytes' => 245678,
+    //     'width' => 1920,             // Image/video dimensions
+    //     'height' => 1080,
+    //     'duration_s' => null,        // Video/audio duration in seconds
+    //     'filename' => '1704123456_abc123.jpg',
+    //     'path' => 'posts/uuid/1704123456_abc123.jpg',
+    //     'blob_uuid' => 'abc-123-def', // Database record UUID
+    // ]
+
+    return Response::created($result);
+}
+```
+
+### Media Upload Options
+
+```php
+$result = $uploader->uploadMedia($file, 'gallery/', [
+    // Thumbnail settings
+    'generate_thumbnail' => true,   // Default: true for images
+    'thumbnail_width' => 800,       // Default: 400
+    'thumbnail_height' => 600,      // Default: 400
+    'thumbnail_quality' => 90,      // Default: 80
+
+    // Database storage
+    'save_to_blobs' => true,        // Default: true
+]);
+```
+
+### Supported Formats
+
+**Images** (with thumbnails):
+- JPEG, PNG, GIF, WebP
+
+**Videos** (with duration/dimensions via getID3):
+- MP4, WebM, AVI, MOV, MKV, FLV
+
+**Audio** (with duration via getID3):
+- MP3, WAV, OGG, FLAC, AAC, M4A
+
+### Thumbnail Configuration
+
+Configure in `config/filesystem.php`:
+
+```php
+'uploader' => [
+    // Enable/disable thumbnail generation globally
+    'thumbnail_enabled' => env('THUMBNAIL_ENABLED', true),
+
+    // Default dimensions
+    'thumbnail_width' => env('THUMBNAIL_WIDTH', 400),
+    'thumbnail_height' => env('THUMBNAIL_HEIGHT', 400),
+    'thumbnail_quality' => env('THUMBNAIL_QUALITY', 80),
+
+    // Formats that support thumbnails (null = defaults)
+    'thumbnail_formats' => [
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+    ],
+
+    // Subdirectory for thumbnails
+    'thumbnail_subdirectory' => env('THUMBNAIL_SUBDIRECTORY', 'thumbs'),
+],
+```
+
+### Metadata Extraction
+
+The framework uses [getID3](https://github.com/JamesHeinrich/getID3) for pure PHP metadata extraction - no external binaries needed.
+
+```php
+// Access the metadata extractor directly
+$extractor = $uploader->getMetadataExtractor();
+$metadata = $extractor->extract('/path/to/video.mp4', 'video/mp4');
+
+echo $metadata->type;              // 'video'
+echo $metadata->width;             // 1920
+echo $metadata->height;            // 1080
+echo $metadata->durationSeconds;   // 125
+echo $metadata->getFormattedDuration(); // '2:05'
+echo $metadata->getAspectRatio();  // 1.777...
+
+// Get raw getID3 data for advanced use
+$rawInfo = $extractor->analyze('/path/to/audio.mp3');
+// Returns full getID3 array with bitrate, codec, ID3 tags, etc.
+```
+
 ## Validation
 
 ### Size Limits
@@ -191,6 +298,34 @@ public function upload()
 ```
 
 ## Storage Backends
+
+The framework uses Flysystem for storage abstraction. Local and memory adapters are included. Cloud adapters require additional packages.
+
+### Included Adapters
+
+- **Local filesystem** - No extra package needed
+- **Memory** - For testing, no extra package needed
+
+### Optional Adapters
+
+Install via Composer as needed:
+
+```bash
+# Amazon S3 / MinIO / DigitalOcean Spaces / Wasabi
+composer require league/flysystem-aws-s3-v3
+
+# Google Cloud Storage
+composer require league/flysystem-google-cloud-storage
+
+# Azure Blob Storage
+composer require league/flysystem-azure-blob-storage
+
+# SFTP
+composer require league/flysystem-sftp-v3
+
+# FTP
+composer require league/flysystem-ftp
+```
 
 ### Local Storage
 
@@ -385,25 +520,28 @@ public function uploadDocument()
 public function uploadGalleryImage()
 {
     $file = $this->request->file('image');
+    $uploader = app(FileUploader::class);
 
     // Validate image
     if (!str_starts_with($file->getMimeType(), 'image/')) {
         return Response::error('Only images allowed', 422);
     }
 
-    // Upload original
-    $result = $uploader->handleUpload(
-        token: $this->auth->user()->uuid,
-        getParams: [
-            'type' => 'gallery',
-            'user_id' => (string) $this->auth->user()->uuid
-        ],
-        fileParams: $this->request->files->all()
-    );
+    // Upload with automatic thumbnail generation
+    $result = $uploader->uploadMedia($file, 'gallery/' . $this->auth->user()->uuid, [
+        'thumbnail_width' => 300,
+        'thumbnail_height' => 300,
+    ]);
 
-    // Queue thumbnail generation
-    app(\Glueful\Queue\QueueManager::class)
-        ->push(GenerateThumbnailJob::class, ['path' => $result['path']]);
+    // Save to gallery table
+    $this->getConnection()->table('gallery_images')->insert([
+        'uuid' => $result['blob_uuid'],
+        'user_uuid' => $this->auth->user()->uuid,
+        'url' => $result['url'],
+        'thumb_url' => $result['thumb_url'],
+        'width' => $result['width'],
+        'height' => $result['height'],
+    ]);
 
     return Response::created($result);
 }
