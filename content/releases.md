@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.21.0 | Mira | 2026-01-24 | Minor | Low | File Uploader Refactoring |
 | 1.20.0 | Regulus | 2026-01-24 | Minor | Low | Framework Simplification |
 | 1.19.2 | Canopus | 2026-01-24 | Patch | Low | ValidationException Consolidation + Query Building |
 | 1.19.1 | Canopus | 2026-01-22 | Patch | Low | Simplified Configuration |
@@ -44,6 +45,99 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.21.0 - Mira (Minor)
+**Released: January 24, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-upload"}
+#description
+Feature release refactoring the file upload system with improved architecture, pure PHP media metadata extraction, and enhanced configurability.
+::
+
+### Key Highlights
+
+::card
+**ThumbnailGenerator**
+- New dedicated class for thumbnail creation using ImageProcessor (Intervention Image)
+- Configurable width, height, and quality settings via config or method parameters
+- Configurable supported formats (JPEG, PNG, GIF, WebP by default)
+- Configurable thumbnail subdirectory for organized storage
+::
+
+::card
+**MediaMetadataExtractor with getID3**
+- Pure PHP metadata extraction — no external binaries required
+- Removed fragile ffprobe/shell_exec dependency for video duration
+- Supports images, audio, and video files
+- Falls back gracefully when getID3 is not installed
+::
+
+::card
+**MediaMetadata Value Object**
+- New readonly value object for type-safe metadata representation
+- Properties: `type`, `width`, `height`, `durationSeconds`
+- Helper methods: `isImage()`, `isVideo()`, `isAudio()`, `hasDimensions()`
+- `getAspectRatio()` and `getFormattedDuration()` utilities
+::
+
+::card
+**Enhanced Configuration**
+- New `filesystem.uploader` configuration section
+- Global toggle: `THUMBNAIL_ENABLED` to enable/disable thumbnails
+- Configurable dimensions: `THUMBNAIL_WIDTH`, `THUMBNAIL_HEIGHT`
+- Configurable quality and subdirectory settings
+- Configurable thumbnail formats array
+::
+
+::card
+**Storage Adapter Documentation**
+- Added installation instructions for optional Flysystem adapters
+- S3/MinIO/DigitalOcean Spaces: `league/flysystem-aws-s3-v3`
+- Google Cloud Storage: `league/flysystem-google-cloud-storage`
+- Azure Blob Storage: `league/flysystem-azure-blob-storage`
+- SFTP/FTP adapters documented
+::
+
+### Usage
+
+**Upload media with automatic thumbnail:**
+
+```php
+use Glueful\Uploader\FileUploader;
+
+$uploader = new FileUploader($storage);
+$result = $uploader->uploadMedia($file, 'media/images');
+
+// Result includes file info, thumbnail URL, and metadata
+$metadata = $result['metadata'];
+if ($metadata->isImage()) {
+    echo "Image: {$metadata->width}x{$metadata->height}";
+} elseif ($metadata->isVideo()) {
+    echo "Video duration: " . $metadata->getFormattedDuration();
+}
+```
+
+**Configuration (.env):**
+
+```env
+THUMBNAIL_ENABLED=true
+THUMBNAIL_WIDTH=400
+THUMBNAIL_HEIGHT=400
+THUMBNAIL_QUALITY=80
+THUMBNAIL_SUBDIRECTORY=thumbs
+```
+
+### Migration
+
+No breaking changes. The new classes are used internally by `FileUploader`.
+
+**New dependency:** Add `james-heinrich/getid3` if not already installed:
+
+```bash
+composer require james-heinrich/getid3
+```
+
+---
 
 ## v1.20.0 - Regulus (Minor)
 **Released: January 24, 2026**
