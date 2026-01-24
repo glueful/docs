@@ -514,4 +514,3 @@ Look for:
 - [Testing](/advanced/testing) - Performance testing
 - [Configuration](/advanced/configuration) - Production config
 - [Deployment](/deployment/production) - Production deployment
-- [Async & Concurrency](/features/async) - Use fibers to parallelize I/O-bound work per request
