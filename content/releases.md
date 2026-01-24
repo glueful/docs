@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.20.0 | Regulus | 2026-01-24 | Minor | Low | Framework Simplification |
 | 1.19.2 | Canopus | 2026-01-24 | Patch | Low | ValidationException Consolidation + Query Building |
 | 1.19.1 | Canopus | 2026-01-22 | Patch | Low | Simplified Configuration |
 | 1.19.0 | Canopus | 2026-01-22 | Minor | Low | Search & Filtering DSL |
@@ -43,6 +44,87 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.20.0 - Regulus (Minor)
+**Released: January 24, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-leaf"}
+#description
+Minor release focusing on framework simplification by removing unused subsystems and improving API URL structure for better separation of concerns.
+::
+
+### Key Highlights
+
+::card
+**Resource Routes URL Structure**
+- Added `/data` prefix to all generic CRUD resource routes
+- Routes changed from `/api/v1/{table}` to `/api/v1/data/{table}`
+- Prevents conflicts with custom application routes using same table names
+- Clearer separation between generic data API and custom endpoints
+::
+
+::card
+**Async/Fiber System Removed**
+- Removed entire Fiber-based async concurrency subsystem (~30 files)
+- System was unused in practice — Queue system handles background jobs
+- Removed `AsyncProvider`, `config/async.php`, and all async helpers
+- Simplifies codebase and reduces maintenance surface
+::
+
+::card
+**Rate Limiting Consolidated**
+- Removed basic rate limiting system (6 files)
+- Enhanced rate limiting system retained with all advanced features
+- `EnhancedRateLimiterMiddleware` provides tiered limits, multiple algorithms
+- Per-route rate limiting via `#[RateLimit]` attribute still fully supported
+::
+
+::card
+**Configuration Cleanup**
+- Removed unused `ENABLE_AUDIT` environment variable
+- Removed duplicate pagination settings from security config
+- Cleaner configuration with less unused options
+::
+
+### Migration
+
+**Resource Routes (Breaking Change):**
+
+If your application calls generic resource endpoints, update the URLs:
+
+```diff
+- GET /api/v1/users
++ GET /api/v1/data/users
+
+- POST /api/v1/products
++ POST /api/v1/data/products
+
+- PUT /api/v1/orders/abc-123
++ PUT /api/v1/data/orders/abc-123
+```
+
+**Async System (if used):**
+
+If you were using the Fiber-based async system (rare), migrate to the Queue system:
+
+```diff
+- use function Glueful\async;
+- use function Glueful\await_all;
+-
+- $results = await_all([
+-     async(fn() => $this->fetchUsers()),
+-     async(fn() => $this->fetchProducts()),
+- ]);
++ // Use queue jobs for background processing
++ $queue = service(\Glueful\Queue\QueueManager::class);
++ $queue->push(FetchUsersJob::class, ['callback' => $callbackUrl]);
+```
+
+**Rate Limiting:**
+
+No migration needed. If using `RateLimiterMiddleware` alias, it now points to `EnhancedRateLimiterMiddleware`. All existing `#[RateLimit]` attributes and route middleware continue to work.
+
+---
 
 ## v1.19.2 - Canopus (Patch)
 **Released: January 24, 2026**

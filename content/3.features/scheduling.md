@@ -512,4 +512,3 @@ public function handle(): void
 - [Queues & Jobs](/features/queues-jobs) - Background processing
 - [Events](/features/events) - Trigger scheduled tasks
 - [Caching](/features/caching) - Cache warming tasks
-- [Async & Concurrency](/features/async) - Parallelize I/O inside request handlers
