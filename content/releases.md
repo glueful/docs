@@ -9,6 +9,9 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.25.0 | Ankaa | 2026-01-31 | Minor | Low | Multi-File Route Discovery |
+| 1.24.0 | Alpheratz | 2026-01-31 | Minor | Low | Encryption Service |
+| 1.23.0 | Aldebaran | 2026-01-31 | Minor | Low | Blob Visibility + Signed URLs |
 | 1.22.0 | Achernar | 2026-01-30 | Minor | Medium | Global State Removal / ApplicationContext DI |
 | 1.21.0 | Mira | 2026-01-24 | Minor | Low | File Uploader Refactoring |
 | 1.20.0 | Regulus | 2026-01-24 | Minor | Low | Framework Simplification |
@@ -46,6 +49,247 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.25.0 - Ankaa (Minor)
+**Released: January 31, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-route"}
+#description
+Enhanced RouteManifest with automatic discovery of multiple application route files, enabling domain-driven route organization.
+::
+
+### Key Highlights
+
+::card
+**Multi-File Route Discovery**
+- All `*.php` files in `routes/` directory auto-discovered
+- Alphabetical loading order for deterministic behavior
+- Files starting with underscore (`_helpers.php`) excluded as partials
+- Double-load prevention tracks files to avoid duplicate registration
+::
+
+::card
+**Route Loading Priority**
+- Application routes load first (highest priority)
+- Framework API routes load second (act as fallbacks)
+- Public routes (health, docs) load last without prefix
+::
+
+::card
+**Domain-Driven Organization**
+- Split large route files into domain-specific files
+- Each file receives `$router` and `$context` in scope
+- Full control over prefixes per file
+::
+
+### Example Structure
+
+```
+routes/
+├── api.php           # Main/shared routes
+├── identity.php      # Auth, profile, preferences
+├── parps.php         # Domain-specific routes
+├── social.php        # Follow, block
+├── engagement.php    # Reactions, comments, bookmarks
+├── moderation.php    # Reports
+└── _helpers.php      # Shared helpers (excluded from auto-load)
+```
+
+### Usage
+
+```php
+// routes/identity.php
+$router->group(['prefix' => api_prefix($context)], function (Router $router) {
+    $router->post('/auth/login', [AuthController::class, 'login']);
+    $router->post('/auth/register', [AuthController::class, 'register']);
+    $router->get('/profile', [ProfileController::class, 'show']);
+});
+
+// routes/social.php
+$router->group(['prefix' => api_prefix($context)], function (Router $router) {
+    $router->post('/follow/{uuid}', [FollowController::class, 'follow']);
+    $router->delete('/follow/{uuid}', [FollowController::class, 'unfollow']);
+});
+```
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None required (backward compatible with single route file)
+
+---
+
+## v1.24.0 - Alpheratz (Minor)
+**Released: January 31, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+Comprehensive encryption service providing secure, easy-to-use AES-256-GCM encryption for strings, files, and database fields with key rotation support.
+::
+
+### Key Highlights
+
+::card
+**EncryptionService Core**
+- AES-256-GCM authenticated encryption (industry standard)
+- Random 12-byte nonce per encryption (prevents ciphertext repetition)
+- 16-byte authentication tag for tamper detection
+- Key ID in output format enables O(1) key lookup during rotation
+- Self-identifying format: `$glueful$v1$<key_id>$<nonce>$<ciphertext>$<tag>`
+::
+
+::card
+**String & Binary Encryption**
+- `encrypt($value, $aad)` / `decrypt($encrypted, $aad)` for UTF-8 strings
+- `encryptBinary()` / `decryptBinary()` for arbitrary binary data
+- `isEncrypted($value)` to detect encrypted strings by format
+- AAD (Additional Authenticated Data) binding prevents cross-field attacks
+::
+
+::card
+**File Encryption**
+- `encryptFile($source, $dest)` - Encrypt entire files
+- `decryptFile($source, $dest)` - Decrypt encrypted files
+- CLI: `php glueful encryption:file encrypt /path/to/file`
+::
+
+::card
+**Key Rotation**
+- `encryption.previous_keys` config array for old keys
+- O(1) key lookup via key ID (no trial decryption needed)
+- CLI: `php glueful encryption:rotate --table=users --columns=ssn,api_key`
+- Seamless migration: old data decrypts with previous keys
+::
+
+::card
+**CLI Commands**
+- `encryption:test` - Verify encryption is working (6 self-tests)
+- `encryption:file` - Encrypt/decrypt files with `--force`, `--delete-source`
+- `encryption:rotate` - Re-encrypt database columns with `--batch-size`, `--dry-run`
+::
+
+::card
+**Test Coverage**
+- 32 unit tests covering all functionality
+- Core encryption, AAD binding, key validation, binary handling
+- Key rotation, file encryption, error handling
+::
+
+### Usage Example
+
+```php
+use Glueful\Encryption\EncryptionService;
+
+$encryption = new EncryptionService($context);
+
+// Basic encryption
+$encrypted = $encryption->encrypt('sensitive data');
+$decrypted = $encryption->decrypt($encrypted);
+
+// With AAD (prevents cross-field attacks)
+$encrypted = $encryption->encrypt($ssn, aad: 'user.ssn');
+$decrypted = $encryption->decrypt($encrypted, aad: 'user.ssn');
+
+// Binary data
+$encrypted = $encryption->encryptBinary($binaryData);
+$binary = $encryption->decryptBinary($encrypted);
+
+// File encryption
+$encryption->encryptFile('/path/to/file', '/path/to/file.enc');
+$encryption->decryptFile('/path/to/file.enc', '/path/to/file');
+```
+
+### Configuration
+
+```php
+// config/encryption.php
+return [
+    'key' => env('APP_KEY'),  // base64:... format supported
+    'cipher' => 'aes-256-gcm',
+    'previous_keys' => array_filter(
+        explode(',', env('APP_PREVIOUS_KEYS', ''))
+    ),
+];
+```
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None required (opt-in feature)
+
+---
+
+## v1.23.0 - Aldebaran (Minor)
+**Released: January 31, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-lock"}
+#description
+Enhanced blob storage system with per-blob visibility controls, HMAC-signed URLs for secure temporary access, and comprehensive test coverage.
+::
+
+### Key Highlights
+
+::card
+**Per-Blob Visibility**
+- Blobs can now be marked as `public` or `private` individually
+- Upload requests accept `visibility` parameter
+- Defaults to configured `uploads.default_visibility` (private)
+- Public blobs accessible without auth (unless global access is `private`)
+- Private blobs require authentication or valid signed URL
+::
+
+::card
+**Signed URL Support**
+- New `SignedUrl` helper class for HMAC-based URL signing
+- Time-limited access with customizable TTL (default 1 hour, max 7 days)
+- New endpoint: `POST /blobs/{uuid}/signed-url`
+- Automatic signature validation on blob retrieval
+- Falls back to `APP_KEY` if no dedicated secret configured
+::
+
+::card
+**Configuration Options**
+- `uploads.default_visibility` - Set default visibility for new uploads
+- `uploads.signed_urls.enabled` - Enable/disable signed URL generation
+- `uploads.signed_urls.secret` - Dedicated secret for URL signing
+- `uploads.signed_urls.ttl` - Default TTL in seconds (default: 3600)
+::
+
+::card
+**Comprehensive Test Coverage**
+- `SignedUrlTest` - 17 tests covering URL generation, validation, expiration, tampering
+- `UploadControllerTest` - 38 tests covering resize params, caching, access control, visibility
+- Total: 55 new tests with 95 assertions
+::
+
+### Usage Example
+
+```php
+// Upload with visibility
+POST /blobs
+{
+    "file": "...",
+    "visibility": "private"
+}
+
+// Generate signed URL for temporary access
+POST /blobs/{uuid}/signed-url?ttl=7200
+
+// Response
+{
+    "uuid": "abc123",
+    "signed_url": "https://example.com/blobs/abc123?expires=...&signature=...",
+    "expires_in": 7200,
+    "expires_at": "2026-01-31 14:00:00"
+}
+```
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None required
+
+---
 
 ## v1.22.0 - Achernar (Minor)
 **Released: January 30, 2026**
