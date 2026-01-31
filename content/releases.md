@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.26.0 | Atria | 2026-01-31 | Minor | Low | Extension Discovery Fixes |
 | 1.25.0 | Ankaa | 2026-01-31 | Minor | Low | Multi-File Route Discovery |
 | 1.24.0 | Alpheratz | 2026-01-31 | Minor | Low | Encryption Service |
 | 1.23.0 | Aldebaran | 2026-01-31 | Minor | Low | Blob Visibility + Signed URLs |
@@ -49,6 +50,58 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.26.0 - Atria (Minor)
+**Released: January 31, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-plug"}
+#description
+Fixed extension discovery reliability and improved ExtensionManager efficiency for CLI tools and documentation generation.
+::
+
+### Key Highlights
+
+::card
+**Extension Discovery Fallback**
+- `PackageManifest` now falls back to `installed.json` when `installed.php` lacks provider metadata
+- Composer's optimized `installed.php` may omit the `extra` field where providers are specified
+- `installed.json` contains complete package metadata and is used as reliable fallback
+::
+
+::card
+**Lazy Auto-Discovery**
+- `ExtensionManager::getProviders()` now triggers discovery if not yet run
+- CLI commands that create their own container automatically discover extensions
+- Fixes empty provider lists in documentation generation and other CLI tools
+::
+
+::card
+**Discovery Efficiency**
+- Added `$discovered` flag to ensure discovery runs exactly once
+- Prevents redundant discovery when zero extensions are legitimately installed
+- More efficient than checking for empty providers array
+::
+
+### Technical Details
+
+The issue occurred because Composer's `installed.php` (used for fast autoloading) doesn't always include the `extra` field where Glueful extension providers are declared. The fix adds a fallback:
+
+```php
+// PackageManifest::discover()
+$providers = $this->extractFromInstalledPhp($installed);
+if ($providers !== []) {
+    return $providers;
+}
+// Fallback to installed.json which has complete metadata
+return $this->extractFromInstalledJson();
+```
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None required
+
+---
 
 ## v1.25.0 - Ankaa (Minor)
 **Released: January 31, 2026**
