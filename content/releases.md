@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.22.0 | Achernar | 2026-01-30 | Minor | Medium | Global State Removal / ApplicationContext DI |
 | 1.21.0 | Mira | 2026-01-24 | Minor | Low | File Uploader Refactoring |
 | 1.20.0 | Regulus | 2026-01-24 | Minor | Low | Framework Simplification |
 | 1.19.2 | Canopus | 2026-01-24 | Patch | Low | ValidationException Consolidation + Query Building |
@@ -45,6 +46,85 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.22.0 - Achernar (Minor)
+**Released: January 30, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-replace"}
+#description
+Major refactoring release replacing global state with explicit dependency injection via `ApplicationContext`. Improves testability, enables multi-app support, and prepares for long-running server environments.
+::
+
+### Key Highlights
+
+::card
+**ApplicationContext Dependency Injection**
+- All helper functions now require `ApplicationContext` as first parameter
+- `config($context, $key)`, `app($context, $id)`, `base_path($context, $path)`
+- Enables true state isolation for testing and multi-app scenarios
+- Prepares framework for Swoole/RoadRunner long-running servers
+::
+
+::card
+**PHP 8.3 Compatibility**
+- New `QueueContextHolder` class replaces deprecated static trait properties
+- Fixed `InteractsWithQueue` trait to avoid deprecated static method calls on traits
+- All deprecation warnings resolved
+::
+
+::card
+**Service Provider Updates**
+- `register()` and `boot()` methods now receive `ApplicationContext` parameter
+- Extensions must update to new signatures
+- Enables proper DI access throughout provider lifecycle
+::
+
+::card
+**Console Command Auto-Discovery**
+- Commands auto-discovered from `src/Console/Commands/` directory
+- Just add `#[AsCommand]` attribute - no manual registration needed
+- Production caching for fast startup (auto-generated on first run)
+- New `commands:cache` CLI command for cache management
+::
+
+::card
+**Code Quality Improvements**
+- Fixed PHPStan errors (duplicate properties, missing returns, visibility)
+- Fixed 25+ PHPCS line length violations
+- Added PHPStan `banned_code` rule to prevent `$GLOBALS` usage
+- Cleaned up phpstan.neon excludePaths for removed files
+::
+
+### Migration Required
+
+This release requires updating code that uses helper functions:
+
+```php
+// Before (1.21.x)
+$value = config('app.name');
+$service = app(MyService::class);
+
+// After (1.22.0)
+$value = config($context, 'app.name');
+$service = app($context, MyService::class);
+```
+
+Extensions must update provider signatures:
+
+```php
+// Before
+public function boot(): void { }
+
+// After
+public function boot(ApplicationContext $context): void { }
+```
+
+### Risk Assessment
+- **Risk Level**: Medium
+- **Breaking Changes**: Helper function signatures, ServiceProvider interface
+- **Migration Effort**: Low-Medium (search-replace for most cases)
+
+---
 
 ## v1.21.0 - Mira (Minor)
 **Released: January 24, 2026**
