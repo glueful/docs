@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.27.0 | Avior | 2026-02-04 | Minor | Low | DX CLI Commands + Transaction Callbacks |
 | 1.26.0 | Atria | 2026-01-31 | Minor | Low | Extension Discovery Fixes |
 | 1.25.0 | Ankaa | 2026-01-31 | Minor | Low | Multi-File Route Discovery |
 | 1.24.0 | Alpheratz | 2026-01-31 | Minor | Low | Encryption Service |
@@ -50,6 +51,72 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.27.0 - Avior (Minor)
+**Released: February 4, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-terminal-2"}
+#description
+Developer experience improvements with new CLI commands, route cache signatures, database transaction callbacks, and extension management enhancements.
+::
+
+### Key Highlights
+
+::card
+**New CLI Commands**
+- `doctor` - Quick health checks for local development (env, cache, database, routes, storage)
+- `env:sync` - Sync `.env.example` from config `env()` usage with `--apply` option
+- `route:debug` - Dump resolved routes with `--method`, `--path`, `--name` filters
+- `route:cache:clear` / `route:cache:status` - Route cache management
+- `cache:inspect` - Inspect cache driver and PHP extension status
+- `test:watch` - Run tests on file changes with configurable polling
+::
+
+::card
+**Database Transaction Callbacks**
+- `Connection::afterCommit(callable)` - Execute callback after transaction commits
+- `Connection::afterRollback(callable)` - Execute callback after transaction rollback
+- Shared `TransactionManager` ensures consistent state across QueryBuilders
+- Callbacks promoted to parent level for nested transactions (savepoints)
+::
+
+::card
+**Route Cache Improvements**
+- Signature-based invalidation replaces TTL-based caching
+- SHA-256 hash of route file paths, mtimes, and sizes
+- Cache invalidates automatically when any source file changes
+- Works consistently across all environments
+::
+
+::card
+**Extensions Enable/Disable**
+- Commands now edit `config/extensions.php` directly (dev only)
+- `--dry-run` to preview changes, `--backup` to create .bak file
+- Disable comments out provider line (safer for trailing commas)
+::
+
+### Example Usage
+
+```bash
+# Quick health check
+php glueful doctor
+
+# Sync env variables from config
+php glueful env:sync --apply
+
+# Debug routes
+php glueful route:debug --method=GET --path=/api
+
+# Enable extension with preview
+php glueful extensions:enable Meilisearch --dry-run
+```
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None required
+
+---
 
 ## v1.26.0 - Atria (Minor)
 **Released: January 31, 2026**
