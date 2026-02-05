@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.28.0 | Bellatrix | 2026-02-05 | Minor | Medium | Route Caching Support |
 | 1.27.0 | Avior | 2026-02-04 | Minor | Low | DX CLI Commands + Transaction Callbacks |
 | 1.26.0 | Atria | 2026-01-31 | Minor | Low | Extension Discovery Fixes |
 | 1.25.0 | Ankaa | 2026-01-31 | Minor | Low | Multi-File Route Discovery |
@@ -51,6 +52,73 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.28.0 - Bellatrix (Minor)
+**Released: February 5, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-route"}
+#description
+Route caching support through controller refactoring. Routes now use cacheable syntax for improved performance.
+::
+
+### Key Highlights
+
+::card
+**ResourceController Refactoring**
+- Removed wrapper methods pattern (`listResources`, `showResource`, etc.)
+- Renamed methods to RESTful conventions: `index`, `show`, `store`, `update`, `destroy`
+- Added `destroyBulk` and `updateBulk` for bulk operations
+- Methods now accept `Request` directly instead of array parameters
+::
+
+::card
+**Cacheable Route Syntax**
+- All routes now use `[Controller::class, 'method']` syntax
+- Closures replaced throughout for route cache compatibility
+- Routes can be compiled and cached for faster resolution
+::
+
+::card
+**Route Caching Infrastructure**
+- RouteCompiler: `validateHandlers()`, `hasClosures()`, `getClosureRoutes()` for detecting non-cacheable routes
+- RouteCache: `cacheContainsClosures()` auto-invalidates cache when closures detected
+- Logs warnings to help developers identify routes needing conversion
+- Use `route:debug` command to find closure-based routes
+::
+
+::card
+**Breaking Changes**
+- `get()` → `index()`, `getSingle()` → `show()`, `post()` → `store()`
+- `put()` → `update()`, `delete()` → `destroy()`
+- Method signatures changed from `(array $params, array $data)` to `(Request $request)`
+::
+
+### Migration Guide
+
+If you extended `ResourceController` and overrode methods:
+
+```php
+// Before
+public function get(array $params, array $queryParams)
+{
+    // custom logic
+}
+
+// After
+public function index(Request $request): Response
+{
+    $table = $request->attributes->get('table', '');
+    $queryParams = $request->query->all();
+    // custom logic
+}
+```
+
+### Risk Assessment
+- **Risk Level**: Medium
+- **Breaking Changes**: Yes - method names and signatures changed
+- **Migration Effort**: Low for most users; update required if extending ResourceController
+
+---
 
 ## v1.27.0 - Avior (Minor)
 **Released: February 4, 2026**
