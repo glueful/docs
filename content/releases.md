@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.28.1 | Bellatrix | 2026-02-06 | Patch | Low | Router Stability + Cache-Aware Registration |
 | 1.28.0 | Bellatrix | 2026-02-05 | Minor | Medium | Route Caching Support |
 | 1.27.0 | Avior | 2026-02-04 | Minor | Low | DX CLI Commands + Transaction Callbacks |
 | 1.26.0 | Atria | 2026-01-31 | Minor | Low | Extension Discovery Fixes |
@@ -52,6 +53,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.28.1 - Bellatrix (Patch)
+**Released: February 6, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-bug"}
+#description
+Router stability fixes for applications using route caching with extensions.
+::
+
+### Key Highlights
+
+::card
+**Router Group Stack Fix**
+- `Router::group()` now uses `try/finally` to always clean up `groupStack` and `middlewareStack`
+- Prevents route prefix leakage when exceptions occur inside nested group callbacks
+- Eliminates cascading path accumulation across extension route loading (e.g., `/rbac/roles/auth/social/...`)
+::
+
+::card
+**Cache-Aware Route Registration**
+- Router tracks when routes were pre-loaded from cache via `routesLoadedFromCache` flag
+- Static routes: overwrites cached entry instead of throwing `LogicException("Route already defined")`
+- Dynamic routes: replaces cached entry in `dynamicRoutes` and `routeBuckets` instead of appending duplicates
+- Ensures fresh extension definitions always take priority over cached routes
+::
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None — drop-in patch
+
+---
 
 ## v1.28.0 - Bellatrix (Minor)
 **Released: February 5, 2026**
