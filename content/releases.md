@@ -9,6 +9,8 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.29.0 | Capella | 2026-02-07 | Minor | Low | Queue System Overhaul — Leaf Workers + Presets |
+| 1.28.3 | Bellatrix | 2026-02-07 | Patch | Low | CLI Option Shortcut Collision Fix |
 | 1.28.2 | Bellatrix | 2026-02-07 | Patch | Low | CLI Migration Discovery + PostgreSQL Schema Safety |
 | 1.28.1 | Bellatrix | 2026-02-06 | Patch | Low | Router Stability + Cache-Aware Registration |
 | 1.28.0 | Bellatrix | 2026-02-05 | Minor | Medium | Route Caching Support |
@@ -54,6 +56,68 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.29.0 - Capella
+**Released: February 7, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-rocket"}
+#description
+Queue system overhaul with leaf worker mode, config normalization, distributed lock fix, and env-driven queue presets.
+::
+
+### Key Highlights
+
+::card
+#title
+Leaf Worker Mode
+#description
+New `queue:work process` action enables spawned workers to execute jobs directly in-process. Eliminates recursive manager spawning for cleaner process trees and better resource isolation. Supports `--sleep`, `--max-jobs`, `--max-runtime`, `--stop-when-empty`, `--with-monitoring`, and `--emit-heartbeat`.
+::
+
+::card
+#title
+Queue Presets & Env-Driven Config
+#description
+Seven pre-configured queue profiles (`critical`, `maintenance`, `default`, `high`, `emails`, `reports`, `notifications`) with per-queue workers, memory limits, timeouts, priorities, and autoscale toggles — all env-driven. Schedule queue names also env-backed via `SCHEDULE_QUEUE_*` variables.
+::
+
+::card
+#title
+Process Management Fixes
+#description
+ProcessManager config normalization (`max_workers` / `max_workers_global`), new `stop()` API with state cleanup, status payload includes worker runtime, and distributed lock changed from host-scoped to queue-scoped for correct multi-host coordination.
+::
+
+### Migration Notes
+- No breaking changes. Existing `queue:work` behavior is unchanged.
+- Auto-scaling is default-off for all queue presets. Enable per-queue via `*_QUEUE_AUTO_SCALE=true`.
+- Review `.env.example` for new `QUEUE_*` and `SCHEDULE_QUEUE_*` variables.
+
+---
+
+## v1.28.3 - Bellatrix (Patch)
+**Released: February 7, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-bug"}
+#description
+Fix CLI option shortcut collision causing `LogicException` when running queue commands.
+::
+
+### Key Highlights
+
+::card
+**`-q` Shortcut Collision Fix**
+- `WorkCommand`, `ServerCommand`, and `MaintenanceCommand` all defined `-q` as shortcut for `--queue`
+- Symfony Console reserves `-q` for the global `--quiet` option, causing a `LogicException` at runtime
+- Removed the `-q` shortcut from all three commands — use `--queue` instead
+::
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None — `-q` was never usable due to the collision
+- **Migration Effort**: None — drop-in patch
+
+---
 
 ## v1.28.2 - Bellatrix (Patch)
 **Released: February 7, 2026**
