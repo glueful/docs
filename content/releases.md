@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.28.2 | Bellatrix | 2026-02-07 | Patch | Low | CLI Migration Discovery + PostgreSQL Schema Safety |
 | 1.28.1 | Bellatrix | 2026-02-06 | Patch | Low | Router Stability + Cache-Aware Registration |
 | 1.28.0 | Bellatrix | 2026-02-05 | Minor | Medium | Route Caching Support |
 | 1.27.0 | Avior | 2026-02-04 | Minor | Low | DX CLI Commands + Transaction Callbacks |
@@ -53,6 +54,44 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.28.2 - Bellatrix (Patch)
+**Released: February 7, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-bug"}
+#description
+CLI migration commands now properly discover extension migrations. PostgreSQL schema introspection is now schema-safe.
+::
+
+### Key Highlights
+
+::card
+**Container Self-Registration**
+- `ContainerFactory::create()` now registers the built container under `ContainerInterface`
+- Enables autowiring to inject the fully-configured container into CLI commands
+- CLI commands no longer create a separate container that lacks extension state
+::
+
+::card
+**Migration Command DI Wiring**
+- `RunCommand`, `StatusCommand`, `RollbackCommand` accept optional `ContainerInterface` and `ApplicationContext` via constructor
+- When booted via DI, commands receive the container with extension-registered migration paths
+- `migrate:run`, `migrate:status`, `migrate:rollback` now see extension migrations
+::
+
+::card
+**PostgreSQL Schema-Safe Introspection**
+- All `PostgreSQLSqlGenerator` introspection queries now use `current_schema()` instead of hardcoding `public`
+- `getTableColumns()` scoped with `table_schema`, `pg_namespace` joins, and schema-aware FK lookups
+- Enables correct behavior in multi-tenant setups and non-`public` schema deployments
+::
+
+### Risk Assessment
+- **Risk Level**: Low
+- **Breaking Changes**: None
+- **Migration Effort**: None — drop-in patch
+
+---
 
 ## v1.28.1 - Bellatrix (Patch)
 **Released: February 6, 2026**
