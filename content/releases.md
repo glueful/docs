@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.31.0 | Enif | 2026-02-09 | Minor | Low | Centralized Context Propagation + ORM Default Context |
 | 1.30.1 | Diphda | 2026-02-09 | Patch | Low | JWTService Context Initialization Fix |
 | 1.30.0 | Diphda | 2026-02-09 | Minor | Low | Exception Handler Consolidation |
 | 1.29.0 | Capella | 2026-02-07 | Minor | Low | Queue System Overhaul — Leaf Workers + Presets |
@@ -58,6 +59,36 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.31.0 - Enif
+**Released: February 9, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+Centralized context propagation: core services and ORM receive application context during framework boot, enabling cleaner static API usage.
+::
+
+### Key Highlights
+
+::card
+#title
+ORM Default Context
+#description
+`Model::setDefaultContext()` allows static model calls like `User::find($id)` without explicitly passing `ApplicationContext` as the first argument. The framework sets this automatically during boot. Explicit context passing (`User::find($context, $id)`) continues to work and takes priority.
+::
+
+::card
+#title
+Boot-Time Context Propagation
+#description
+`Framework::boot()` now sets `ApplicationContext` on core services during initialization: `Model`, `Utils`, `CacheHelper`, `SecureErrorResponse`, `RoutesManager`, `ImageProcessor`, `ConfigManager`, `Webhook`, and `RequestUserContext`. Eliminates scattered manual `setContext()` calls throughout application code.
+::
+
+### Migration Notes
+- No breaking changes. Existing code passing context explicitly is unaffected.
+- Default context is only available after `Framework::boot()` completes. Service provider constructors must still pass context explicitly.
+
+---
 
 ## v1.30.1 - Diphda (Patch)
 **Released: February 9, 2026**
