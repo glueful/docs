@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.30.0 | Diphda | 2026-02-09 | Minor | Low | Exception Handler Consolidation |
 | 1.29.0 | Capella | 2026-02-07 | Minor | Low | Queue System Overhaul — Leaf Workers + Presets |
 | 1.28.3 | Bellatrix | 2026-02-07 | Patch | Low | CLI Option Shortcut Collision Fix |
 | 1.28.2 | Bellatrix | 2026-02-07 | Patch | Low | CLI Migration Discovery + PostgreSQL Schema Safety |
@@ -56,6 +57,44 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.30.0 - Diphda
+**Released: February 9, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-arrows-join-2"}
+#description
+Unified exception handling: consolidated two overlapping exception handlers into a single source of truth with channel-based log routing and optimized context building.
+::
+
+### Key Highlights
+
+::card
+#title
+Single Handler, Single Code Path
+#description
+The modern `Handler` (`src/Http/Exceptions/Handler.php`) is now the sole authority for rendering, reporting, and event dispatch. The legacy `ExceptionHandler` has been reduced from 1041 lines to a ~250-line bootstrap shim that registers PHP global handlers and delegates to the DI-managed Handler instance.
+::
+
+::card
+#title
+Channel-Based Log Routing
+#description
+Exceptions are automatically routed to named log channels (`auth`, `database`, `security`, `http`, `ratelimit`, `extensions`, `api`, `permissions`, `framework`) based on their type. Custom mappings can be registered via `Handler::mapChannel()`.
+::
+
+::card
+#title
+Optimized Context Building
+#description
+High-frequency exceptions (validation errors, 404s) get lightweight context (URI, method, IP). All others get full context including headers, memory usage, and processing time. Eliminates the previous three separate context-building methods.
+::
+
+### Migration Notes
+- No breaking changes. `ExceptionHandler::logError()`, `setTestMode()`, `getTestResponse()`, `setLogger()` continue to work as static methods.
+- `ExceptionHandler::setContext()` is now a no-op — can be removed from calling code.
+- Extensions using `Glueful\Exceptions\HttpException`, `NotFoundException`, `BusinessLogicException`, or `ValidationException` should update imports to their modern namespaces under `Glueful\Http\Exceptions\*` or `Glueful\Validation\*`.
+
+---
 
 ## v1.29.0 - Capella
 **Released: February 7, 2026**
