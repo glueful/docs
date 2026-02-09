@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.30.1 | Diphda | 2026-02-09 | Patch | Low | JWTService Context Initialization Fix |
 | 1.30.0 | Diphda | 2026-02-09 | Minor | Low | Exception Handler Consolidation |
 | 1.29.0 | Capella | 2026-02-07 | Minor | Low | Queue System Overhaul — Leaf Workers + Presets |
 | 1.28.3 | Bellatrix | 2026-02-07 | Patch | Low | CLI Option Shortcut Collision Fix |
@@ -57,6 +58,22 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.30.1 - Diphda (Patch)
+**Released: February 9, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-key"}
+#description
+Ensures `JWTService` has access to the application context during authentication provider initialization.
+::
+
+### What Changed
+- `AuthBootstrap::initialize()` now calls `JWTService::setContext()` before creating JWT and API key authentication providers, fixing potential context-missing issues during token operations.
+
+### Migration Notes
+- No breaking changes. Drop-in patch.
+
+---
 
 ## v1.30.0 - Diphda
 **Released: February 9, 2026**
