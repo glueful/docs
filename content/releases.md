@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.32.0 | Fomalhaut | 2026-02-11 | Minor | Low | Schema Builder `alterTable` Callback API |
 | 1.31.0 | Enif | 2026-02-09 | Minor | Low | Centralized Context Propagation + ORM Default Context |
 | 1.30.1 | Diphda | 2026-02-09 | Patch | Low | JWTService Context Initialization Fix |
 | 1.30.0 | Diphda | 2026-02-09 | Minor | Low | Exception Handler Consolidation |
@@ -59,6 +60,36 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.32.0 - Fomalhaut
+**Released: February 11, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-database"}
+#description
+Schema builder `alterTable` now supports the same callback-style API as `createTable`, enabling concise inline table alterations with automatic execution.
+::
+
+### Key Highlights
+
+::card
+#title
+Dual-Mode `alterTable` API
+#description
+`alterTable()` now accepts an optional callback parameter. Without a callback, it returns a fluent `TableBuilder` for chaining (existing behavior). With a callback, it passes the builder to the callback, executes the ALTER statements, and returns `$this` for schema-level chaining — matching the `createTable` pattern.
+::
+
+::card
+#title
+ColumnBuilder Finalization Safety
+#description
+The callback path calls `gc_collect_cycles()` before executing, forcing PHP to run `ColumnBuilder` destructors so that `finalizeColumn()` registers columns before the ALTER SQL is generated. This prevents empty ALTER statements when column definitions are created as temporaries inside the callback.
+::
+
+### Migration Notes
+- No breaking changes. All existing callers use the no-callback path and are unaffected.
+- Convenience methods (`addColumn`, `dropColumn`, `addIndex`, `dropIndex`, `addForeignKey`, `dropForeignKey`) continue to work unchanged.
+
+---
 
 ## v1.31.0 - Enif
 **Released: February 9, 2026**
