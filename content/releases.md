@@ -9,6 +9,8 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.33.0 | Gacrux | 2026-02-14 | Minor | Low | Container-Enforced Request Resolution |
+| 1.32.0 | Fomalhaut | 2026-02-11 | Minor | Low | Schema Builder `alterTable` Callback API |
 | 1.31.0 | Enif | 2026-02-09 | Minor | Low | Centralized Context Propagation + ORM Default Context |
 | 1.30.1 | Diphda | 2026-02-09 | Patch | Low | JWTService Context Initialization Fix |
 | 1.30.0 | Diphda | 2026-02-09 | Minor | Low | Exception Handler Consolidation |
@@ -59,6 +61,82 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.33.0 - Gacrux
+**Released: February 14, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+Eliminated all `fromGlobals()` fallbacks from service code — every auth and utility service now resolves `RequestContext` from the container's shared singleton, fixing memory exhaustion on high-header requests and enabling long-running server compatibility.
+::
+
+### Key Highlights
+
+::card
+#title
+Container-Enforced Request Resolution
+#description
+15 files across auth services (`TokenManager`, `JwtAuthenticationProvider`, `SessionStore`, `EmailVerification`, `AuthenticationService`) and utility services (`RequestHelper`, `Utils`, `Cors`, `SpaManager`, `UserRepository`, `SecurityManager`) no longer call `RequestContext::fromGlobals()` or `Request::createFromGlobals()` as fallbacks. All request data is resolved from the DI container's shared singleton, which is created once per request lifecycle.
+::
+
+::card
+#title
+Memory Safety for High-Header Requests
+#description
+Previously, each `fromGlobals()` call independently reconstructed a PSR-7 request from `$_SERVER` superglobals, allocating fresh header arrays. On requests with many headers, this caused unbounded memory growth — crashing at Nyholm's `MessageTrait.php` with 512MB exhaustion. The container singleton eliminates redundant construction entirely.
+::
+
+::card
+#title
+Silent Fallback Removal
+#description
+`SessionStoreResolver` and `TokenManager::getSessionStore()` no longer silently construct bare `SessionStore()` instances (with stale globals) when the container is unavailable. Container resolution failures now surface immediately with clear `\RuntimeException` messages, making wiring bugs visible rather than hidden.
+::
+
+::card
+#title
+Long-Running Server Compatibility
+#description
+Services that read `$_SERVER`, `getallheaders()`, or `apache_request_headers()` directly would return stale data on RoadRunner, Swoole, or FrankenPHP after the first request. All request data now flows through the container singleton, which is reset between requests via `Container::reset()`.
+::
+
+### Migration Notes
+- No breaking changes for services instantiated via the container (the standard path).
+- Direct `new Service()` calls without providing `ApplicationContext` now throw `\RuntimeException` instead of silently using stale globals. Pass `context:` to the constructor.
+- `EmailVerification::sendPasswordResetEmail()` has a new optional `?ApplicationContext $context` parameter. Existing callers without context continue to work but should add context for proper resolution.
+- `SecurityManager` constructor has a new optional `?ApplicationContext $context` parameter (appended, no positional break).
+
+---
+
+## v1.32.0 - Fomalhaut
+**Released: February 11, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-database"}
+#description
+Schema builder `alterTable` now supports the same callback-style API as `createTable`, enabling concise inline table alterations with automatic execution.
+::
+
+### Key Highlights
+
+::card
+#title
+Dual-Mode `alterTable` API
+#description
+`alterTable()` now accepts an optional callback parameter. Without a callback, it returns a fluent `TableBuilder` for chaining (existing behavior). With a callback, it passes the builder to the callback, executes the ALTER statements, and returns `$this` for schema-level chaining — matching the `createTable` pattern.
+::
+
+::card
+#title
+ColumnBuilder Finalization Safety
+#description
+The callback path calls `gc_collect_cycles()` before executing, forcing PHP to run `ColumnBuilder` destructors so that `finalizeColumn()` registers columns before the ALTER SQL is generated. This prevents empty ALTER statements when column definitions are created as temporaries inside the callback.
+::
+
+### Migration Notes
+- No breaking changes. All existing callers use the no-callback path and are unaffected.
+- Convenience methods (`addColumn`, `dropColumn`, `addIndex`, `dropIndex`, `addForeignKey`, `dropForeignKey`) continue to work unchanged.
+
+---
 
 ## v1.31.0 - Enif
 **Released: February 9, 2026**
