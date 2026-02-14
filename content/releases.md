@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.35.0 | Izar | 2026-02-14 | Minor | Low | Cloud Storage + Blob Fix + Base64 Extension Fix |
 | 1.34.0 | Hamal | 2026-02-14 | Minor | Low | Auth Pipeline Hardening + Blob Upload DI |
 | 1.33.0 | Gacrux | 2026-02-14 | Minor | Low | Container-Enforced Request Resolution |
 | 1.32.0 | Fomalhaut | 2026-02-11 | Minor | Low | Schema Builder `alterTable` Callback API |
