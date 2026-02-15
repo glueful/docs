@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.37.0 | Kaus | 2026-02-15 | Minor | Low | Deferred Extension Commands + ORM Builder Fixes |
 | 1.36.0 | Jabbah | 2026-02-14 | Minor | Low | Model Event Isolation + Base64 Extension Fix |
 | 1.35.0 | Izar | 2026-02-14 | Minor | Low | Cloud Storage + Blob Fix |
 | 1.34.0 | Hamal | 2026-02-14 | Minor | Low | Auth Pipeline Hardening + Blob Upload DI |
