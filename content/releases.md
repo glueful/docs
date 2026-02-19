@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.38.0 | Lesath | 2026-02-17 | Minor | Low | Auth Token-Refresh Performance Optimization |
 | 1.37.0 | Kaus | 2026-02-15 | Minor | Low | Deferred Extension Commands + ORM Builder Fixes |
 | 1.36.0 | Jabbah | 2026-02-14 | Minor | Low | Model Event Isolation + Base64 Extension Fix |
 | 1.35.0 | Izar | 2026-02-14 | Minor | Low | Cloud Storage + Blob Fix |
@@ -65,6 +66,43 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.38.0 - Lesath
+**Released: February 17, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bolt"}
+#description
+Auth token-refresh performance optimization — eliminates redundant `auth_sessions` database lookups during token refresh, removes direct `new Connection()` instantiation, and adds request-level caching for refresh-token session lookups.
+::
+
+### Key Highlights
+
+::card
+#title
+Token-Refresh DB Lookup Reduction
+#description
+`TokenManager::getSessionFromRefreshToken()` now fetches `provider` and `remember_me` in the initial query. Two subsequent `auth_sessions` queries that re-fetched these fields during token refresh are eliminated, reducing per-refresh DB round-trips from 3 to 1.
+::
+
+::card
+#title
+AuthenticationService DI Cleanup
+#description
+`refreshTokens()` resolves the session via `SessionStore::getByRefreshToken()` up front and passes `user_uuid` directly to `getUserDataByUuid()`. Removes direct `new Connection()` instantiation in favour of the injected `UserRepository`, improving testability and DI consistency.
+::
+
+::card
+#title
+Request-Level Refresh-Token Cache
+#description
+`SessionStore::getByRefreshToken()` now caches results in `$requestCache` keyed by `refresh:{hash}`, matching the existing `getByAccessToken()` pattern. Repeated lookups within the same request (e.g., validation then token generation) hit memory instead of the database.
+::
+
+### Migration Notes
+- No breaking changes. All modified methods are `private` or internal to the auth subsystem.
+- For optimal performance, add the composite index `idx_auth_sessions_refresh_status` on `(refresh_token, status)` to production databases.
+
+---
 
 ## v1.33.0 - Gacrux
 **Released: February 14, 2026**
