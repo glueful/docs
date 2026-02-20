@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.39.0 | Menkent | 2026-02-20 | Minor | High | Token/Session Reimplementation |
 | 1.38.0 | Lesath | 2026-02-17 | Minor | Low | Auth Token-Refresh Performance Optimization |
 | 1.37.0 | Kaus | 2026-02-15 | Minor | Low | Deferred Extension Commands + ORM Builder Fixes |
 | 1.36.0 | Jabbah | 2026-02-14 | Minor | Low | Model Event Isolation + Base64 Extension Fix |
@@ -66,6 +67,60 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.39.0 - Menkent
+**Released: February 20, 2026**
+
+::u-alert{color="error" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+Token and session management reimplementation — hash-only refresh tokens with one-time-use rotation, session versioning for instant access-token invalidation, replay detection with session-scope revocation. **Breaking change**: existing sessions become invalid at cutover.
+::
+
+### Key Highlights
+
+::card
+#title
+Hash-Only Refresh Tokens
+#description
+Refresh tokens are stored as SHA-256 hashes only — no raw tokens at rest. One-time-use rotation in a single `SELECT ... FOR UPDATE` transaction prevents race conditions and ensures atomic token exchange.
+::
+
+::card
+#title
+Session Versioning
+#description
+Access JWTs now carry `sid` (session UUID) and `ver` (session version) claims. Token validation checks server-side session state and version, enabling instant invalidation via `session_version` bump without maintaining a token blocklist.
+::
+
+::card
+#title
+Replay Detection
+#description
+Presenting a consumed or revoked refresh token triggers session-scope revocation — all active refresh tokens for that session are immediately invalidated. An optional configurable idempotency window (1-2s) can handle concurrent browser tab refreshes gracefully.
+::
+
+::card
+#title
+Clean Service Architecture
+#description
+The monolithic `TokenManager` + `SessionStore` + `AuthenticationService` tangle is decomposed into focused services: `RefreshService`, `AccessTokenIssuer`, `ProviderTokenIssuer`, `SessionRepository`, `RefreshTokenRepository`, `RefreshTokenStore`, and `SessionStateCache`.
+::
+
+::card
+#title
+AuthenticatedUser Value Object
+#description
+New minimal runtime identity object (`uuid`, `sessionUuid`, `provider`, `roles`, `permissions`) replaces ad-hoc array passing across controllers, traits, and middleware. `BaseController::$currentUser` is now typed as `AuthenticatedUser|null`.
+::
+
+### Migration Notes
+- **Breaking change**: All existing sessions and tokens become invalid at cutover. Users must re-authenticate.
+- Create `auth_refresh_tokens` table via migration (schema in `docs/TOKEN_SESSION_REIMPLEMENTATION_PLAN.md`).
+- Drop legacy columns from `auth_sessions`: `access_token`, `refresh_token`, `access_expires_at`, `refresh_expires_at`, `last_token_refresh`, `token_fingerprint`.
+- Add `session_version`, `expires_at`, `last_seen_at`, `revoked_at` to `auth_sessions`.
+- Update `.env` with `JWT_KEY`, `ACCESS_TOKEN_LIFETIME`, `REFRESH_TOKEN_LIFETIME`, `TOKEN_SALT`, `JWT_ALGORITHM`.
+
+---
 
 ## v1.38.0 - Lesath
 **Released: February 17, 2026**
