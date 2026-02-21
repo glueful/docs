@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.40.0 | Alnair | 2026-02-21 | Minor | Medium | Notification Delivery Orchestration |
 | 1.39.0 | Menkent | 2026-02-20 | Minor | High | Token/Session Reimplementation |
 | 1.38.0 | Lesath | 2026-02-17 | Minor | Low | Auth Token-Refresh Performance Optimization |
 | 1.37.0 | Kaus | 2026-02-15 | Minor | Low | Deferred Extension Commands + ORM Builder Fixes |
@@ -67,6 +68,52 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.40.0 - Alnair
+**Released: February 21, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-bell"}
+#description
+Notification delivery orchestration — split sync/async channel delivery, per-channel delivery state tracking, DB-indexed idempotency, policy-based success evaluation, and targeted async retry. Also adds `ProvisioningException` for account setup failures.
+::
+
+### Key Highlights
+
+::card
+#title
+Split Delivery API
+#description
+`NotificationService::sendSplit()` provides first-class sync/async channel separation. `send()` now supports `sync_channels`, `async_channels`, `channel_failure_policy` (`any_success`, `require_critical`, `all`), and `critical_channels` — giving callers precise control over which channels block the request and which fire-and-forget via queue.
+::
+
+::card
+#title
+Per-Channel Delivery Tracking
+#description
+New `notification_deliveries` table tracks delivery lifecycle per channel with status, attempt count, error details, and timestamps. Repository APIs (`ensureDeliveryRecords`, `recordDeliveryAttempt`, `getChannelsNeedingDispatch`, `getFailedDeliveryChannels`) enable targeted retry — async retries only dispatch channels still needing work.
+::
+
+::card
+#title
+DB-Indexed Idempotency
+#description
+Dedicated `notifications.idempotency_key` column with a database index replaces the previous `_meta` JSON scan. Channel-level idempotency via unique key on `(notification_uuid, channel)` in `notification_deliveries`. Both layers are now DB-native with no PHP-side row scanning.
+::
+
+::card
+#title
+Provisioning Exception
+#description
+New `ProvisioningException` for account setup failures (e.g., post-registration handler errors) maps to HTTP 500 and the `api` log channel, replacing misleading 401 responses when user creation succeeds but provisioning fails.
+::
+
+### Migration Notes
+- Non-backward-compatible changes to notification sending flow and response structure.
+- New `notification_deliveries` table required via migration (`004_CreateNotificationSystemTables`).
+- `notifications` table requires new `idempotency_key` column with index.
+- `sendWithTemplate()` now routes through `send()` — any code relying on the previous direct-dispatch behavior should be reviewed.
+
+---
 
 ## v1.39.0 - Menkent
 **Released: February 20, 2026**
