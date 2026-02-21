@@ -9,6 +9,10 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.40.4 | Alnair | 2026-02-21 | Patch | Low | PHPCS Line Length Fix |
+| 1.40.3 | Alnair | 2026-02-21 | Patch | Medium | Mutation WHERE + Queue Config + Async Notification |
+| 1.40.2 | Alnair | 2026-02-21 | Patch | Low | Config Merge Safe Dedup |
+| 1.40.1 | Alnair | 2026-02-21 | Patch | Low | Config Merge Fix |
 | 1.40.0 | Alnair | 2026-02-21 | Minor | Medium | Notification Delivery Orchestration |
 | 1.39.0 | Menkent | 2026-02-20 | Minor | High | Token/Session Reimplementation |
 | 1.38.0 | Lesath | 2026-02-17 | Minor | Low | Auth Token-Refresh Performance Optimization |
@@ -68,6 +72,81 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.40.4 - Alnair (Patch)
+**Released: February 21, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-brush"}
+#description
+Code style fix only — extracts a long error message string in `WhereClause::getConditionsArray()` to comply with the 120-character PHPCS line limit. No runtime behavior changes.
+::
+
+### Migration Notes
+- Patch release. No breaking changes. Drop-in replacement for 1.40.3.
+
+---
+
+## v1.40.3 - Alnair (Patch)
+**Released: February 21, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bug"}
+#description
+Fixes three production issues: mutation WHERE clauses crashing on non-equality operators, queue Redis config rejecting string values from `.env`, and async notification dispatch failures crashing API requests.
+::
+
+### Key Highlights
+
+::card
+#title
+Mutation WHERE Operator Support
+#description
+`WhereClause`, `UpdateBuilder`, and `DeleteBuilder` now support comparison and null operators (`<`, `<=`, `>`, `>=`, `!=`, `LIKE`, `IN`, `IS NULL`, `IS NOT NULL`) in UPDATE/DELETE queries. Previously only `=` was supported, causing queue and notification cleanup jobs to crash.
+::
+
+::card
+#title
+Queue Config String Coercion
+#description
+`DriverRegistry` config validation now accepts numeric strings for int/port fields and boolean-like strings (`true`/`false`/`1`/`0`/`yes`/`no`/`on`/`off`), matching how `.env` values arrive in PHP. Fixes Redis config rejection in production environments.
+::
+
+::card
+#title
+Async Notification Best-Effort
+#description
+`NotificationService::queueAsyncDispatch()` is now wrapped in try/catch — logs the error and returns gracefully. Side-effect failures (e.g., queue unavailable) no longer crash the primary API operation that triggered the notification.
+::
+
+### Migration Notes
+- Patch release. No breaking changes. Drop-in replacement for 1.40.2.
+
+---
+
+## v1.40.2 - Alnair (Patch)
+**Released: February 21, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bug"}
+#description
+Fixes 500 errors on event-driven flows (e.g., comment creation) caused by `array_unique()` crashing on config lists containing nested arrays/objects. Replaces with hash-based dedup that safely handles all value types.
+::
+
+### Migration Notes
+- Patch release. No breaking changes. Drop-in replacement for 1.40.1.
+
+---
+
+## v1.40.1 - Alnair (Patch)
+**Released: February 21, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bug"}
+#description
+Fixes "Array to string conversion" warnings in config merging when nested associative arrays (e.g., `session.providers`) were incorrectly treated as lists and passed through `array_unique()`.
+::
+
+### Migration Notes
+- Patch release. No breaking changes. Drop-in replacement for 1.40.0.
+
+---
 
 ## v1.40.0 - Alnair
 **Released: February 21, 2026**
