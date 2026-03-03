@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.41.0 | Beid | 2026-03-03 | Minor | Moderate | Profile-Driven Logging Bootstrap |
 | 1.40.4 | Alnair | 2026-02-21 | Patch | Low | PHPCS Line Length Fix |
 | 1.40.3 | Alnair | 2026-02-21 | Patch | Medium | Mutation WHERE + Queue Config + Async Notification |
 | 1.40.2 | Alnair | 2026-02-21 | Patch | Low | Config Merge Safe Dedup |
@@ -72,6 +73,51 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.41.0 - Beid
+**Released: March 3, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-settings"}
+#description
+Introduces profile-driven logging bootstrap with deterministic defaults per environment, production safety checks for logging configuration, and fixes for upsert column handling and audit toggle alignment.
+::
+
+### Key Highlights
+
+::card
+#title
+Profile-Driven Logging Bootstrap
+#description
+`config/logging.php` now resolves defaults from `LOG_PROFILE` (or `APP_ENV`) before applying explicit env overrides. Built-in profiles for `development`, `staging`, `production`, and `testing` provide safe, deterministic startup behavior including log levels, sink settings, and per-channel retention windows.
+::
+
+::card
+#title
+Production Safety Checks
+#description
+`system:check --production` now flags unsafe logging configurations: no durable log sink (`LOG_TO_FILE=false` and `LOG_TO_DB=false`), disabled event/audit toggles, debug-level production logging, and invalid retention values.
+::
+
+::card
+#title
+Upsert Column Fix
+#description
+`InsertBuilder::buildUpsertQuery()` now passes column names (`array_keys($data)`) instead of full data arrays to driver `upsert()` SQL builders. Fixes PostgreSQL crash where `null` values were passed into `wrapIdentifier()`.
+::
+
+::card
+#title
+Audit Toggle Alignment
+#description
+Core activity audit subscriber registration and `LogManager` now respect `EVENTS_ENABLED`, `EVENTS_AUDIT_LOGGING`, and `LOG_TO_FILE=false` during framework boot. Removes debug `error_log()` noise from `RequestUserContext`.
+::
+
+### Migration Notes
+- **`LOG_TO_DB` default changed**: Previously defaulted to `true` when the env var was absent. Now defaults to `false` in all profiles. Add `LOG_TO_DB=true` to your `.env` if your application requires database logging.
+- **New env vars recognized**: `LOG_PROFILE`, `LOG_RETENTION_*_DAYS`. No action needed if unset — profiles provide safe defaults.
+- Review `docs/LOGGING_BOOTSTRAP.md` for the full profile matrix and production baseline.
+
+---
 
 ## v1.40.4 - Alnair (Patch)
 **Released: February 21, 2026**
