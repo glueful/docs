@@ -11,9 +11,9 @@ Optimize your application for speed, efficiency, and scalability.
 
 ```php
 // Cache expensive queries
-$cache = app(\Glueful\Cache\CacheStore::class);
+$cache = app($context, \Glueful\Cache\CacheStore::class);
 $users = $cache->remember('users:active', function() {
-    return app('database')
+    return app($context, 'database')
         ->table('users')
         ->where('status', 'active')
         ->get();
@@ -35,7 +35,7 @@ $schema->table('posts', function($table) {
 
 ```php
 // Don't process inline
-$queue = service(\Glueful\Queue\QueueManager::class);
+$queue = service($context, \Glueful\Queue\QueueManager::class);
 $queue->push(\App\Jobs\ProcessImageJob::class, ['path' => $path]);
 $queue->push(\App\Jobs\SendEmailJob::class, ['userId' => $userId]);
 ```
@@ -46,25 +46,25 @@ $queue->push(\App\Jobs\SendEmailJob::class, ['userId' => $userId]);
 
 ```php
 // ✅ Good - specific columns
-$users = app('database')->table('users')
+$users = app($context, 'database')->table('users')
     ->select(['id', 'name', 'email'])
     ->get();
 
 // ❌ Bad - all columns
-$users = app('database')->table('users')->get();
+$users = app($context, 'database')->table('users')->get();
 ```
 
 ### Avoid N+1 Queries
 
 ```php
 // ❌ Bad - N+1 query problem
-$posts = app('database')->table('posts')->get();
+$posts = app($context, 'database')->table('posts')->get();
 foreach ($posts as $post) {
-    $user = app('database')->table('users')->find($post->user_id); // Query per post!
+    $user = app($context, 'database')->table('users')->find($post->user_id); // Query per post!
 }
 
 // ✅ Good - join or eager load
-$posts = app('database')->table('posts')
+$posts = app($context, 'database')->table('posts')
     ->join('users', 'posts.user_id', '=', 'users.id')
     ->select(['posts.*', 'users.name as author_name'])
     ->get();
@@ -75,11 +75,11 @@ $posts = app('database')->table('posts')
 ```php
 // ❌ Bad - individual inserts
 foreach ($users as $user) {
-    app('database')->table('users')->insert($user);
+    app($context, 'database')->table('users')->insert($user);
 }
 
 // ✅ Good - batch insert
-app('database')->table('users')->insertMany($users);
+app($context, 'database')->table('users')->insertMany($users);
 ```
 
 ### Add Database Indexes
@@ -103,7 +103,7 @@ $table->index(['status', 'created_at']);
 public function getActiveUsers()
 {
     return Cache::remember('users:active', function() {
-        return db()->table('users')
+        return db($context)->table('users')
             ->where('status', 'active')
             ->get();
     }, 3600);
@@ -128,9 +128,9 @@ public function getStatistics()
 {
     return Cache::remember('stats:dashboard', function() {
         return [
-            'users' => db()->table('users')->count(),
-            'posts' => db()->table('posts')->count(),
-            'revenue' => db()->table('orders')->sum('total'),
+            'users' => db($context)->table('users')->count(),
+            'posts' => db($context)->table('posts')->count(),
+            'revenue' => db($context)->table('orders')->sum('total'),
         ];
     }, 300);
 }
@@ -148,7 +148,7 @@ Cache::deletePattern('users:*');
 // Clear on update
 public function update($id, $data)
 {
-    db()->table('users')->where('id', $id)->update($data);
+    db($context)->table('users')->where('id', $id)->update($data);
 
     // Invalidate cache
     Cache::delete('users:active');
@@ -173,12 +173,12 @@ Check for:
 
 ```php
 // ✅ Good - join on indexed columns
-$posts = app('database')->table('posts')
+$posts = app($context, 'database')->table('posts')
     ->join('users', 'posts.user_id', '=', 'users.id')
     ->get();
 
 // ❌ Bad - join on non-indexed columns
-$posts = app('database')->table('posts')
+$posts = app($context, 'database')->table('posts')
     ->join('users', 'posts.author_name', '=', 'users.name')
     ->get();
 ```
@@ -187,23 +187,23 @@ $posts = app('database')->table('posts')
 
 ```php
 // ✅ Good - paginated
-$posts = app('database')->table('posts')
+$posts = app($context, 'database')->table('posts')
     ->limit(20)
     ->offset(($page - 1) * 20)
     ->get();
 
 // ❌ Bad - load everything
-$posts = app('database')->table('posts')->get();
+$posts = app($context, 'database')->table('posts')->get();
 ```
 
 ### Count Efficiently
 
 ```php
 // ✅ Good - database count
-$count = app('database')->table('users')->count();
+$count = app($context, 'database')->table('users')->count();
 
 // ❌ Bad - load all then count
-$count = count(app('database')->table('users')->get());
+$count = count(app($context, 'database')->table('users')->get());
 ```
 
 ## Response Optimization
@@ -255,7 +255,7 @@ foreach ($orders as $order) {
 }
 
 // ✅ Good - database aggregation
-$total = app('database')->table('orders')->sum('amount');
+$total = app($context, 'database')->table('orders')->sum('amount');
 ```
 
 ### Use Lazy Loading
@@ -267,7 +267,7 @@ public function getUser($id)
     static $user;
 
     if (!$user) {
-        $user = app('database')->table('users')->find($id);
+        $user = app($context, 'database')->table('users')->find($id);
     }
 
     return $user;
@@ -295,7 +295,7 @@ for ($i = 0; $i < $length; $i++) {
 
 ```php
 // ❌ Bad - load all at once
-$users = app('database')->table('users')->get();
+$users = app($context, 'database')->table('users')->get();
 foreach ($users as $user) {
     // Process...
 }
@@ -303,7 +303,7 @@ foreach ($users as $user) {
 // ✅ Good - process in batches with limit/offset
 $batchSize = 1000;
 for ($offset = 0; ; $offset += $batchSize) {
-    $batch = app('database')->table('users')->limit($batchSize)->offset($offset)->get();
+    $batch = app($context, 'database')->table('users')->limit($batchSize)->offset($offset)->get();
     if (count($batch) === 0) {
         break;
     }
@@ -347,7 +347,7 @@ $start = microtime(true);
 // Code to profile
 
 $duration = microtime(true) - $start;
-logger()->info('Execution time: ' . $duration . 's');
+app($context, \Psr\Log\LoggerInterface::class)->info('Execution time: ' . $duration . 's');
 ```
 
 ### Profile Queries
@@ -355,9 +355,9 @@ logger()->info('Execution time: ' . $duration . 's');
 ```php
 $start = microtime(true);
 
-$users = db()->table('users')->get();
+$users = db($context)->table('users')->get();
 
-logger()->info('Query time: ' . (microtime(true) - $start) . 's');
+app($context, \Psr\Log\LoggerInterface::class)->info('Query time: ' . (microtime(true) - $start) . 's');
 ```
 
 ### Memory Usage
@@ -370,7 +370,7 @@ $memoryBefore = memory_get_usage();
 $memoryAfter = memory_get_usage();
 $memoryUsed = $memoryAfter - $memoryBefore;
 
-logger()->info('Memory used: ' . ($memoryUsed / 1024 / 1024) . ' MB');
+app($context, \Psr\Log\LoggerInterface::class)->info('Memory used: ' . ($memoryUsed / 1024 / 1024) . ' MB');
 ```
 
 ## Monitoring
@@ -388,7 +388,7 @@ Track these metrics:
 ### Logging
 
 ```php
-logger()->info('Request processed', [
+app($context, \Psr\Log\LoggerInterface::class)->info('Request processed', [
     'duration' => $duration,
     'memory' => memory_get_peak_usage(true),
     'queries' => $queryCount,

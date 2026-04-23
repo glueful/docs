@@ -229,8 +229,8 @@ $schema->table('users', function ($table) {
 
 **Phase 2: Backfill data**
 ```php
-db()->table('users')->update([
-    'email_new' => db()->raw('email')
+db($context)->table('users')->update([
+    'email_new' => db($context)->raw('email')
 ]);
 ```
 
@@ -507,7 +507,7 @@ ssh server "git pull && composer install"
 
 // Include in responses
 return Response::success($data, headers: [
-    'X-App-Version' => config('app.version')
+    'X-App-Version' => config($context, 'app.version')
 ]);
 ```
 

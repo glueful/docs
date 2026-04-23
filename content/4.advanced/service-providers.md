@@ -31,7 +31,7 @@ final class AppServiceProvider extends BaseServiceProvider
             // Factory with config
             'payment.gateway' => new FactoryDefinition(
                 'payment.gateway',
-                fn() => new App\Payments\StripePaymentGateway(config('services.stripe'))
+                fn() => new App\Payments\StripePaymentGateway(config($context, 'services.stripe'))
             ),
 
             // Alias interface to id
@@ -145,7 +145,7 @@ final class CacheServiceProvider extends BaseServiceProvider
 Resolve the manager as needed:
 
 ```php
-$queue = app(\Glueful\Queue\QueueManager::class);
+$queue = app($context, \Glueful\Queue\QueueManager::class);
 $queue->push(App\Jobs\SendEmail::class, ['userId' => $id]);
 ```
 
@@ -365,13 +365,15 @@ class UserServiceTest extends TestCase
         parent::setUp();
 
         // Replace provider bindings
-        app()->bind(EmailService::class, FakeEmailService::class);
-        app()->bind(PaymentGateway::class, FakePaymentGateway::class);
+        container($context)->load([
+            EmailService::class => fn() => new FakeEmailService(),
+            PaymentGateway::class => fn() => new FakePaymentGateway(),
+        ]);
     }
 
     public function test_creates_user()
     {
-        $service = app(UserService::class);
+        $service = app($context, UserService::class);
         $user = $service->create(['email' => 'test@example.com']);
 
         $this->assertNotNull($user);
@@ -390,10 +392,12 @@ class OrderServiceTest extends TestCase
         $gateway = $this->createMock(PaymentGateway::class);
         $gateway->method('charge')->willReturn(['status' => 'success']);
 
-        app()->instance(PaymentGateway::class, $gateway);
+        container($context)->load([
+            PaymentGateway::class => fn() => $gateway,
+        ]);
 
         // Test
-        $service = app(OrderService::class);
+        $service = app($context, OrderService::class);
         $order = $service->processOrder($orderData);
 
         $this->assertEquals('completed', $order->status);

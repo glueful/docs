@@ -166,7 +166,7 @@ Without persistence, jobs are registered in memory for the current process only 
 ```php
 use Glueful\Scheduler\JobScheduler;
 
-$scheduler = app(JobScheduler::class);
+$scheduler = app($context, JobScheduler::class);
 
 $scheduler->register('@hourly', function() {
     // Cleanup task
@@ -189,11 +189,11 @@ class CleanupSessionsJob
     {
         $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));
 
-        db()->table('sessions')
+        db($context)->table('sessions')
             ->where('last_activity', '<', $cutoff)
             ->delete();
 
-        logger()->info('Cleaned up expired sessions');
+        app($context, \Psr\Log\LoggerInterface::class)->info('Cleaned up expired sessions');
     }
 }
 ```
@@ -216,12 +216,12 @@ class DailyCleanupJob
     public function handle(array $params = []): void
     {
         // Delete old sessions
-        db()->table('sessions')
+        db($context)->table('sessions')
             ->where('created_at', '<', date('Y-m-d', strtotime('-7 days')))
             ->delete();
 
         // Delete old logs
-        db()->table('activity_logs')
+        db($context)->table('activity_logs')
             ->where('created_at', '<', date('Y-m-d', strtotime('-90 days')))
             ->delete();
 
@@ -247,7 +247,7 @@ class WarmCacheJob
     public function handle(array $params = []): void
     {
         // Warm popular product cache
-        $products = db()->table('products')
+        $products = db($context)->table('products')
             ->where('is_featured', true)
             ->get();
 
@@ -274,11 +274,11 @@ class WeeklyReportJob
     public function handle(array $params = []): void
     {
         $stats = [
-            'users' => db()->table('users')->count(),
-            'orders' => db()->table('orders')
+            'users' => db($context)->table('users')->count(),
+            'orders' => db($context)->table('orders')
                 ->where('created_at', '>=', date('Y-m-d', strtotime('-7 days')))
                 ->count(),
-            'revenue' => db()->table('orders')
+            'revenue' => db($context)->table('orders')
                 ->where('created_at', '>=', date('Y-m-d', strtotime('-7 days')))
                 ->sum('total'),
         ];
@@ -316,7 +316,7 @@ class BackupDatabaseJob
         // Upload to S3
         Storage::disk('s3')->put("backups/{$filename}", file_get_contents("{$path}/{$filename}"));
 
-        logger()->info('Database backup completed', ['file' => $filename]);
+        app($context, \Psr\Log\LoggerInterface::class)->info('Database backup completed', ['file' => $filename]);
     }
 }
 ```
@@ -436,9 +436,9 @@ class SendDigestJob
 {
     public function handle(array $params = []): void
     {
-        $users = db()->table('users')->where('digest_enabled', true)->get();
+        $users = db($context)->table('users')->where('digest_enabled', true)->get();
 
-        $queue = service(\Glueful\Queue\QueueManager::class);
+        $queue = service($context, \Glueful\Queue\QueueManager::class);
         foreach ($users as $user) {
             $queue->push(\App\Jobs\SendUserDigestJob::class, ['userId' => $user->id]);
         }
@@ -478,13 +478,13 @@ public function handle(): void
 ```php
 public function handle(): void
 {
-    logger()->info('Starting daily cleanup');
+    app($context, \Psr\Log\LoggerInterface::class)->info('Starting daily cleanup');
 
-    $deleted = db()->table('sessions')
+    $deleted = db($context)->table('sessions')
         ->where('expires_at', '<', now())
         ->delete();
 
-    logger()->info('Daily cleanup completed', [
+    app($context, \Psr\Log\LoggerInterface::class)->info('Daily cleanup completed', [
         'sessions_deleted' => $deleted
     ]);
 }

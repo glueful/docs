@@ -117,7 +117,7 @@ class RequestLoggingMiddleware implements RouteMiddleware
 {
     public function handle(Request $request, callable $next): mixed
     {
-        logger()->info('Request started', [
+        app($context, \Psr\Log\LoggerInterface::class)->info('Request started', [
             'method' => $request->getMethod(),
             'uri' => $request->getRequestUri(),
             'ip' => $request->getClientIp(),
@@ -125,7 +125,7 @@ class RequestLoggingMiddleware implements RouteMiddleware
 
         $response = $next($request);
 
-        logger()->info('Request completed', [
+        app($context, \Psr\Log\LoggerInterface::class)->info('Request completed', [
             'status' => $response->getStatusCode(),
         ]);
 
@@ -281,7 +281,7 @@ class MaintenanceModeMiddleware implements RouteMiddleware
 {
     public function handle(Request $request, callable $next): mixed
     {
-        if (config('app.maintenance_mode') && !$this->isWhitelisted($request)) {
+        if (config($context, 'app.maintenance_mode') && !$this->isWhitelisted($request)) {
             return Response::error('Service under maintenance', 503);
         }
 
@@ -290,7 +290,7 @@ class MaintenanceModeMiddleware implements RouteMiddleware
 
     private function isWhitelisted(Request $request): bool
     {
-        $whitelistedIps = config('app.maintenance_whitelist', []);
+        $whitelistedIps = config($context, 'app.maintenance_whitelist', []);
         return in_array($request->getClientIp(), $whitelistedIps);
     }
 }

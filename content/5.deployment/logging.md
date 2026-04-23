@@ -11,11 +11,11 @@ Implement effective logging strategies for debugging, monitoring, and auditing y
 
 ```php
 // Log messages at different levels
-logger()->debug('Debugging info', ['user_id' => 123]);
-logger()->info('User registered', ['email' => 'john@example.com']);
-logger()->warning('Cache miss', ['key' => 'users:active']);
-logger()->error('Payment failed', ['order_id' => 'abc123', 'error' => $e->getMessage()]);
-logger()->critical('Database connection lost');
+app($context, \Psr\Log\LoggerInterface::class)->debug('Debugging info', ['user_id' => 123]);
+app($context, \Psr\Log\LoggerInterface::class)->info('User registered', ['email' => 'john@example.com']);
+app($context, \Psr\Log\LoggerInterface::class)->warning('Cache miss', ['key' => 'users:active']);
+app($context, \Psr\Log\LoggerInterface::class)->error('Payment failed', ['order_id' => 'abc123', 'error' => $e->getMessage()]);
+app($context, \Psr\Log\LoggerInterface::class)->critical('Database connection lost');
 ```
 
 ### Structured Logging
@@ -23,7 +23,7 @@ logger()->critical('Database connection lost');
 Always include context:
 
 ```php
-logger()->info('Order created', [
+app($context, \Psr\Log\LoggerInterface::class)->info('Order created', [
     'order_id' => $order->id,
     'user_id' => $order->user_id,
     'total' => $order->total,
@@ -38,12 +38,12 @@ Log to a specific channel (e.g., `api`, `app`, `framework`):
 
 ```php
 // If your app exposes the LogManager via helper
-logger()->channel('api')->info('API request', ['path' => $request->path()]);
+app($context, \Psr\Log\LoggerInterface::class)->channel('api')->info('API request', ['path' => $request->path()]);
 
 // Or via the container/DI
 use Glueful\Logging\LogManager;
 /** @var LogManager $log */
-$log = container()->get(LogManager::class);
+$log = container($context)->get(LogManager::class);
 $log->channel('framework')->warning('Slow request', ['duration_ms' => 1250]);
 ```
 
@@ -125,27 +125,27 @@ Default files under `storage/logs/`:
 
 ```php
 // DEBUG - Development debugging only
-logger()->debug('SQL query executed', [
+app($context, \Psr\Log\LoggerInterface::class)->debug('SQL query executed', [
     'sql' => $sql,
     'bindings' => $bindings,
     'duration' => $duration,
 ]);
 
 // INFO - Significant events
-logger()->info('User logged in', [
+app($context, \Psr\Log\LoggerInterface::class)->info('User logged in', [
     'user_id' => $user->id,
     'ip' => $request->ip(),
 ]);
 
 // WARNING - Unexpected but handled situations
-logger()->warning('API rate limit approaching', [
+app($context, \Psr\Log\LoggerInterface::class)->warning('API rate limit approaching', [
     'user_id' => $user->id,
     'requests' => $count,
     'limit' => $limit,
 ]);
 
 // ERROR - Runtime errors that need attention
-logger()->error('External API failed', [
+app($context, \Psr\Log\LoggerInterface::class)->error('External API failed', [
     'service' => 'stripe',
     'endpoint' => '/charges',
     'error' => $exception->getMessage(),
@@ -153,8 +153,8 @@ logger()->error('External API failed', [
 ]);
 
 // CRITICAL - System failures requiring immediate action
-logger()->critical('Database connection failed', [
-    'host' => config('database.host'),
+app($context, \Psr\Log\LoggerInterface::class)->critical('Database connection failed', [
+    'host' => config($context, 'database.host'),
     'error' => $exception->getMessage(),
 ]);
 ```
@@ -178,7 +178,7 @@ class LogContextMiddleware
         ];
 
         // Add context to all subsequent logs
-        logger()->withContext($context);
+        app($context, \Psr\Log\LoggerInterface::class)->withContext($context);
 
         return $next($request);
     }
@@ -188,7 +188,7 @@ class LogContextMiddleware
 ### Application Context
 
 ```php
-logger()->info('Processing job', [
+app($context, \Psr\Log\LoggerInterface::class)->info('Processing job', [
     'job' => get_class($job),
     'queue' => $queue,
     'attempt' => $attempt,
@@ -207,7 +207,7 @@ class ApiLoggingMiddleware
     {
         $start = microtime(true);
 
-        logger()->info('API request started', [
+        app($context, \Psr\Log\LoggerInterface::class)->info('API request started', [
             'method' => $request->method(),
             'path' => $request->path(),
             'query' => $request->query(),
@@ -215,7 +215,7 @@ class ApiLoggingMiddleware
 
         $response = $next($request);
 
-        logger()->info('API request completed', [
+        app($context, \Psr\Log\LoggerInterface::class)->info('API request completed', [
             'method' => $request->method(),
             'path' => $request->path(),
             'status' => $response->getStatusCode(),
@@ -235,15 +235,15 @@ class QueryLogger
     public function log(string $sql, array $bindings, float $duration): void
     {
         if ($duration > 1.0) {
-            logger()->warning('Slow query detected', [
+            app($context, \Psr\Log\LoggerInterface::class)->warning('Slow query detected', [
                 'sql' => $sql,
                 'bindings' => $bindings,
                 'duration' => $duration . 's',
             ]);
         }
 
-        if (config('app.debug')) {
-            logger()->debug('Query executed', [
+        if (config($context, 'app.debug')) {
+            app($context, \Psr\Log\LoggerInterface::class)->debug('Query executed', [
                 'sql' => $sql,
                 'bindings' => $bindings,
                 'duration' => $duration . 's',
@@ -260,7 +260,7 @@ class ProcessOrderJob extends Job
 {
     public function handle(): void
     {
-        logger()->info('Processing order', [
+        app($context, \Psr\Log\LoggerInterface::class)->info('Processing order', [
             'order_id' => $this->orderId,
             'job_id' => $this->job->id(),
         ]);
@@ -268,11 +268,11 @@ class ProcessOrderJob extends Job
         try {
             $this->processOrder();
 
-            logger()->info('Order processed successfully', [
+            app($context, \Psr\Log\LoggerInterface::class)->info('Order processed successfully', [
                 'order_id' => $this->orderId,
             ]);
         } catch (\Exception $e) {
-            logger()->error('Order processing failed', [
+            app($context, \Psr\Log\LoggerInterface::class)->error('Order processing failed', [
                 'order_id' => $this->orderId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -288,21 +288,21 @@ class ProcessOrderJob extends Job
 
 ```php
 // Successful login
-logger()->info('User logged in', [
+app($context, \Psr\Log\LoggerInterface::class)->info('User logged in', [
     'user_id' => $user->id,
     'email' => $user->email,
     'ip' => $request->ip(),
 ]);
 
 // Failed login
-logger()->warning('Failed login attempt', [
+app($context, \Psr\Log\LoggerInterface::class)->warning('Failed login attempt', [
     'email' => $request->input('email'),
     'ip' => $request->ip(),
     'reason' => 'invalid_credentials',
 ]);
 
 // Account lockout
-logger()->critical('Account locked', [
+app($context, \Psr\Log\LoggerInterface::class)->critical('Account locked', [
     'user_id' => $user->id,
     'failed_attempts' => $attempts,
 ]);
@@ -388,12 +388,12 @@ class ElasticsearchLogger
             'level' => $level,
             'message' => $message,
             'context' => $context,
-            'app' => config('app.name'),
-            'env' => config('app.env'),
+            'app' => config($context, 'app.name'),
+            'env' => config($context, 'app.env'),
         ];
 
         $client = new \Elasticsearch\Client([
-            'hosts' => [config('logging.elasticsearch.host')],
+            'hosts' => [config($context, 'logging.elasticsearch.host')],
         ]);
 
         $client->index([
@@ -423,7 +423,7 @@ class SecureLogger
     public function log(string $level, string $message, array $context = []): void
     {
         $context = $this->redactSensitiveData($context);
-        logger()->log($level, $message, $context);
+        app($context, \Psr\Log\LoggerInterface::class)->log($level, $message, $context);
     }
 
     private function redactSensitiveData(array $data): array
@@ -490,7 +490,7 @@ class LogMessageJob extends Job
 
     public function handle(): void
     {
-        logger()->log($this->level, $this->message, $this->context);
+        app($context, \Psr\Log\LoggerInterface::class)->log($this->level, $this->message, $this->context);
     }
 }
 ```
@@ -515,7 +515,7 @@ class BufferedLogger
     public function flush(): void
     {
         foreach ($this->buffer as [$level, $message, $context]) {
-            logger()->log($level, $message, $context);
+            app($context, \Psr\Log\LoggerInterface::class)->log($level, $message, $context);
         }
 
         $this->buffer = [];
@@ -540,8 +540,8 @@ LOG_LEVEL=debug
 ### Debug Specific Components
 
 ```php
-if (config('app.debug')) {
-    logger()->debug('Cache operation', [
+if (config($context, 'app.debug')) {
+    app($context, \Psr\Log\LoggerInterface::class)->debug('Cache operation', [
         'operation' => 'get',
         'key' => $key,
         'hit' => $hit,
@@ -554,13 +554,13 @@ if (config('app.debug')) {
 
 ```php
 // Log only in specific environments
-if (in_array(config('app.env'), ['development', 'staging'])) {
-    logger()->debug('Development log', $data);
+if (in_array(config($context, 'app.env'), ['development', 'staging'])) {
+    app($context, \Psr\Log\LoggerInterface::class)->debug('Development log', $data);
 }
 
 // Log only for specific users
 if ($request->user()?->is_admin) {
-    logger()->info('Admin action', ['action' => $action]);
+    app($context, \Psr\Log\LoggerInterface::class)->info('Admin action', ['action' => $action]);
 }
 ```
 
@@ -570,49 +570,49 @@ if ($request->user()?->is_admin) {
 
 ```php
 // ✅ Good - correct levels
-logger()->info('User registered');  // Normal event
-logger()->error('Payment failed'); // Error condition
+app($context, \Psr\Log\LoggerInterface::class)->info('User registered');  // Normal event
+app($context, \Psr\Log\LoggerInterface::class)->error('Payment failed'); // Error condition
 
 // ❌ Bad - wrong levels
-logger()->error('User registered');  // Not an error
-logger()->info('Database crashed');  // Too severe
+app($context, \Psr\Log\LoggerInterface::class)->error('User registered');  // Not an error
+app($context, \Psr\Log\LoggerInterface::class)->info('Database crashed');  // Too severe
 ```
 
 ### 2. Include Context
 
 ```php
 // ✅ Good - rich context
-logger()->error('Order failed', [
+app($context, \Psr\Log\LoggerInterface::class)->error('Order failed', [
     'order_id' => $order->id,
     'user_id' => $user->id,
     'error' => $e->getMessage(),
 ]);
 
 // ❌ Bad - no context
-logger()->error('Order failed');
+app($context, \Psr\Log\LoggerInterface::class)->error('Order failed');
 ```
 
 ### 3. Be Consistent
 
 ```php
 // ✅ Good - consistent format
-logger()->info('User action', ['action' => 'login', 'user_id' => 123]);
-logger()->info('User action', ['action' => 'logout', 'user_id' => 123]);
+app($context, \Psr\Log\LoggerInterface::class)->info('User action', ['action' => 'login', 'user_id' => 123]);
+app($context, \Psr\Log\LoggerInterface::class)->info('User action', ['action' => 'logout', 'user_id' => 123]);
 
 // ❌ Bad - inconsistent
-logger()->info('User logged in', ['user' => 123]);
-logger()->info('Logout: 123');
+app($context, \Psr\Log\LoggerInterface::class)->info('User logged in', ['user' => 123]);
+app($context, \Psr\Log\LoggerInterface::class)->info('Logout: 123');
 ```
 
 ### 4. Avoid Excessive Logging
 
 ```php
 // ✅ Good - meaningful logs
-logger()->info('Batch processed', ['count' => 1000]);
+app($context, \Psr\Log\LoggerInterface::class)->info('Batch processed', ['count' => 1000]);
 
 // ❌ Bad - noisy
 foreach ($items as $item) {
-    logger()->info('Processing item', ['id' => $item->id]);
+    app($context, \Psr\Log\LoggerInterface::class)->info('Processing item', ['id' => $item->id]);
 }
 ```
 

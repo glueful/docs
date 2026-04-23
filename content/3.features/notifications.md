@@ -24,15 +24,16 @@ Register in `config/extensions.php`:
 ```php
 use Glueful\Notifications\Services\NotificationService;
 
-$notifications = app(NotificationService::class);
+$notifiable = new UserNotifiable('user-uuid', 'user@example.com');
+$notifications = app($this->getContext(), NotificationService::class);
 
 $notifications->send(
     type: 'user.welcome',
-    notifiable: $user,
+    notifiable: $notifiable,
     subject: 'Welcome to Glueful!',
     data: [
         'template' => 'welcome',
-        'name' => $user->name,
+        'name' => 'Jane Doe',
         'cta_url' => 'https://app.example.com/get-started'
     ]
 );
@@ -75,7 +76,7 @@ class UserNotifiable implements Notifiable
 use Glueful\Notifications\Services\NotificationService;
 
 $notifiable = new \App\Notifications\UserNotifiable($user['uuid'], $user['email']);
-app(NotificationService::class)->send(
+app($this->getContext(), NotificationService::class)->send(
     type: 'user.welcome',
     notifiable: $notifiable,
     subject: 'Welcome!',
@@ -90,18 +91,21 @@ app(NotificationService::class)->send(
 ```php
 public function register()
 {
-    // Create user
-    $user = $this->getConnection()->table('users')->insert($data);
+    $user = [
+        'uuid' => 'user-uuid',
+        'email' => 'user@example.com',
+        'name' => 'Jane Doe',
+    ];
+    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
 
-    // Send welcome email
-    $notifications = app(\Glueful\Notifications\Services\NotificationService::class);
+    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
     $notifications->send(
         type: 'user.welcome',
-        notifiable: $user,
+        notifiable: $notifiable,
         subject: 'Welcome!',
         data: [
             'template' => 'welcome',
-            'name' => $user->name
+            'name' => $user['name']
         ]
     );
 
@@ -114,7 +118,7 @@ public function register()
 ```php
 $notifications->send(
     type: 'order.confirmation',
-    notifiable: $user,
+    notifiable: $notifiable,
     subject: 'Order #' . $orderId,
     data: [
         'template' => 'order-confirmation',
@@ -154,11 +158,11 @@ $notifications->send(
 ```php
 $notifications->send(
     type: 'user.welcome',
-    notifiable: $user,
+    notifiable: $notifiable,
     subject: 'Welcome!',
     data: [
         'template' => 'welcome',  // Matches welcome.html
-        'name' => $user->name,
+        'name' => $user['name'],
         'cta_url' => 'https://app.example.com'
     ]
 );
@@ -181,7 +185,7 @@ Send notifications later:
 ```php
 $notifications->send(
     type: 'reminder',
-    notifiable: $user,
+    notifiable: $notifiable,
     subject: 'Don't forget!',
     data: ['template' => 'reminder'],
     options: [
@@ -197,7 +201,7 @@ Set notification priority:
 ```php
 $notifications->send(
     type: 'urgent.alert',
-    notifiable: $user,
+    notifiable: $notifiable,
     subject: 'Action Required',
     data: ['template' => 'alert'],
     options: [
@@ -232,20 +236,23 @@ Backoff strategies:
 ```php
 public function register()
 {
-    $user = $this->db->table('users')->insert([
-        'name' => $data['name'],
-        'email' => $data['email'],
-        'password' => password_hash($data['password'], PASSWORD_DEFAULT)
-    ]);
+    $data = $this->getRequestData();
+    $user = [
+        'uuid' => 'user-uuid',
+        'name' => $data['name'] ?? 'Jane Doe',
+        'email' => $data['email'] ?? 'user@example.com',
+    ];
+    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
+    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
 
     $notifications->send(
         type: 'user.registered',
-        notifiable: $user,
-        subject: 'Welcome to ' . config('app.name'),
+        notifiable: $notifiable,
+        subject: 'Welcome to Glueful',
         data: [
             'template' => 'welcome',
-            'name' => $user->name,
-            'verify_url' => url('/verify/' . $user->verification_token)
+            'name' => $user['name'],
+            'verify_url' => 'https://app.example.com/verify/' . $user['uuid']
         ]
     );
 
@@ -258,7 +265,8 @@ public function register()
 ```php
 public function forgotPassword()
 {
-    $email = $this->request->input('email');
+    $data = $this->getRequestData();
+    $email = $data['email'] ?? null;
     $user = $this->getConnection()->table('users')->where(['email' => $email])->first();
 
     if (!$user) {
@@ -273,15 +281,16 @@ public function forgotPassword()
         'created_at' => date('Y-m-d H:i:s')
     ]);
 
-    $notifications = app(\Glueful\Notifications\Services\NotificationService::class);
+    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
+    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
     $notifications->send(
         type: 'password.reset',
-        notifiable: $user,
+        notifiable: $notifiable,
         subject: 'Reset Your Password',
         data: [
             'template' => 'password-reset',
-            'name' => $user->name,
-            'reset_url' => url('/reset-password/' . $token)
+            'name' => $user['name'] ?? $user['email'],
+            'reset_url' => 'https://app.example.com/reset-password/' . $token
         ]
     );
 
@@ -294,21 +303,28 @@ public function forgotPassword()
 ```php
 public function placeOrder()
 {
-    $order = $this->getConnection()->table('orders')->insert($orderData);
-
-    $user = $this->getConnection()->table('users')->find($order->user_id);
-
-    $notifications = app(\Glueful\Notifications\Services\NotificationService::class);
+    $order = [
+        'id' => 1234,
+        'uuid' => 'order-uuid',
+        'total' => 149.99,
+        'user_uuid' => 'user-uuid',
+    ];
+    $user = [
+        'uuid' => 'user-uuid',
+        'email' => 'user@example.com',
+    ];
+    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
+    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
     $notifications->send(
         type: 'order.placed',
-        notifiable: $user,
-        subject: 'Order Confirmation #' . $order->id,
+        notifiable: $notifiable,
+        subject: 'Order Confirmation #' . $order['id'],
         data: [
             'template' => 'order-confirmation',
-            'order_id' => $order->id,
-            'total' => $order->total,
-            'items' => $this->getOrderItems($order->id),
-            'tracking_url' => url('/orders/' . $order->uuid)
+            'order_id' => $order['id'],
+            'total' => $order['total'],
+            'items' => $this->getOrderItems($order['id']),
+            'tracking_url' => 'https://app.example.com/orders/' . $order['uuid']
         ]
     );
 
@@ -325,19 +341,20 @@ public function sendWeeklyDigest()
         ->where(['digest_enabled' => true])
         ->get();
 
-    $notifications = app(\Glueful\Notifications\Services\NotificationService::class);
+    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
     foreach ($users as $user) {
-        $stats = $this->getUserStats($user->id);
+        $notifiable = new UserNotifiable($user['uuid'], $user['email']);
+        $stats = $this->getUserStats($user['uuid']);
 
         $notifications->send(
             type: 'digest.weekly',
-            notifiable: $user,
+            notifiable: $notifiable,
             subject: 'Your Weekly Summary',
             data: [
                 'template' => 'weekly-digest',
-                'name' => $user->name,
+                'name' => $user['name'] ?? $user['email'],
                 'stats' => $stats,
-                'highlights' => $this->getHighlights($user->id)
+                'highlights' => $this->getHighlights($user['uuid'])
             ]
         );
     }
@@ -431,7 +448,7 @@ return [
 
 ```php
 // ✅ Good - personal
-"Hi {$user->name}, your order is ready!"
+"Hi {$user['name']}, your order is ready!"
 
 // ❌ Bad - generic
 "Your order is ready."
@@ -463,13 +480,13 @@ Test notifications without sending:
 ```php
 public function testWelcomeEmail()
 {
-    $user = factory(User::class)->create();
+    $notifiable = new \App\Notifications\UserNotifiable('user-uuid', 'user@example.com');
 
-    $result = app(\Glueful\Notifications\Services\NotificationService::class)->send(
+    $result = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class)->send(
         type: 'user.welcome',
-        notifiable: $user,
+        notifiable: $notifiable,
         subject: 'Welcome!',
-        data: ['template' => 'welcome', 'name' => $user->name]
+        data: ['template' => 'welcome', 'name' => 'Jane Doe']
     );
 
     $this->assertEquals('success', $result['status']);
@@ -504,7 +521,7 @@ class SmsChannel
 {
     public function send($notifiable, $data): array
     {
-        $phone = $notifiable->phone_number;
+        $phone = $notifiable->routeNotificationFor('sms');
         $message = $data['message'];
 
         // Send SMS via provider

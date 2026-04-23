@@ -120,6 +120,13 @@ export default defineNuxtConfig({
         ]
       },
       {
+        title: 'Extensions',
+        contentCollection: 'docs',
+        contentFilters: [
+          { field: 'path', operator: 'LIKE', value: '/extensions%' }
+        ]
+      },
+      {
         title: 'API Reference',
         contentCollection: 'docs',
         contentFilters: [

@@ -12,7 +12,7 @@ Prevent duplicate or overlapping execution of critical sections across workers o
 ```php
 use Glueful\Lock\LockManagerInterface;
 
-$lockManager = app(LockManagerInterface::class);
+$lockManager = app($context, LockManagerInterface::class);
 
 // Execute once, safely across processes
 $result = $lockManager->executeWithLock('import:daily-customers', function () {
@@ -29,7 +29,7 @@ try {
     }, maxWait: 30.0, ttl: 600);
 } catch (\Symfony\Component\Lock\Exception\LockConflictedException $e) {
     // Timed out waiting
-    logger()->warning('Warehouse sync busy, skipped');
+    app($context, \Psr\Log\LoggerInterface::class)->warning('Warehouse sync busy, skipped');
 }
 ```
 
@@ -45,7 +45,7 @@ if ($lock->acquire()) {
         $lock->release();
     }
 } else {
-    logger()->info('Index rebuild already in progress');
+    app($context, \Psr\Log\LoggerInterface::class)->info('Index rebuild already in progress');
 }
 ```
 
@@ -93,7 +93,7 @@ foreach (array_chunk($userIds, 500) as $chunk) {
 
 ```php
 if ($lockManager->isLocked('cache:warm')) {
-    logger()->info('Cache warming already in progress');
+    app($context, \Psr\Log\LoggerInterface::class)->info('Cache warming already in progress');
     return;
 }
 
@@ -273,13 +273,13 @@ try {
     }, 300);
 } catch (LockConflictedException $e) {
     // Lock already held
-    logger()->info('Inventory sync skipped: already running');
+    app($context, \Psr\Log\LoggerInterface::class)->info('Inventory sync skipped: already running');
 
     // Optionally queue for retry
-    $queue = app(\Glueful\Queue\QueueManager::class);
+    $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(RetryInventorySyncJob::class, [], queue: null, connection: null);
 } catch (\Throwable $e) {
-    logger()->error('Inventory sync failed', ['error' => $e->getMessage()]);
+    app($context, \Psr\Log\LoggerInterface::class)->error('Inventory sync failed', ['error' => $e->getMessage()]);
     throw $e;
 }
 ```
@@ -322,12 +322,12 @@ Track lock performance:
 $start = microtime(true);
 
 $lockManager->executeWithLock('feed:refresh', function () {
-    logger()->info('Refreshing feed with exclusive lock');
+    app($context, \Psr\Log\LoggerInterface::class)->info('Refreshing feed with exclusive lock');
     refreshFeed();
 });
 
 $duration = microtime(true) - $start;
-logger()->info('Lock held for ' . $duration . 's');
+app($context, \Psr\Log\LoggerInterface::class)->info('Lock held for ' . $duration . 's');
 ```
 
 ### Key Metrics

@@ -462,7 +462,6 @@ spec:
           name: glueful-nginx
       - name: public
         emptyDir: {}
----
 apiVersion: v1
 kind: Service
 metadata:
