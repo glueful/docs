@@ -133,7 +133,7 @@ The projector records N+1 risk detections and projection metrics via `FieldSelec
 Middleware defaults (overridable per route via metadata/attributes):
 
 ```php
-// config('api.field_selection') if using the config helper
+// config($context, 'api.field_selection') if using the config helper
 [
   'strict'     => false,
   'maxDepth'   => 6,

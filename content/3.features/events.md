@@ -34,11 +34,11 @@ use App\Events\UserRegisteredEvent;
 
 Event::listen(UserRegisteredEvent::class, function($event) {
     // Send welcome email (queue async)
-    $queue = app(\Glueful\Queue\QueueManager::class);
+    $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(SendWelcomeEmailJob::class, ['user_id' => $event->userId]);
 
     // Track in analytics (pseudo)
-    app('analytics')->track('user.registered', [
+    app($context, 'analytics')->track('user.registered', [
         'user_id' => $event->userId
     ]);
 });
@@ -83,7 +83,7 @@ Event::dispatch(new OrderPlacedEvent($orderId, $total));
 ```php
 // Closure listener
 Event::listen(OrderPlacedEvent::class, function($event) {
-    logger()->info('Order placed', ['id' => $event->orderId]);
+    app($context, \Psr\Log\LoggerInterface::class)->info('Order placed', ['id' => $event->orderId]);
 });
 
 // Class listener (optionally via service container reference)
@@ -135,12 +135,12 @@ Queue expensive listeners:
 ```php
 Event::listen(UserRegisteredEvent::class, function($event) {
     // This listener runs synchronously
-    logger()->info('User registered');
+    app($context, \Psr\Log\LoggerInterface::class)->info('User registered');
 });
 
 Event::listen(UserRegisteredEvent::class, function($event) {
     // Queue this expensive work
-    $queue = app(\Glueful\Queue\QueueManager::class);
+    $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(ProcessNewUserJob::class, ['user_id' => $event->userId]);
 });
 ```
@@ -165,7 +165,7 @@ class UserRegisteredEvent extends BaseEvent
 // Listeners
 Event::listen(UserRegisteredEvent::class, function($event) {
     // Send welcome email
-    $queue = app(\Glueful\Queue\QueueManager::class);
+    $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(SendWelcomeEmailJob::class, ['user_id' => $event->userId]);
 });
 
@@ -178,7 +178,7 @@ Event::listen(UserRegisteredEvent::class, function($event) {
 
 Event::listen(UserRegisteredEvent::class, function($event) {
     // Create default preferences
-    db()->table('user_preferences')->insert([
+    db($context)->table('user_preferences')->insert([
         'user_id' => $event->userId,
         'notifications' => true
     ]);
@@ -208,19 +208,19 @@ class OrderPlacedEvent extends BaseEvent
 
 // Process payment
 Event::listen(OrderPlacedEvent::class, function($event) {
-    app(\Glueful\Queue\QueueManager::class)
+    app($context, \Glueful\Queue\QueueManager::class)
         ->push(ProcessPaymentJob::class, ['order_id' => $event->orderId]);
 });
 
 // Send confirmation
 Event::listen(OrderPlacedEvent::class, function($event) {
-    app(\Glueful\Queue\QueueManager::class)
+    app($context, \Glueful\Queue\QueueManager::class)
         ->push(SendOrderConfirmationJob::class, ['order_id' => $event->orderId]);
 });
 
 // Update inventory
 Event::listen(OrderPlacedEvent::class, function($event) {
-    app(\Glueful\Queue\QueueManager::class)
+    app($context, \Glueful\Queue\QueueManager::class)
         ->push(UpdateInventoryJob::class, ['order_id' => $event->orderId]);
 });
 ```
@@ -258,7 +258,7 @@ Glueful emits these events automatically:
 use Glueful\Events\Http\RequestEvent;
 
 Event::listen(RequestEvent::class, function($event) {
-    logger()->info('Request', [
+    app($context, \Psr\Log\LoggerInterface::class)->info('Request', [
         'method' => $event->request->getMethod(),
         'path' => $event->request->getPathInfo()
     ]);
@@ -268,7 +268,7 @@ Event::listen(RequestEvent::class, function($event) {
 use Glueful\Events\Http\ResponseEvent;
 
 Event::listen(ResponseEvent::class, function($event) {
-    logger()->info('Response', [
+    app($context, \Psr\Log\LoggerInterface::class)->info('Response', [
         'status' => $event->response->getStatusCode()
     ]);
 });
@@ -281,14 +281,14 @@ Event::listen(ResponseEvent::class, function($event) {
 use Glueful\Events\Auth\SessionCreatedEvent;
 
 Event::listen(SessionCreatedEvent::class, function($event) {
-    logger()->info('User logged in', ['user_id' => $event->userId]);
+    app($context, \Psr\Log\LoggerInterface::class)->info('User logged in', ['user_id' => $event->userId]);
 });
 
 // Login failure
 use Glueful\Events\Auth\AuthenticationFailedEvent;
 
 Event::listen(AuthenticationFailedEvent::class, function($event) {
-    logger()->warning('Login failed', ['email' => $event->email]);
+    app($context, \Psr\Log\LoggerInterface::class)->warning('Login failed', ['email' => $event->email]);
 });
 ```
 
@@ -318,7 +318,7 @@ use Glueful\Events\Database\QueryExecutedEvent;
 
 Event::listen(QueryExecutedEvent::class, function($event) {
     if ($event->time > 100) { // 100ms
-        logger()->warning('Slow query', [
+        app($context, \Psr\Log\LoggerInterface::class)->warning('Slow query', [
             'sql' => $event->sql,
             'time' => $event->time
         ]);
@@ -356,7 +356,7 @@ return [
 ```php
 // ✅ Good - quick logging
 Event::listen(OrderPlacedEvent::class, function($event) {
-    logger()->info('Order placed', ['id' => $event->orderId]);
+    app($context, \Psr\Log\LoggerInterface::class)->info('Order placed', ['id' => $event->orderId]);
 });
 
 // ❌ Bad - slow API call
@@ -458,7 +458,7 @@ Event::listen(PostCreatedEvent::class, function($event) {
 });
 
 Event::listen(PostCreatedEvent::class, function($event) {
-    app(\Glueful\Queue\QueueManager::class)
+    app($context, \Glueful\Queue\QueueManager::class)
         ->push(NotifySubscribersJob::class, ['post_uuid' => $event->postUuid]);
 });
 ```

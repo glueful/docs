@@ -32,8 +32,8 @@ tests/
 
 ## Testing Helpers
 
-- `app()` and `service()` resolve services from the DI container in tests.
-- `container()` returns the PSR‑11 container (useful for constructing Router).
+- `app($context, Service::class)` and `service($context, Service::class)` resolve services from the DI container in tests.
+- `container($context)` returns the PSR‑11 container (useful for constructing Router).
 - Extend `Glueful\Testing\TestCase` to bootstrap a minimal application per test class.
 
 Example using the base test case:
@@ -48,15 +48,15 @@ final class UsersRepositoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repoFactory = app(\Glueful\Repository\RepositoryFactory::class);
+        $this->repoFactory = app($context, \Glueful\Repository\RepositoryFactory::class);
         // Optional: start transaction
-        app('database')->getPDO()->beginTransaction();
+        app($context, 'database')->getPDO()->beginTransaction();
     }
 
     protected function tearDown(): void
     {
         // Optional: rollback
-        app('database')->getPDO()->rollBack();
+        app($context, 'database')->getPDO()->rollBack();
         parent::tearDown();
     }
 
@@ -126,7 +126,7 @@ class UserRepositoryTest extends TestCase
     protected function setUp(): void
     {
         // Setup test database
-        $this->db = app('database');
+        $this->db = app($context, 'database');
         $this->userRepo = new UserRepository($this->db);
 
         // Start transaction
@@ -188,7 +188,7 @@ final class AuthenticationTest extends TestCase
 {
     public function test_user_can_register(): void
     {
-        $router = new Router(container()); // or construct with a minimal PSR‑11 container
+        $router = new Router(container($context)); // or construct with a minimal PSR‑11 container
         // register routes here or load your app routes
 
         $request = Request::create('/auth/register', 'POST', [
@@ -215,7 +215,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 public function test_returns_json_payload(): void
 {
-    $router = new Router(container());
+    $router = new Router(container($context));
 
     // Minimal route for test
     $router->get('/ping', fn() => \Glueful\Http\Response::success(['pong' => true]));

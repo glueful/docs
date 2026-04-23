@@ -34,7 +34,7 @@ $users = CacheHelper::remember($cache, 'users:active', function() {
 }, 3600);
 
 // Queue background jobs
-$queue = app(QueueManager::class);
+$queue = app($context, QueueManager::class);
 $queue->push(SendWelcomeEmail::class, [
     'user_uuid' => $user->uuid,
 ]);

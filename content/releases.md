@@ -3359,7 +3359,7 @@ use Glueful\Http\Client;
 use Glueful\Http\Builders\ApiClientBuilder;
 
 // Configure retries with custom settings via DI + scoped client
-$client = app(Client::class)
+$client = app($context, Client::class)
     ->createScopedClient(['base_uri' => 'https://api.example.com'])
     ->withRetry([
         'max_retries' => 3,
@@ -3369,7 +3369,7 @@ $client = app(Client::class)
     ]);
 
 // Or use builder with presets
-$apiClient = (new ApiClientBuilder(app(Client::class)))
+$apiClient = (new ApiClientBuilder(app($context, Client::class)))
     ->baseUri('https://payment-gateway.com')
     ->forPayments()
     ->buildWithRetries();
@@ -3477,7 +3477,7 @@ $container->set('cron.cache', CacheMaintenance::class);
 use Glueful\Queue\Jobs\CacheMaintenanceJob;
 use Glueful\Queue\QueueManager;
 
-$queue = app(QueueManager::class);
+$queue = app($context, QueueManager::class);
 $queue->push(CacheMaintenanceJob::class, ['operation' => 'clearExpiredKeys'], 'maintenance');
 ```
 
@@ -3492,7 +3492,7 @@ $cronJob->execute();
 **After:**
 ```php
 /** @var CacheMaintenanceTask $task */
-$task = app(CacheMaintenanceTask::class);
+$task = app($context, CacheMaintenanceTask::class);
 $task->handle(['driver' => 'redis', 'operation' => 'clearExpiredKeys']);
 ```
 
@@ -3627,7 +3627,7 @@ final class PaymentProvider extends BaseServiceProvider
         return [
             // FactoryDefinition gives you full control
             'payment.client' => new FactoryDefinition('payment.client', function(\Psr\Container\ContainerInterface $c) {
-                return new PaymentClient($c->get('http.client'), baseUrl: config('payments.base_url'));
+                return new PaymentClient($c->get('http.client'), baseUrl: config($context, 'payments.base_url'));
             }),
             // Simple autowire helper (shared by default)
             PaymentService::class => $this->autowire(PaymentService::class),
@@ -3665,7 +3665,7 @@ php glueful security:vulnerabilities
 use Glueful\Uploader\FileUploader;
 
 // Upload using the framework uploader (validates and stores metadata)
-$uploader = app(FileUploader::class);
+$uploader = app($context, FileUploader::class);
 $result = $uploader->handleUpload(
     $token,                   // your upload token / CSRF guard
     ['user_id' => $userId, 'key' => 'document'],
@@ -3674,7 +3674,7 @@ $result = $uploader->handleUpload(
 
 // $result contains: ['uuid' => '...', 'url' => 'https://...']
 // To create a presigned link for a known path on S3:
-// $signedUrl = app(Glueful\Uploader\Storage\FlysystemStorage::class)
+// $signedUrl = app($context, Glueful\Uploader\Storage\FlysystemStorage::class)
 //     ->getSignedUrl('documents/example.pdf', 3600);
 ```
 
@@ -3763,13 +3763,13 @@ class UserCreated extends BaseEvent
 }
 
 // Register listener via ListenerProvider
-$provider = app(ListenerProvider::class);
+$provider = app($context, ListenerProvider::class);
 $provider->addListener(UserCreated::class, function (UserCreated $event) {
     // Handle event
 });
 
 // Dispatch via PSR-14 dispatcher
-$dispatcher = app(EventDispatcherInterface::class);
+$dispatcher = app($context, EventDispatcherInterface::class);
 $dispatcher->dispatch(new UserCreated($user));
 ```
 
@@ -3988,7 +3988,7 @@ Notification system wiring improvements with a shared DI provider and a safer em
 
 ::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
 #description
-If you referenced `config('extensions.EmailNotification.retry')`, update to `config('email-notification.retry')`. No breaking API changes are introduced in 1.5.0.
+If you referenced `config($context, 'extensions.EmailNotification.retry')`, update to `config($context, 'email-notification.retry')`. No breaking API changes are introduced in 1.5.0.
 ::
 
 ---

@@ -32,18 +32,18 @@ Other useful configs you may encounter:
 
 ## Accessing Configuration
 
-Use the `config()` helper:
+Use the `config($context, ...)` helper:
 
 ```php
 // Get value
-$env = config('app.env');
-$dbHost = config('database.mysql.host');
+$env = config($context, 'app.env');
+$dbHost = config($context, 'database.mysql.host');
 
 // Get with default
-$timeout = config('app.timeout', 30);
+$timeout = config($context, 'app.timeout', 30);
 
 // Get nested value
-$cacheDriver = config('cache.default');
+$cacheDriver = config($context, 'cache.default');
 ```
 
 ## Environment Variables
@@ -155,7 +155,7 @@ return [
     'stores' => [
         'file' => [
             'driver' => 'file',
-            'path' => env('CACHE_FILE_PATH', storage_path('cache')),
+            'path' => env('CACHE_FILE_PATH', storage_path($context, 'cache')),
         ],
 
         'redis' => [
@@ -260,7 +260,7 @@ return [
 ## Configuration Loading & Overrides
 
 Glueful merges framework defaults with your application overrides:
-- The `config()` helper loads framework config first, then application `config/*.php`, using `loadConfigWithHierarchy()`.
+- The `config($context, ...)` helper loads framework config first, then application `config/*.php`, using `loadConfigWithHierarchy()`.
 - Deep merge semantics: associative arrays are merged (app wins), numeric lists are appended and de-duplicated.
 - Use `env()` in config files to make settings environment-aware.
 
@@ -339,11 +339,14 @@ php glueful config:clear
 ],
 ```
 
-Use in code:
+In application code, resolve additional connections through your configured database services or repositories. Do not assume a `db('connection')` helper exists unless you added one in your app:
 
 ```php
-$users = db('mysql_main')->table('users')->get();
-$stats = db('mysql_analytics')->table('stats')->get();
+$mainDb = container($context)->get(\Glueful\Database\Connection::class);
+$users = $mainDb->table('users')->get();
+
+$analytics = app($context, App\Services\AnalyticsStore::class);
+$stats = $analytics->latest();
 ```
 
 ### Multi-Tenant Configuration
@@ -380,7 +383,7 @@ return [
 Use in code:
 
 ```php
-if (config('features.new_dashboard')) {
+if (config($context, 'features.new_dashboard')) {
     return $this->newDashboard();
 }
 
@@ -424,7 +427,7 @@ foreach ($required as $key) {
 'url' => env('APP_URL', 'http://localhost'),
 
 // Then use in code
-$url = config('app.url');
+$url = config($context, 'app.url');
 
 // ❌ Bad - in application code
 $url = env('APP_URL');

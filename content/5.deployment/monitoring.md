@@ -87,7 +87,7 @@ class MetricsMiddleware
         $memoryUsed = memory_get_usage() - $memoryStart;
 
         // Log metrics
-        logger()->info('Request completed', [
+        app($context, \Psr\Log\LoggerInterface::class)->info('Request completed', [
             'method' => $request->method(),
             'path' => $request->path(),
             'status' => $response->getStatusCode(),
@@ -124,11 +124,11 @@ class DatabaseMetrics
         $start = microtime(true);
 
         // Run test query
-        db()->table('users')->limit(1)->get();
+        db($context)->table('users')->limit(1)->get();
 
         return [
             'response_time' => microtime(true) - $start,
-            'connections' => db()->getConnectionCount(),
+            'connections' => db($context)->getConnectionCount(),
         ];
     }
 }
@@ -145,7 +145,7 @@ class QueueMetrics
 {
     public static function depth(string $queue = 'default'): int
     {
-        $prefix = config('queue.connections.redis.prefix', 'glueful:queue:');
+        $prefix = config($context, 'queue.connections.redis.prefix', 'glueful:queue:');
         $immediate = redis()->lLen("{$prefix}queue:{$queue}");
         $delayed = redis()->zCard("{$prefix}queue:{$queue}:delayed");
         $reserved = redis()->zCard("{$prefix}queue:{$queue}:reserved");
@@ -154,7 +154,7 @@ class QueueMetrics
 
     public static function failed(): int
     {
-        return db()->table('queue_failed_jobs')->count();
+        return db($context)->table('queue_failed_jobs')->count();
     }
 }
 ```
@@ -164,7 +164,7 @@ class QueueMetrics
 ### Structured Logging
 
 ```php
-logger()->info('Order processed', [
+app($context, \Psr\Log\LoggerInterface::class)->info('Order processed', [
     'order_id' => $order->id,
     'user_id' => $order->user_id,
     'total' => $order->total,
@@ -172,7 +172,7 @@ logger()->info('Order processed', [
     'payment_method' => $order->payment_method,
 ]);
 
-logger()->error('Payment failed', [
+app($context, \Psr\Log\LoggerInterface::class)->error('Payment failed', [
     'order_id' => $order->id,
     'error' => $exception->getMessage(),
     'gateway_response' => $gatewayResponse,
@@ -183,19 +183,19 @@ logger()->error('Payment failed', [
 
 ```php
 // DEBUG - Development debugging
-logger()->debug('Query executed', ['sql' => $sql, 'bindings' => $bindings]);
+app($context, \Psr\Log\LoggerInterface::class)->debug('Query executed', ['sql' => $sql, 'bindings' => $bindings]);
 
 // INFO - Significant events
-logger()->info('User registered', ['user_id' => $user->id]);
+app($context, \Psr\Log\LoggerInterface::class)->info('User registered', ['user_id' => $user->id]);
 
 // WARNING - Unusual but handled
-logger()->warning('Cache miss', ['key' => $cacheKey]);
+app($context, \Psr\Log\LoggerInterface::class)->warning('Cache miss', ['key' => $cacheKey]);
 
 // ERROR - Errors that need attention
-logger()->error('API call failed', ['service' => 'stripe', 'error' => $e]);
+app($context, \Psr\Log\LoggerInterface::class)->error('API call failed', ['service' => 'stripe', 'error' => $e]);
 
 // CRITICAL - System failures
-logger()->critical('Database connection lost');
+app($context, \Psr\Log\LoggerInterface::class)->critical('Database connection lost');
 ```
 
 ## Error Tracking
@@ -208,7 +208,7 @@ class ExceptionHandler
     public function report(\Throwable $exception): void
     {
         // Log locally
-        logger()->error($exception->getMessage(), [
+        app($context, \Psr\Log\LoggerInterface::class)->error($exception->getMessage(), [
             'exception' => get_class($exception),
             'file' => $exception->getFile(),
             'line' => $exception->getLine(),
@@ -216,7 +216,7 @@ class ExceptionHandler
         ]);
 
         // Send to error tracking service (Sentry, Bugsnag, etc.)
-        if (config('app.env') === 'production') {
+        if (config($context, 'app.env') === 'production') {
             $this->reportToSentry($exception);
         }
     }
@@ -233,7 +233,7 @@ class ExceptionHandler
 
 ```php
 // Business metrics
-logger()->info('Subscription purchased', [
+app($context, \Psr\Log\LoggerInterface::class)->info('Subscription purchased', [
     'plan' => 'pro',
     'revenue' => 99.00,
     'user_id' => $user->id,
@@ -241,7 +241,7 @@ logger()->info('Subscription purchased', [
 
 // Performance issues
 if ($duration > 5.0) {
-    logger()->warning('Slow query detected', [
+    app($context, \Psr\Log\LoggerInterface::class)->warning('Slow query detected', [
         'query' => $sql,
         'duration' => $duration,
     ]);
@@ -285,7 +285,7 @@ class AlertService
     private function alert(string $message): void
     {
         // Send to Slack, PagerDuty, etc.
-        logger()->critical($message);
+        app($context, \Psr\Log\LoggerInterface::class)->critical($message);
 
         // Example: Slack webhook
         $this->sendToSlack($message);
@@ -293,7 +293,7 @@ class AlertService
 
     private function sendToSlack(string $message): void
     {
-        $webhook = config('monitoring.slack_webhook');
+        $webhook = config($context, 'monitoring.slack_webhook');
 
         $ch = curl_init($webhook);
         curl_setopt($ch, CURLOPT_POST, 1);
@@ -461,7 +461,7 @@ if ($errorRate > 0) alert();  // Too sensitive
 
 ```php
 // ✅ Good - rich context
-logger()->error('Payment failed', [
+app($context, \Psr\Log\LoggerInterface::class)->error('Payment failed', [
     'order_id' => $order->id,
     'user_id' => $user->id,
     'amount' => $amount,
@@ -470,7 +470,7 @@ logger()->error('Payment failed', [
 ]);
 
 // ❌ Bad - minimal context
-logger()->error('Payment failed');
+app($context, \Psr\Log\LoggerInterface::class)->error('Payment failed');
 ```
 
 ### 4. Use Sampling for High Volume

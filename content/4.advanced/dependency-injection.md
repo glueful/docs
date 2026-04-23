@@ -5,17 +5,19 @@ description: Manage dependencies with the service container
 
 Glueful uses a service container for dependency injection, making your code testable and decoupled.
 
+For standalone examples on this page, assume `$context` is an available `ApplicationContext`. In controllers, prefer constructor injection and `BaseController` helpers over ad hoc container calls.
+
 ## Quick Start
 
 ### Resolving from Container
 
 ```php
 // Get services from the container
-$db = app('database'); // Glueful\\Database\\Connection
-$cache = app(\\Glueful\\Cache\\CacheStore::class);
+$db = app($context, 'database'); // Glueful\\Database\\Connection
+$cache = app($context, \\Glueful\\Cache\\CacheStore::class);
 
 // Convenience alias
-$logger = app(\\Psr\\Log\\LoggerInterface::class); // aliased to 'logger'
+$logger = app($context, \\Psr\\Log\\LoggerInterface::class); // aliased to 'logger'
 ```
 
 ### Constructor Injection
@@ -40,17 +42,21 @@ class UserController
 ### Method Injection
 
 ```php
-class TaskController
+class TaskController extends \Glueful\Controllers\BaseController
 {
     public function store(Request $request, TaskRepository $tasks)
     {
-        $validated = $request->validate([
-            'title' => 'required|string',
-        ]);
+        $data = $this->getRequestData();
 
-        $task = $tasks->create($validated);
+        if ($error = $this->validateRequest($data, [
+            'title' => 'required|max:255',
+        ])) {
+            return $error;
+        }
 
-        return Response::success($task, 201);
+        $task = $tasks->create($data);
+
+        return $this->created($task);
     }
 }
 ```
@@ -77,7 +83,7 @@ final class AppServiceProvider extends BaseServiceProvider
             // Factory-built services
             'report.generator' => new FactoryDefinition(
                 'report.generator',
-                fn() => new App\Services\ReportGenerator(config('app'))
+                fn() => new App\Services\ReportGenerator(config($this->getContext(), 'app'))
             ),
 
             // Aliases (map type-hints to existing ids)
@@ -105,7 +111,7 @@ class OrderService
 }
 
 // Container resolves dependencies
-$orderService = app(OrderService::class);
+$orderService = app($context, OrderService::class);
 ```
 
 ### Type-Hinted Parameters
@@ -249,8 +255,8 @@ class OrderController
 {
     public function store(Request $request, OrderService $orders)
     {
-        $order = $orders->createOrder($request->all());
-        return Response::success($order, 201);
+        $order = $orders->createOrder($request->toArray());
+        return Response::created($order);
     }
 }
 ```
@@ -342,9 +348,9 @@ class UserControllerTest extends TestCase
         parent::setUp();
 
         // Replace real repository with mock
-        app()->bind(UserRepositoryInterface::class, function () {
-            return new FakeUserRepository();
-        });
+        container($context)->load([
+            UserRepositoryInterface::class => fn() => new FakeUserRepository(),
+        ]);
     }
 
     public function test_lists_users()
@@ -403,7 +409,7 @@ class TaskService
 {
     public function create(array $data)
     {
-        $task = db()->table('tasks')->create($data);
+        $task = db($context)->table('tasks')->create($data);
         event(new TaskCreated($task));
         return $task;
     }
@@ -479,14 +485,14 @@ if ($container->isShared('service')) {
 
 ```php
 // Get container instance
-$container = app();
+$container = container($context);
 
 // Resolve service by id or class
-$db = app('database');
-$cache = app(\Glueful\Cache\CacheStore::class);
+$db = app($context, 'database');
+$cache = app($context, \Glueful\Cache\CacheStore::class);
 
-// Convenience helper (same as app())
-$queue = service(\Glueful\Queue\QueueManager::class);
+// Convenience helper
+$queue = service($context, \Glueful\Queue\QueueManager::class);
 ```
 
 ## Built-in Aliases
@@ -494,14 +500,14 @@ $queue = service(\Glueful\Queue\QueueManager::class);
 Common container ids and class aliases registered by core providers:
 
 - 'logger' → \Psr\Log\LoggerInterface
-  - Resolve with: app('logger') or app(\Psr\Log\LoggerInterface::class)
+  - Resolve with: app($context, 'logger') or app($context, \Psr\Log\LoggerInterface::class)
 - 'database' → \Glueful\Database\Connection
-  - Resolve with: app('database')
+  - Resolve with: app($context, 'database')
   - Also available: \Glueful\Database\QueryBuilder::class, \Glueful\Database\Schema\Interfaces\SchemaBuilderInterface::class
 - 'cache.store' → \Glueful\Cache\CacheStore
-  - Resolve with: app('cache.store') or app(\Glueful\Cache\CacheStore::class)
+  - Resolve with: app($context, 'cache.store') or app($context, \Glueful\Cache\CacheStore::class)
 - 'request' → \Symfony\Component\HttpFoundation\Request (from globals)
-- Queue manager (class-based): \Glueful\Queue\QueueManager via service()/app()
+- Queue manager (class-based): `\Glueful\Queue\QueueManager` via `service($context, \Glueful\Queue\QueueManager::class)` or `app($context, \Glueful\Queue\QueueManager::class)`
 
 Note: Exact registrations can vary with environment and extensions. Check config/serviceproviders.php, config/extensions.php, and the provider classes for full lists.
 
@@ -560,7 +566,7 @@ final class AppServiceProvider extends BaseServiceProvider
             // Factory-built service with config
             'reports.exporter' => new FactoryDefinition(
                 'reports.exporter',
-                fn() => new App\Services\Exporter(config('app.urls'))
+                fn() => new App\Services\Exporter(config($this->getContext(), 'app.urls'))
             ),
 
             // Alias a type-hint to an id
@@ -584,8 +590,8 @@ return [
 3) Resolve anywhere:
 
 ```php
-$reports = app(App\Services\ReportService::class);
-$exporter = app(App\Contracts\ExporterInterface::class); // resolves to 'reports.exporter'
+$reports = app($context, App\Services\ReportService::class);
+$exporter = app($context, App\Contracts\ExporterInterface::class); // resolves to 'reports.exporter'
 ```
 
 ## Troubleshooting

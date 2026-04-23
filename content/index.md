@@ -1,7 +1,7 @@
 ---
 seo:
-  title: Glueful — Modern API Framework
-  description: Build secure, high‑throughput PHP APIs with first‑class DX, JWT auth, OpenAPI generation, rate limiting, and RBAC.
+  title: Glueful — Build Production PHP APIs Faster
+  description: Start from the Glueful API skeleton and ship secure, documented PHP APIs with explicit routing, DI, auth, queues, storage, and operational tooling.
 ---
 ::u-page-hero{orientation = "horizontal" class="home-page-hero"}
 
@@ -13,28 +13,28 @@ seo:
 <span class="font-bold text-raspberry-600">Glueful</span>
 
 #title
-<span class="font-light text-gray-900 dark:text-white text-5xl lg:text-6xl">The <span class="font-semibold text-raspberry-600">Modern</span></span><br><span class="font-bold text-raspberry-600 text-5xl lg:text-6xl">API Framework</span>
+<span class="font-light text-gray-900 dark:text-white text-5xl lg:text-6xl">Build <span class="font-semibold text-raspberry-600">production PHP APIs</span></span><br><span class="font-bold text-raspberry-600 text-5xl lg:text-6xl">without starting from zero</span>
 
 #description
 
 <p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-  Build modern, secure APIs with <strong class="text-azure-radiance-600">speed</strong> and <strong class="text-raspberry-600">quality developer experience</strong>. Glueful brings modern tooling and enterprise‑grade security to PHP 8.3+.
+  Start with <strong class="text-azure-radiance-600">glueful/api-skeleton</strong>, then grow into a full API platform with explicit routing, context-aware DI, authentication flows, queues, notifications, storage, OpenAPI generation, and operational CLI tooling.
 </p>
 
-  <div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
-    <div class="flex items-center gap-2">
-      <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-      <span>Open Source</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-      <span>JWT Authentication</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
-      <span>High‑Throughput Routing</span>
-    </div>
+<div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
+  <div class="flex items-center gap-2">
+    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+    <span>API Skeleton First</span>
   </div>
+  <div class="flex items-center gap-2">
+    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+    <span>Explicit Routes + DI</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
+    <span>Built For Real Deployments</span>
+  </div>
+</div>
 
 #links
   :::u-button{class="bg-azure-radiance-500 hover:bg-azure-radiance-600 text-white hover:shadow-azure-radiance-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
@@ -43,7 +43,7 @@ seo:
   to: /getting-started
   trailing-icon: i-lucide-rocket
   ---
-  Start Building
+  Start With The Skeleton
   :::
 
   :::u-button{class="hover:shadow-primary-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
@@ -57,13 +57,25 @@ seo:
   ---
   GitHub
   :::
+
+  :::u-button{class="hover:shadow-primary-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
+  ---
+  color: neutral
+  size: xl
+  to: /extensions
+  variant: outline
+  trailing-icon: i-lucide-box
+  ---
+  Browse Extensions
+  :::
 #default
   :::prose-pre{code = "composer create-project glueful/api-skeleton my-project" filename = "Terminal"}
   ```bash [Terminal]
-  # Create a new Glueful project from the API skeleton (recommended)
   composer create-project glueful/api-skeleton my-project
   cd my-project
-  # Start the development server
+  php glueful install --quiet
+  php glueful scaffold:controller UserController --api
+  php glueful generate:openapi --ui
   php glueful serve
   ```
   :::
@@ -86,31 +98,31 @@ seo:
 #title
 <div class="mt-12 mb-6 scroll-mt-[calc(48px+45px+var(--ui-header-height))] lg:scroll-mt-[calc(48px+var(--ui-header-height))] [&>a]:focus-visible:outline-(--ui-primary) [&>a>code]:border-dashed hover:[&>a>code]:border-(--ui-primary) hover:[&>a>code]:text-(--ui-primary) [&>a>code]:text-xl/7 [&>a>code]:font-bold [&>a>code]:transition-colors text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
   <div class="*:leading-9">
-    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300 ">Write <span class="text-azure-radiance-600 font-semibold">Beautiful Code</span></p>
+    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300 ">A faster path from idea to deployed API</p>
   </div>
-  <div class="hidden @min-[1020px]:block"><img src="/images/light/line-2.svg" alt="Line Decoration" class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" alt="line-2"></div>
+  <div class="hidden @min-[1020px]:block"><img src="/images/light/line-2.svg" alt="Line Decoration" class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]"></div>
 </div>
 
 #description
 
-<div class="text-left mb-12 text-gray-600 dark:text-gray-300 max-w-2xl">
-  Elegant, type-safe code that feels like the future. Experience modern development with built‑in validation, dependency injection, and minimal boilerplate.
-  </div>
+<div class="text-left mb-12 text-gray-600 dark:text-gray-300 max-w-3xl">
+  Glueful is opinionated where it helps: start from a working API app, use explicit routes and controllers, rely on context-aware DI instead of hidden globals, and add higher-level features only when your app needs them.
+</div>
 
-  <div class="flex items-center gap-8 mb-8 text-sm text-gray-500 dark:text-gray-400 text-left">
-    <div class="flex items-center gap-2">
-      <div class="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"></div>
-      <span>Type Safety</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-600"></div>
-      <span>Sensible Defaults</span>
-    </div>
-    <div class="flex items-center gap-2">
-      <div class="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-green-600"></div>
-      <span>Auto DI</span>
-    </div>
+<div class="flex items-center gap-8 mb-8 text-sm text-gray-500 dark:text-gray-400 text-left">
+  <div class="flex items-center gap-2">
+    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"></div>
+    <span>PHP 8.3+</span>
   </div>
+  <div class="flex items-center gap-2">
+    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-600"></div>
+    <span>ApplicationContext + DI</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-green-600"></div>
+    <span>OpenAPI + CLI Tooling</span>
+  </div>
+</div>
 
 :::clean-code-showcase
 :::
@@ -125,31 +137,31 @@ seo:
 #title
 <div class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
   <div class="*:leading-9">
-    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300">Why developers choose <span class="text-azure-radiance-500 font-semibold">Glueful</span></p>
+    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300">Why developers adopt <span class="text-azure-radiance-500 font-semibold">Glueful</span></p>
   </div>
   <div class="hidden @min-[1020px]:block">
-    <img  class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" alt="Line Decoration"/>
+    <img class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" alt="Line Decoration"/>
   </div>
 </div>
 
 #description
 
 <div class="text-lg text-gray-600 dark:text-gray-300 text-left max-w-3xl">
-  <p>Built by developers, for developers. Every feature is designed to eliminate friction and accelerate your API development workflow.</p>
+  <p>Glueful is strongest when you want a pragmatic API framework that starts lean but already includes the hard parts teams usually stitch together later.</p>
 </div>
 
 <div class="flex items-center gap-8 mb-12 text-sm text-gray-500 dark:text-gray-400">
   <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-azure-radiance-600">Faster</span>
-    <span>Developer Velocity</span>
+    <span class="text-2xl font-bold text-azure-radiance-600">Fast</span>
+    <span>Onboarding</span>
   </div>
   <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-azure-radiance-600">Proactive</span>
-    <span>Security Tooling</span>
+    <span class="text-2xl font-bold text-azure-radiance-600">Explicit</span>
+    <span>Architecture</span>
   </div>
   <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-azure-radiance-600">Strong</span>
-    <span>Type‑Hinted APIs</span>
+    <span class="text-2xl font-bold text-azure-radiance-600">Built-In</span>
+    <span>API Ops</span>
   </div>
 </div>
 
@@ -157,30 +169,40 @@ seo:
   :::u-page-feature
 
   #title
-  <span class="font-bold text-raspberry-600">Modern Architecture</span>
+  <span class="font-bold text-raspberry-600">Start From A Working API App</span>
 
   #description
-  <div>PHP 8.3+ foundation with attributes, typed properties, and constructor promotion. RESTful by default with route annotations and generators that produce OpenAPI specs. Built‑in request/response validation helpers and type‑hinted code throughout.</div>
+  <div>`glueful/api-skeleton` gives you bootstrap, config, starter routes, migrations, SQLite by default, queue configuration, OpenAPI configuration, extension loading, and a real CLI entrypoint on day one.</div>
 
   :::
 
   :::u-page-feature
 
   #title
-  <span class="font-bold text-raspberry-600">Developer Experience</span>
+  <span class="font-bold text-raspberry-600">Stay Explicit As You Scale</span>
 
   #description
-  <div>50+ CLI commands for everyday tasks. Smart migrations, extension management, and built‑in profiling/metrics. From `php glueful serve` to production deployment in minutes.</div>
+  <div>Glueful’s `ApplicationContext`, explicit routing, and container-driven services make the architecture easier to reason about than magic-heavy frameworks that hide request state and service resolution.</div>
 
   :::
 
   :::u-page-feature
 
   #title
-  <span class="font-bold text-raspberry-600">Security</span>
+  <span class="font-bold text-raspberry-600">Ship More Than CRUD</span>
 
   #description
-  <div>JWT authentication with dual‑layer sessions, fine‑grained RBAC, and configurable rate limiting. Built‑in vulnerability scanning, audit trails, and emergency lockdown mode. OWASP‑aligned protections (CSRF, security headers, rate limits).</div>
+  <div>Auth flows, notifications, queues, rate limiting, distributed locks, file uploads, OpenAPI generation, and production checks are already part of the framework story, not an afterthought.</div>
+
+  :::
+
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">Add Official Extensions</span>
+
+  #description
+  <div>Extend the core with official packages for RBAC, social login, email delivery, push notifications, full-text search, payments, and runtime integrations without turning the framework itself into a monolith.</div>
 
   :::
 ::
@@ -188,100 +210,105 @@ seo:
 ::div{class="h-px bg-gradient-to-r from-transparent via-raspberry-400/50 via-purple-400/50 to-transparent dark:via-raspberry-600/50 dark:via-purple-600/50"}
 ::
 
-::u-page-section{class="api-generation-container bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-900/50 dark:to-gray-950"}
+::u-page-section{class="bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-900/50 dark:to-gray-950 py-16"}
 
 #title
-
 <span class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-center mb-4">
-  <span class="text-gray-900 dark:text-white font-light">From Database to <span class="text-raspberry-600 font-semibold">API in Seconds</span></span>
+  <span class="text-gray-900 dark:text-white font-light">What developers get <span class="text-raspberry-600 font-semibold">immediately</span></span>
 </span>
 
 #description
-
-  <div class="text-center mb-12 text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-  Generic CRUD endpoints via the built‑in Resource Controller. Configure per‑resource policies and validation to expose tables safely with documentation.
-  </div>
-
-::
-
-::div{class="h-px bg-gradient-to-r from-transparent via-raspberry-400/50 via-purple-400/50 to-transparent dark:via-raspberry-600/50 dark:via-purple-600/50"}
-::
-
-::u-page-section{orientation = "horizontal" class="bg-gradient-to-br from-raspberry-50/50 via-white to-purple-50/50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16"}
-
-#title
-<span class="leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300"><span class="text-raspberry-600 font-semibold">Extensible</span> by design</span>
-
-#description
-
-<div class="space-y-4">
-  <p>Build modular APIs that grow with your needs. Extensions are first-class citizens with full access to Glueful's powerful features.</p>
-  
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-    <div class="p-4 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
-      <div class="text-raspberry-600 dark:text-raspberry-400 font-semibold mb-2">Dynamic Extensions</div>
-      <div class="text-sm text-gray-600 dark:text-gray-400">Enable/disable extensions via CLI, designed for zero‑downtime deploys.</div>
-    </div>
-    <div class="p-4 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
-      <div class="text-raspberry-600 dark:text-raspberry-400 font-semibold mb-2">Full DI Support</div>
-      <div class="text-sm text-gray-600 dark:text-gray-400">Automatic service injection, middleware, and event listeners.</div>
-    </div>
-    <div class="p-4 bg-white/50 dark:bg-gray-800/50 rounded-lg border border-gray-200/50 dark:border-gray-700/50">
-      <div class="text-raspberry-600 dark:text-raspberry-400 font-semibold mb-2">Metrics Tracked</div>
-      <div class="text-sm text-gray-600 dark:text-gray-400">Built-in metrics for load time, memory usage, and request handling.</div>
-    </div>
-  </div>
+<div class="text-center mb-12 text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+  Glueful’s starter path is valuable because it shortens the gap between “new project” and “working API with operational basics.”
 </div>
 
-#default
-:::prose-pre{code = "php glueful extensions create MyExtension" filename = "Terminal"}
-::div
-```bash [Terminal]
-# Create a new extension with full scaffolding
-php glueful extensions:create PaymentGateway
+#features
+  :::u-page-feature
 
-✓ Created extension directory: extensions/PaymentGateway/
-✓ Generated controller, service, and routes
-✓ Added service provider and config
-✓ Created README and tests
+  #title
+  <span class="font-bold text-raspberry-600">Scaffolding</span>
 
-# Enable and use immediately
-php glueful extensions:enable PaymentGateway
-✓ Extension enabled successfully
+  #description
+  <div>Generate controllers, models, requests, jobs, rules, tests, factories, seeders, filters, and middleware with the `scaffold:*` commands instead of hand-rolling boilerplate.</div>
 
-# See all available extensions
-php glueful extensions:info
-```
+  :::
 
-::
-:::
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">API Documentation</span>
+
+  #description
+  <div>Use `php glueful generate:openapi --ui` to generate your API spec and a browsable UI without wiring a separate documentation stack together.</div>
+
+  :::
+
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">Operational Defaults</span>
+
+  #description
+  <div>Health checks, security scanning, route diagnostics, queue presets, storage configuration, and deployment-oriented config are present from the start.</div>
+
+  :::
+
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">API Ergonomics</span>
+
+  #description
+  <div>Versioning, field selection, rate limiting, eventing, notifications, and extension hooks make Glueful fit real API teams better than a bare router-and-container setup.</div>
+
+  :::
 ::
 
 ::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
 ::
 
-  ::u-page-c-t-a
-  ---
-  links:
-    - label: Get started
-      to: /getting-started
-      trailing-icon: i-lucide-rocket
-      color: neutral
-      size: xl
-      class: "bg-azure-radiance-600 hover:bg-azure-radiance-700 text-white hover:shadow-azure-radiance-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"
-    - label: 'Github'
-      to: https://github.com/glueful
-      icon: i-tabler-brand-github-filled
-      target: _blank
-      color: neutral
-      size: xl
-      class: "hover:shadow-primary-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"
-      variant: solid
-  description: Ready to transform your API development? Join thousands of developers who've already made the switch to Glueful. From rapid prototyping to enterprise production, we've got you covered. Get production-ready APIs in minutes, not months.
-  variant: ghost
-  ---
+::u-page-section{class="api-generation-container bg-gradient-to-b from-white to-azure-radiance-50/40 dark:from-gray-950 dark:to-gray-900"}
+
+#title
+
+<span class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-center mb-4">
+  <span class="text-gray-900 dark:text-white font-light">From starter app to <span class="text-raspberry-600 font-semibold">production API platform</span></span>
+</span>
+
+#description
+
+<div class="text-center mb-12 text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+  Start with routes and controllers in the skeleton. Then add database-backed resources, auth and sessions, queues and notifications, storage, extensions, and generated OpenAPI docs as the application grows.
+</div>
+
+#features
+  :::u-page-feature
 
   #title
-  <span class="leading-7 text-pretty font-normal text-left">Build Better <span class="text-azure-radiance-600 font-semibold">APIs</span> <span class="text-azure-radiance-600 font-semibold">Faster</span></span>
+  <span class="font-bold text-raspberry-600">Good Fit For</span>
 
-  ::
+  #description
+  <div>Internal APIs, SaaS backends, webhook-heavy services, queue-driven workloads, and teams that want explicit PHP architecture without rebuilding the same API infrastructure on every project.</div>
+
+  :::
+
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">Extension Ecosystem</span>
+
+  #description
+  <div>Start with the lean framework, then add Aegis, Entrada, Payvia, Meilisearch, Notiva, email-notification, and other Glueful extensions as your product needs grow.</div>
+
+  :::
+
+  :::u-page-feature
+
+  #title
+  <span class="font-bold text-raspberry-600">Next Step</span>
+
+  #description
+  <div>Start with the install path, build your first endpoint, then move into routing, validation, auth, queues, and deployment with the docs path that matches the framework’s current API surface.</div>
+
+  :::
+::

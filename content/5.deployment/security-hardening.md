@@ -33,11 +33,11 @@ APP_DEBUG=false
 
 # Strong secrets (32+ chars, random)
 TOKEN_SALT=your-strong-random-salt
-# Framework reads config('session.jwt_key'); map from either env below as per your config loader
+# Framework reads config($context, 'session.jwt_key'); map from either env below as per your config loader
 SESSION_JWT_KEY=your-strong-jwt-signing-key
 JWT_ALGORITHM=HS256
 
-# Token lifetimes (framework consumes config('session.*_token_lifetime'))
+# Token lifetimes (framework consumes config($context, 'session.*_token_lifetime'))
 ACCESS_TOKEN_LIFETIME=3600        # 1 hour
 REFRESH_TOKEN_LIFETIME=604800     # 7 days
 
@@ -167,13 +167,13 @@ $password = sha1($password); // DON'T DO THIS
 
 ```php
 // Use TOKEN_SALT and JWT_KEY from session config
-config('session.token_salt');
-config('session.jwt_key');
-config('session.jwt_algorithm');
+config($context, 'session.token_salt');
+config($context, 'session.jwt_key');
+config($context, 'session.jwt_algorithm');
 
 // Token lifetimes via env
-config('session.access_token_lifetime');    // ACCESS_TOKEN_LIFETIME
-config('session.refresh_token_lifetime');   // REFRESH_TOKEN_LIFETIME
+config($context, 'session.access_token_lifetime');    // ACCESS_TOKEN_LIFETIME
+config($context, 'session.refresh_token_lifetime');   // REFRESH_TOKEN_LIFETIME
 ```
 
 ### Rate Limiting
@@ -197,16 +197,28 @@ class TaskController
     public function store(Request $request)
     {
         // ✅ Good - validate everything
-        $validated = $request->validate([
-            'title' => 'required|string|min:3|max:255',
-            'description' => 'nullable|string|max:1000',
-            'status' => 'nullable|in:pending,in_progress,completed',
-            'due_date' => 'nullable|date|after:today',
-        ]);
+        $data = $this->getRequestData();
 
-        $task = db()->table('tasks')->create($validated);
+        if ($error = $this->validateRequest($data, [
+            'title' => 'required|max:255',
+            'description' => 'max:1000',
+            'status' => 'max:32',
+            'due_date' => 'max:255',
+        ])) {
+            return $error;
+        }
 
-        return Response::success($task, 201);
+        $task = [
+            'uuid' => \Glueful\Helpers\Utils::generateNanoID(),
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'status' => $data['status'] ?? 'pending',
+            'due_date' => $data['due_date'] ?? null,
+        ];
+
+        db($context)->table('tasks')->insert($task);
+
+        return Response::created($task);
     }
 }
 ```
@@ -230,12 +242,12 @@ echo escape($user->name);
 
 ```php
 // ✅ Good - parameterized queries (default in Glueful)
-$users = db()->table('users')
+$users = db($context)->table('users')
     ->where('email', $email)
     ->get();
 
 // ❌ Bad - string concatenation
-$users = db()->raw("SELECT * FROM users WHERE email = '{$email}'");
+$users = db($context)->raw("SELECT * FROM users WHERE email = '{$email}'");
 ```
 
 ### Validate Input Types
@@ -319,10 +331,19 @@ php vendor/bin/glueful security:revoke-tokens --expired
 ### Validate File Uploads
 
 ```php
-$request->validate([
-    'avatar' => 'required|file|mimes:jpg,png|max:2048', // 2MB max
-    'document' => 'required|file|mimes:pdf|max:10240', // 10MB max
+$data = RequestHelper::getRequestData($request);
+
+$rules = (new RuleParser())->parse([
+    'avatar' => 'required|max:255',
+    'document' => 'required|max:255',
 ]);
+
+$validator = new Validator($rules);
+$errors = $validator->validate($data);
+
+if ($errors !== []) {
+    throw new ValidationException($errors);
+}
 ```
 
 ### Secure File Storage
@@ -344,7 +365,7 @@ class FileUploadController
         $filename = bin2hex(random_bytes(16)) . '.' . $file->getClientOriginalExtension();
 
         // Store outside public directory
-        $path = storage_path('uploads/avatars/' . $filename);
+        $path = storage_path($context, 'uploads/avatars/' . $filename);
         $file->move(dirname($path), $filename);
 
         return Response::success(['filename' => $filename]);
@@ -526,20 +547,20 @@ class Encryptor
 
 ```php
 // Failed login attempts
-logger()->warning('Failed login attempt', [
+app($context, \Psr\Log\LoggerInterface::class)->warning('Failed login attempt', [
     'email' => $email,
     'ip' => $request->ip(),
     'user_agent' => $request->userAgent(),
 ]);
 
 // Suspicious activity
-logger()->critical('Potential SQL injection attempt', [
+app($context, \Psr\Log\LoggerInterface::class)->critical('Potential SQL injection attempt', [
     'input' => $input,
     'ip' => $request->ip(),
 ]);
 
 // Access to admin endpoints
-logger()->info('Admin access', [
+app($context, \Psr\Log\LoggerInterface::class)->info('Admin access', [
     'user_id' => $user->id,
     'action' => $action,
     'ip' => $request->ip(),
@@ -560,7 +581,7 @@ class LoginAttemptTracker
         Cache::set($key, $attempts, 3600); // 1 hour
 
         if ($attempts >= 5) {
-            logger()->critical('Multiple failed login attempts', [
+            app($context, \Psr\Log\LoggerInterface::class)->critical('Multiple failed login attempts', [
                 'email' => $email,
                 'ip' => $ip,
                 'attempts' => $attempts,

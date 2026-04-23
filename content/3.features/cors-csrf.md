@@ -117,7 +117,7 @@ Access-Control-Max-Age: 86400
 
 Glueful’s router centralizes CORS handling:
 
-- Reads settings from `config/cors.php` via `config('cors')`.
+- Reads settings from `config/cors.php` via `config($context, 'cors')`.
 - For `OPTIONS` preflight, returns `204 No Content` with CORS headers and an `Allow` header listing permitted methods.
 - For normal requests, sets:
   - `Access-Control-Allow-Origin` to the request Origin if allowed (or `*` if `allow_all_origins` is true)

@@ -9,17 +9,20 @@ Securely accept and store file uploads with automatic validation, storage, and U
 
 ```php
 use Glueful\Uploader\FileUploader;
-use Glueful\Storage\Support\UrlGenerator;
+use Glueful\Http\Response;
 
 public function upload()
 {
-    $uploader = app(FileUploader::class);
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
+    $uploader = app($this->getContext(), FileUploader::class);
 
     $result = $uploader->handleUpload(
-        token: $this->request->input('token'),
-        // Include user_id as required by uploader validation
+        token: $this->currentUser->uuid,
         getParams: array_merge($this->request->query->all(), [
-            'user_id' => (string) ($this->auth?->user()->uuid ?? '')
+            'user_id' => $this->currentUser->uuid
         ]),
         fileParams: $this->request->files->all()
     );
@@ -46,10 +49,10 @@ return [
     'disks' => [
         'uploads' => [
             'driver' => 'local',
-            'root' => config('app.paths.uploads'),
+            'root' => env('UPLOADS_ROOT', dirname(__DIR__) . '/storage/uploads'),
             'visibility' => 'private',
             // Used by UrlGenerator for public URLs
-            'base_url' => config('app.urls.cdn'),
+            'base_url' => env('UPLOADS_BASE_URL', 'http://localhost:8080/uploads'),
         ],
 
         's3' => [
@@ -84,13 +87,17 @@ return [
 ```php
 public function uploadAvatar()
 {
-    $uploader = app(FileUploader::class);
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
+    $uploader = app($this->getContext(), FileUploader::class);
 
     $result = $uploader->handleUpload(
-        token: $this->auth->user()->uuid,
+        token: $this->currentUser->uuid,
         getParams: [
             'type' => 'avatar',
-            'user_id' => (string) $this->auth->user()->uuid
+            'user_id' => $this->currentUser->uuid
         ],
         fileParams: $this->request->files->all()
     );
@@ -101,7 +108,7 @@ public function uploadAvatar()
 
     // Update user avatar
     $this->getConnection()->table('users')
-        ->where(['uuid' => $this->auth->user()->uuid])
+        ->where(['uuid' => $this->currentUser->uuid])
         ->update(['avatar' => $result['url']]);
 
     return Response::success(['url' => $result['url']]);
@@ -113,14 +120,18 @@ public function uploadAvatar()
 ```php
 public function uploadGallery()
 {
-    $uploader = app(FileUploader::class);
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
+    $uploader = app($this->getContext(), FileUploader::class);
     $files = $this->request->files->all();
     $uploaded = [];
 
     foreach ($files as $file) {
         $result = $uploader->handleUpload(
-            token: $this->auth->user()->uuid,
-            getParams: ['user_id' => (string) $this->auth->user()->uuid],
+            token: $this->currentUser->uuid,
+            getParams: ['user_id' => $this->currentUser->uuid],
             fileParams: ['file' => $file]
         );
 
@@ -142,7 +153,7 @@ For images, videos, and audio files, use `uploadMedia()` to get automatic thumbn
 ```php
 public function uploadMedia()
 {
-    $uploader = app(FileUploader::class);
+    $uploader = app($this->getContext(), FileUploader::class);
     $file = $this->request->files->get('file');
 
     $result = $uploader->uploadMedia($file, 'posts/' . $postUuid);
@@ -277,7 +288,7 @@ return [
 ```php
 public function upload()
 {
-    $file = $this->request->file('file');
+    $file = $this->request->files->get('file');
 
     // Validate size
     if ($file->getSize() > 5242880) { // 5MB
@@ -332,7 +343,7 @@ composer require league/flysystem-ftp
 ```php
 'uploads' => [
     'driver' => 'local',
-    'root' => storage_path('uploads'),
+    'root' => storage_path($context, 'uploads'),
     'visibility' => 'private',
 ],
 ```
@@ -377,13 +388,14 @@ composer require league/flysystem-ftp
 ```php
 use Glueful\Storage\StorageManager;
 
-$storage = app(StorageManager::class);
+$storage = app($this->getContext(), StorageManager::class);
 
 // Store file content
 $storage->disk()->put('avatars/user123.jpg', $fileContent);
 
-// Store uploaded file
-$path = $this->request->file('avatar')->store('avatars');
+// Work with the uploaded file from Symfony's request object
+$uploadedFile = $this->request->files->get('avatar');
+$path = 'avatars/' . $uploadedFile->getClientOriginalName();
 ```
 
 ### Retrieve File
@@ -422,7 +434,7 @@ foreach ($files as $attr) {
 ```php
 use Glueful\Storage\Support\UrlGenerator;
 
-$urls = app(UrlGenerator::class);
+$urls = app($this->getContext(), UrlGenerator::class);
 
 $publicUrl = $urls->url('avatars/user123.jpg', 'uploads');
 // https://cdn.example.com/avatars/user123.jpg
@@ -436,7 +448,7 @@ For private files, generate temporary signed URLs:
 use Glueful\Uploader\Storage\FlysystemStorage;
 use Glueful\Storage\StorageManager;
 
-$storage = app(StorageManager::class);
+$storage = app($this->getContext(), StorageManager::class);
 $disk = new FlysystemStorage($storage, $urls, 's3');
 
 $signedUrl = $disk->getSignedUrl('documents/invoice.pdf', 3600);
@@ -450,10 +462,14 @@ $signedUrl = $disk->getSignedUrl('documents/invoice.pdf', 3600);
 ```php
 public function updateAvatar()
 {
-    $uploader = app(FileUploader::class);
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
+    $uploader = app($this->getContext(), FileUploader::class);
 
     $result = $uploader->handleUpload(
-        token: $this->auth->user()->uuid,
+        token: $this->currentUser->uuid,
         getParams: [],
         fileParams: $this->request->files->all()
     );
@@ -463,15 +479,18 @@ public function updateAvatar()
     }
 
     // Delete old avatar
-    $storage = app(\Glueful\Storage\StorageManager::class);
-    $user = $this->auth->user();
-    if ($user->avatar) {
-        $storage->disk()->delete($user->avatar);
+    $storage = app($this->getContext(), \Glueful\Storage\StorageManager::class);
+    $user = $this->getConnection()->table('users')
+        ->where(['uuid' => $this->currentUser->uuid])
+        ->first();
+
+    if (($user['avatar'] ?? null) !== null) {
+        $storage->disk()->delete($user['avatar']);
     }
 
     // Update user
     $this->getConnection()->table('users')
-        ->where(['uuid' => $user->uuid])
+        ->where(['uuid' => $this->currentUser->uuid])
         ->update(['avatar' => $result['path']]);
 
     return Response::success(['url' => $result['url']]);
@@ -483,8 +502,12 @@ public function updateAvatar()
 ```php
 public function uploadDocument()
 {
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
     // Validate file type
-    $file = $this->request->file('document');
+    $file = $this->request->files->get('document');
     $allowedTypes = ['application/pdf', 'application/msword'];
 
     if (!in_array($file->getMimeType(), $allowedTypes)) {
@@ -492,10 +515,10 @@ public function uploadDocument()
     }
 
     $result = $uploader->handleUpload(
-        token: $this->auth->user()->uuid,
+        token: $this->currentUser->uuid,
         getParams: [
             'type' => 'document',
-            'user_id' => (string) $this->auth->user()->uuid
+            'user_id' => $this->currentUser->uuid
         ],
         fileParams: $this->request->files->all()
     );
@@ -503,7 +526,7 @@ public function uploadDocument()
     // Store metadata
     $this->getConnection()->table('documents')->insert([
         'uuid' => $result['uuid'],
-        'user_uuid' => $this->auth->user()->uuid,
+        'user_uuid' => $this->currentUser->uuid,
         'filename' => $file->getClientOriginalName(),
         'path' => $result['path'],
         'size' => $file->getSize(),
@@ -519,8 +542,12 @@ public function uploadDocument()
 ```php
 public function uploadGalleryImage()
 {
-    $file = $this->request->file('image');
-    $uploader = app(FileUploader::class);
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
+    $file = $this->request->files->get('image');
+    $uploader = app($this->getContext(), FileUploader::class);
 
     // Validate image
     if (!str_starts_with($file->getMimeType(), 'image/')) {
@@ -528,7 +555,7 @@ public function uploadGalleryImage()
     }
 
     // Upload with automatic thumbnail generation
-    $result = $uploader->uploadMedia($file, 'gallery/' . $this->auth->user()->uuid, [
+    $result = $uploader->uploadMedia($file, 'gallery/' . $this->currentUser->uuid, [
         'thumbnail_width' => 300,
         'thumbnail_height' => 300,
     ]);
@@ -536,7 +563,7 @@ public function uploadGalleryImage()
     // Save to gallery table
     $this->getConnection()->table('gallery_images')->insert([
         'uuid' => $result['blob_uuid'],
-        'user_uuid' => $this->auth->user()->uuid,
+        'user_uuid' => $this->currentUser->uuid,
         'url' => $result['url'],
         'thumb_url' => $result['thumb_url'],
         'width' => $result['width'],
@@ -553,12 +580,16 @@ For API clients sending base64-encoded files, convert to a temp file and pass th
 
 ```php
 use Glueful\Uploader\FileUploader;
-use Glueful\Storage\StorageManager;
 
 public function uploadBase64()
 {
-    $base64 = (string) $this->request->input('file');
-    $uploader = app(FileUploader::class);
+    if ($this->currentUser === null) {
+        return $this->unauthorized();
+    }
+
+    $data = $this->getRequestData();
+    $base64 = (string) ($data['file'] ?? '');
+    $uploader = app($this->getContext(), FileUploader::class);
 
     try {
         // 1) Convert base64 to a temporary file path
@@ -582,8 +613,8 @@ public function uploadBase64()
 
     // 3) Reuse the same handleUpload() path with required getParams
     $result = $uploader->handleUpload(
-        token: (string) $this->auth->user()->uuid,
-        getParams: ['user_id' => (string) $this->auth->user()->uuid],
+        token: $this->currentUser->uuid,
+        getParams: ['user_id' => $this->currentUser->uuid],
         fileParams: $synthetic
     );
 
@@ -645,12 +676,12 @@ Generated filenames prevent guessing:
 ```php
 use Glueful\Uploader\FileUploader;
 
-$uploader = app(FileUploader::class);
+$uploader = app($this->getContext(), FileUploader::class);
 
 // Delete files older than 30 days
-$freed = $uploader->cleanupOldFiles('temp/', 2592000);
+$cleanup = $uploader->cleanupOldFiles('temp/', 2592000);
 
-logger()->info('Freed ' . $freed . ' bytes');
+logger()->info('Deleted ' . $cleanup['deleted_files'] . ' files');
 ```
 
 ### Directory Stats
@@ -699,7 +730,8 @@ $url = $urls->url($path);
 ```php
 // ✅ Good - async processing
 $result = $uploader->handleUpload(...);
-Queue::push(new ProcessImageJob($result['path']));
+app($this->getContext(), \Glueful\Queue\QueueManager::class)
+    ->push(ProcessImageJob::class, ['path' => $result['path']]);
 
 // ❌ Bad - blocks response
 $result = $uploader->handleUpload(...);

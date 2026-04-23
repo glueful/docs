@@ -20,7 +20,7 @@ class SendWelcomeEmailJob extends Job
     {
         $data = $this->getData();
         $userId = $data['userId'];
-        $user = db()->table('users')->find($userId);
+        $user = db($context)->table('users')->find($userId);
 
         // Send email
         mail($user->email, 'Welcome!', 'Thanks for joining...');
@@ -34,7 +34,7 @@ class SendWelcomeEmailJob extends Job
 use Glueful\Queue\QueueManager;
 use App\Jobs\SendWelcomeEmailJob;
 
-$queue = service(QueueManager::class);
+$queue = service($context, QueueManager::class);
 $queue->push(SendWelcomeEmailJob::class, ['userId' => $userId]);
 ```
 
@@ -204,7 +204,7 @@ class ImportDataJob extends Job
             throw $e;
         } catch (PermanentException $e) {
             // Don't retry, just log
-            logger()->error('Import failed permanently', [$e]);
+            app($context, \Psr\Log\LoggerInterface::class)->error('Import failed permanently', [$e]);
         }
     }
 }
@@ -344,7 +344,7 @@ class GenerateMonthlyReportJob extends Job
         Storage::put("reports/monthly-{$data['month']}.pdf", $pdf);
 
         // Notify user
-        $queue = service(\Glueful\Queue\QueueManager::class);
+        $queue = service($context, \Glueful\Queue\QueueManager::class);
         $queue->push(NotifyReportReadyJob::class, ['userId' => $data['userId']]);
     }
 }
@@ -356,13 +356,13 @@ Track job metrics:
 
 ```php
 // Queue depth
-$pending = db()->table('queue_jobs')->count();
+$pending = db($context)->table('queue_jobs')->count();
 
 // Failed jobs
-$failed = db()->table('queue_failed_jobs')->count();
+$failed = db($context)->table('queue_failed_jobs')->count();
 
 // Job age
-$oldest = db()->table('queue_jobs')
+$oldest = db($context)->table('queue_jobs')
     ->orderBy('created_at', 'asc')
     ->first();
 ```

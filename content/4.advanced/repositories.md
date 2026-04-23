@@ -337,9 +337,9 @@ $uow->registerRemoved('comments', $commentUuid);
 // Commit all changes atomically
 try {
     $result = $uow->commit();
-    logger()->info('Transaction committed', ['changes' => $result]);
+    app($context, \Psr\Log\LoggerInterface::class)->info('Transaction committed', ['changes' => $result]);
 } catch (\Exception $e) {
-    logger()->error('Transaction failed', ['error' => $e->getMessage()]);
+    app($context, \Psr\Log\LoggerInterface::class)->error('Transaction failed', ['error' => $e->getMessage()]);
     throw $e;
 }
 ```
@@ -388,7 +388,7 @@ Centralize repository instantiation:
 use Glueful\Repository\RepositoryFactory;
 
 // Recommended: resolve from container
-$factory = app(RepositoryFactory::class); // or service('repository')
+$factory = app($context, RepositoryFactory::class); // or service($context, 'repository')
 
 // Get specific repository (typed helper)
 $users = $factory->users();
@@ -410,7 +410,7 @@ use Glueful\Events\EntityUpdatedEvent;
 
 // Listen to repository events
 Event::listen(EntityCreatedEvent::class, function ($event) {
-    logger()->info('Entity created', [
+    app($context, \Psr\Log\LoggerInterface::class)->info('Entity created', [
         'table' => $event->table,
         'uuid' => $event->uuid,
     ]);
@@ -420,7 +420,7 @@ Event::listen(EntityCreatedEvent::class, function ($event) {
 });
 
 Event::listen(EntityUpdatedEvent::class, function ($event) {
-    logger()->info('Entity updated', [
+    app($context, \Psr\Log\LoggerInterface::class)->info('Entity updated', [
         'table' => $event->table,
         'uuid' => $event->uuid,
     ]);
