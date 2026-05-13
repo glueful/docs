@@ -12,9 +12,13 @@ useSeoMeta({
   title,
   ogTitle: title,
   description,
-  ogDescription: description,
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/docs-light.png',
-  twitterImage: 'https://ui.nuxt.com/assets/templates/nuxt/docs-light.png'
+  ogDescription: description
+})
+
+defineOgImageComponent('Docs', {
+  headline: 'Glueful',
+  title,
+  description
 })
 </script>
 
