@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.42.0 | Caph | 2026-05-20 | Minor | Moderate | OpenAPI Spec Excellence |
 | 1.41.0 | Beid | 2026-03-03 | Minor | Moderate | Profile-Driven Logging Bootstrap |
 | 1.40.4 | Alnair | 2026-02-21 | Patch | Low | PHPCS Line Length Fix |
 | 1.40.3 | Alnair | 2026-02-21 | Patch | Medium | Mutation WHERE + Queue Config + Async Notification |
@@ -73,6 +74,74 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.42.0 - Caph
+**Released: May 20, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-file-code"}
+#description
+Closes the trust gap between Glueful's generated OpenAPI spec and runtime behavior, and makes the spec rich enough that off-the-shelf SDK generators (`openapi-typescript`, `openapi-generator-cli`, …) produce high-quality clients without manual editing. One documented breaking change to the permission-exception envelope.
+::
+
+### Key Highlights
+
+::card
+#title
+Config-Driven Security Schemes
+#description
+New `SecuritySchemeRegistry` reads `documentation.security_schemes` and `documentation.middleware_map` from config. Replaces 15 hardcoded `BearerAuth` literals across the documentation generators. Per-operation `security` requirements are now derived from each route's declared middleware — JWT routes get `BearerAuth`, API-key routes get `ApiKeyAuth`, mixed routes emit both.
+::
+
+::card
+#title
+Unified `ErrorResponse` Schema
+#description
+New OpenAPI component describes the `{success, message, error: {code, error_code, timestamp, request_id}}` envelope with an `error_code` enum (`NOT_FOUND`, `FORBIDDEN`, `UNPROCESSABLE_ENTITY`, …). All CRUD endpoint 4xx responses `$ref` this schema so generated SDKs can typecheck error responses. The legacy `Error` schema is preserved for backward compatibility but is no longer referenced.
+::
+
+::card
+#title
+Deterministic Operation IDs
+#description
+New `OperationIdGenerator` produces stable camelCase IDs (`getV1UsersByUuid`) with collision-numbering for SDK method names. Also closes a hidden gap where comment-driven generation emitted operations without any `operationId`, forcing downstream tools into auto-derived garbage names.
+::
+
+::card
+#title
+Pagination & Field Selection
+#description
+New `PaginationSchemaBuilder` emits `PaginationMeta`, `PaginationLinks`, and per-resource envelope schemas that match `PaginatedResourceResponse` exactly. List endpoints reference these components for uniform typing across resources. New `addRouteWithFieldsAttribute()` helper surfaces `?fields=` and `?expand=` query params with an enum of allowed paths derived from `#[Fields(allowed: [...], strict: true)]`.
+::
+
+::card
+#title
+Auto-Derived Request Examples
+#description
+New `ExampleDeriver` populates JSON request bodies with realistic example payloads inferred from Validator rules and schema properties — `email` → `user@example.com`, `uuid` → a valid UUID, integers respect `min:` / `max:` ranges. Field-name heuristics handle common cases like `first_name`, `slug`, `title`. The `@example` annotation in docblocks overrides the derived value.
+::
+
+::card
+#title
+OpenAPI 3.1 Webhooks Block
+#description
+New `WebhookDocsBuilder` emits the top-level `webhooks` object from `documentation.webhooks` config. Each declared event surfaces the actual `X-Glueful-Signature` (Stripe-style `t=…,v1=…`) and `X-Glueful-Timestamp` headers sent by `WebhookDeliveryService`, plus the `WebhookEnvelope` payload shape. SDK generators (`openapi-typescript` and friends) scaffold handler types automatically.
+::
+
+::card
+#title
+`generate:client` CLI Wrapper
+#description
+Thin command that shells out to `openapi-typescript` for TypeScript and `openapi-generator-cli` for everything else. Glueful does not own codegen logic — the command builds the right shell invocation with safe-by-construction language sanitization and `escapeshellarg` for paths. Prints the command by default; `--execute` runs it.
+::
+
+### Migration Notes
+
+- **Permission exception envelope (breaking)** — `PermissionUnauthorizedException` previously returned `{success, message, code, error_code}`. It now returns the unified `{success, message, error: {code, error_code, timestamp, request_id}}` shape, identical to every other HTTP exception. Consumers reading top-level `code` or `error_code` must read `error.code` and `error.error_code` instead. All other 4xx/5xx responses already used the nested shape, so most consumers are unaffected.
+- **Regenerate SDK clients** — After upgrading, regenerate downstream clients. The `ErrorResponse`, `PaginationMeta`, `PaginationLinks`, and `WebhookEnvelope` components are new; operation IDs are now deterministic camelCase (e.g., `getUsers` → `getV1UsersByUuid`) which may rename existing SDK methods.
+- **No new env vars** — All new configuration lives in `config/documentation.php` (`security_schemes`, `middleware_map`, `webhooks`). Existing deployments need no `.env` changes.
+- **Discriminator support deferred** — The plan included optional `discriminator` emission for polymorphic resources, gated on actual polymorphism in the codebase. The gate found none, so this is deferred to a future release.
+
+---
 
 ## v1.41.0 - Beid
 **Released: March 3, 2026**
