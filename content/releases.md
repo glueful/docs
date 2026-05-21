@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.43.0 | Dabih | 2026-05-21 | Minor | Moderate | Production Hardening — ORM observability, API key hardening, k8s probes |
 | 1.42.0 | Caph | 2026-05-20 | Minor | Moderate | OpenAPI Spec Excellence |
 | 1.41.0 | Beid | 2026-03-03 | Minor | Moderate | Profile-Driven Logging Bootstrap |
 | 1.40.4 | Alnair | 2026-02-21 | Patch | Low | PHPCS Line Length Fix |
@@ -74,6 +75,74 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.43.0 - Dabih
+**Released: May 21, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-shield-check"}
+#description
+A production-hardening release that ships four feature areas at once: an ORM-aware N+1 detector with strict-mode CI enforcement, driver-aware query EXPLAIN, Kubernetes-conventional health probes, and a dedicated `api_keys` table with scopes, IP allowlists, rotation grace, and environment-prefixed keys. Four behaviorally-meaningful bug fixes in the ORM relation/eager-loading paths land alongside.
+::
+
+### Key Highlights
+
+::card
+#title
+ORM-Aware N+1 Detection
+#description
+New `PreventsLazyLoading` trait on `Model` watches for relations lazy-loaded on members of a hydrated collection — the exact shape of an N+1 — and reports the model class and relation name in the warning (`User::posts lazy-loaded from a collection of 50, add ->with('posts')`). Four modes: `off`, `warn` (logs `[GLUEFUL-N+1]` via `error_log()` with per-`(model, relation)` dedupe per request), `strict` (throws `LazyLoadingViolationException` — extends `\LogicException`), and `auto` (resolves to `warn` in development, `off` otherwise). Per-model opt-out via `$instanceLazyLoadingMode = 'off'`. Custom violation handler hook for routing to Sentry / PSR logger.
+::
+
+::card
+#title
+Driver-Aware `$query->explain()`
+#description
+`QueryBuilder::explain()` is now driver-aware — SQLite uses `EXPLAIN QUERY PLAN` (the useful form) instead of plain `EXPLAIN` (which returns a raw opcode dump). MySQL and PostgreSQL continue with `EXPLAIN`. A new `Builder::explain()` on the ORM applies global scopes and delegates. `QueryExecutorInterface::getDriverName()` exposes the underlying PDO driver name for other callers that need the same kind of branching. Pairs naturally with N+1 detection for debugging the queries it flags.
+::
+
+::card
+#title
+Kubernetes-Conventional Health Probes
+#description
+Three new routes at the canonical paths orchestrators expect — `GET /health/live`, `GET /health/ready`, `GET /health/startup`. Liveness is dependency-free (200 when the process can respond); readiness reports database, cache, and config status with 503 on any failure; startup reports initialization complete. The existing `/healthz` and `/ready` endpoints continue to work — the new paths are additive, so Pod specs that reference either form keep functioning.
+::
+
+::card
+#title
+Hardened API Keys
+#description
+Dedicated `api_keys` table with per-key scopes (`['read:*', 'write:posts']`), CIDR/IP allowlists, expiration, rotation with grace period, and environment-prefixed plaintext (`gf_live_*` in production, `gf_test_*` elsewhere). Keys are SHA-256 hashed before storage; the first 16 chars are stored as an indexed prefix for O(1) lookup. The `key_hash` column is `UNIQUE` and the verify path is collision-tolerant. Rotation creates a new key and expires the old after the grace window so you can roll without downtime. New `#[RequireScope]` route attribute (repeatable — OR within, AND across) auto-attaches the `require_scope` middleware. Four CLI commands: `apikey:create|list|rotate|revoke`.
+::
+
+::card
+#title
+Router Exposes Matched Route on Request
+#description
+`Router::dispatch()` now sets `_route` and `_route_params` on `$request->attributes` before middleware runs. Middleware can read route-level metadata (`#[RequireScope]` config, `#[RateLimit]` config, future attribute systems) without re-resolving the route — a small but load-bearing piece of plumbing.
+::
+
+::card
+#title
+ORM Bug Fixes
+#description
+Four pre-existing ORM bugs surfaced and were fixed as prerequisites for the new detector. `HasAttributes::getAttribute()` now routes property access to relations (`$user->posts` used to return null). `__isset()` is relation-aware, so `$user->posts[0] ?? null` correctly triggers lazy-load instead of swallowing the result. `HasRelationships::newRelatedInstance()` propagates the parent's `ApplicationContext`. `Builder::getRelation()` uses the standard `Relation::noConstraints()` pattern so eager loading no longer emits `WHERE x = NULL`.
+::
+
+### Migration Notes
+
+- **Run the new migration.** `glueful/api-skeleton ^1.26.0` ships `009_CreateApiKeysTable.php`. Run `php glueful migrate:run` after upgrading. The `apikey:*` CLI commands and the new auth provider both require the `api_keys` table.
+- **`ApiKeyAuthenticationProvider` is single-track.** The legacy `users.api_key` fallback (which queried a column that doesn't exist in the canonical schema — see `001_CreateInitialSchema.php`) is gone. All four `AuthenticationProviderInterface` methods (`authenticate`, `validateToken`, `refreshTokens`, `generateTokens`) now use `ApiKeyService::verify()` exclusively. Anyone relying on a custom `users.api_key` column must migrate keys into the new table.
+- **`UserRepository::findByApiKey()` removed.** Zero callers verified across the framework, all official extensions, api-skeleton, and other org repos. External subclasses that called it must remove the reference.
+- **New env var (optional): `DB_LAZY_LOADING_MODE`.** Defaults to `auto` → `warn` in development, `off` elsewhere. Set to `strict` in CI to fail tests on accidental N+1 patterns. Per-model override via `$instanceLazyLoadingMode = 'off'`.
+- **No breaking changes to existing routes.** Health-probe paths and API-key transport (X-API-Key header, Authorization: ApiKey, query string) are unchanged.
+- See `docs/API_KEYS.md` for the full API key usage guide and `docs/ORM/N_PLUS_ONE_DETECTION.md` for the N+1 detector reference.
+
+```bash
+composer update glueful/framework
+php glueful migrate:run
+```
+
+---
 
 ## v1.42.0 - Caph
 **Released: May 20, 2026**
