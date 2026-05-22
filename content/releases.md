@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.44.0 | Errai | 2026-05-22 | Minor | Moderate | Closing the Trust Gaps — real cache tagging, archive restore, honest security report |
 | 1.43.0 | Dabih | 2026-05-21 | Minor | Moderate | Production Hardening — ORM observability, API key hardening, k8s probes |
 | 1.42.0 | Caph | 2026-05-20 | Minor | Moderate | OpenAPI Spec Excellence |
 | 1.41.0 | Beid | 2026-03-03 | Minor | Moderate | Profile-Driven Logging Bootstrap |
@@ -75,6 +76,65 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.44.0 - Errai
+**Released: May 22, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-shield-check"}
+#description
+A focused follow-up to Dabih that closes four trust gaps — places where the README, CLI, or public API advertised behavior the code didn't deliver. Tag-aware cache invalidation actually works on Redis. `restoreFromArchive()` actually restores. `security:report` no longer ships `rand()` values under the name of a security audit. `fields:whitelist-check` inspects your real routes instead of a hardcoded placeholder list.
+::
+
+### Key Highlights
+
+::card
+#title
+Real Tag-Aware Cache Invalidation on Redis
+#description
+`RedisCacheDriver::addTags()` and `invalidateTags()` are now backed by Redis SETs (`_gf_tag:{tag}` → set of cache keys), with pipelined `SADD` on association and bulk `DEL` (keys + tag sets) on invalidation. `getCapabilities()['features']['tags']` is now `true`. This unblocks `QueryCacheService`, `DistributedCacheService`, `ResponseCachingTrait`, and `php glueful cache:clear --tags` — all of which previously called the methods only to receive a silent `false`. Memcached and File drivers stay no-ops with explicit documentation (Memcached lacks set primitives; File would need a separate index layer).
+::
+
+::card
+#title
+Real Archive Restore
+#description
+`ArchiveService::restoreFromArchive()` previously returned a typed failure regardless of input. It now replays archived rows into a target table inside a database transaction, honoring `ArchiveRestoreOptions`: `targetTable` (defaults to the source), `offset`/`limit` for partial restore, and `conflictResolution` (`skip` records collisions in the result; `overwrite` hard-deletes the existing row to bypass soft-delete and reinserts). Primary key detection prefers `uuid` then `id`. The existing `loadArchive()` already handled checksum verify + decrypt + decompress; only the row replay was missing.
+::
+
+::card
+#title
+Honest `security:report`
+#description
+Stripped the command of every fabricated section. Removed `analyzeAuthenticationSecurity()`, `getAuditSummary()`, `runVulnerabilityAssessment()`, `gatherSecurityMetrics()` (all returned `rand()` values across 12+ fields), the `sendReportByEmail()` stub, and `assessCompliance()` (hardcoded strings). Dropped the `--include-vulnerabilities`, `--include-metrics`, `--email`, `--days` options and the PDF format (never implemented). The command now exports HTML/JSON/text reports of the production readiness score, environment configuration, system info, and derived recommendations only. For dependency CVE scanning, users are directed to `security:vulnerabilities`.
+::
+
+::card
+#title
+`fields:whitelist-check` Inspects Real Routes
+#description
+The analyzer used to iterate a hardcoded three-entry placeholder list regardless of the application's actual routes. It now reads `Router::getStaticRoutes()` and `Router::getDynamicRoutes()` and inspects each `Route::getFieldsConfig()` for the actual `#[Fields]` attribute data (`allowed` list, `strict` flag). Added a new low-severity `NON_STRICT_WHITELIST` finding for `/api/` routes with a whitelist that isn't strict — disallowed fields get silently dropped instead of rejected. The fabricated `pattern_frequency` block (`65/25/10`) is gone; the renamed `getReferenceFieldPatterns()` helper now documents itself as static defaults seeding `--suggest-whitelist`, not telemetry.
+::
+
+::card
+#title
+README and Driver Docs Reconciled
+#description
+The README cache claim now reads "Multi-driver support (Redis/Memcached/File) with distributed caching; tag-based invalidation on the Redis driver" — accurate for the driver matrix that actually ships. The Memcached and File drivers' `'tags' => false` capability now carries an explanatory comment instead of the misleading "Not implemented yet" TODO. `addTags()`/`invalidateTags()` docblocks point callers at the capability flag for driver-agnostic branching.
+::
+
+### Migration Notes
+
+- **`security:report` output shape changed.** Consumers parsing the JSON output should expect `authentication`, `audit_summary`, `vulnerabilities`, `metrics`, and `compliance` keys to be absent. Scripts depending on the removed `--include-vulnerabilities`, `--include-metrics`, `--email`, or `--days` options must be updated — those flags now produce `InvalidOptionException`. PDF format is also gone; only `html`, `json`, and `text` are accepted.
+- **Cache tagging is Redis-only.** If your application calls `$cache->addTags($key, $tags)` or `$cache->invalidateTags($tags)` while running on the Memcached or File driver, those calls continue to return `false` (unchanged), but the capability is now documented as deliberate. Branch on `$cache->getCapabilities()['features']['tags']` if you need driver-agnostic behavior, or switch to Redis for real tag invalidation.
+- **`fields:whitelist-check` will now report your real routes.** Previously it analyzed the same three placeholder entries every run. Routes without `#[Fields]` or with non-strict whitelists may surface as findings now that the analyzer sees them.
+- **`restoreFromArchive()` no longer always fails.** Code that called this method and treated the failure as expected (e.g., catch-and-log scaffolding) should be reviewed — it will actually restore rows now. Use `ArchiveRestoreOptions::testRestore()` (limit: 10, skip on conflict) for a safe dry-run shape.
+- **No env var changes.** No new variables; no defaults changed.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.43.0 - Dabih
 **Released: May 21, 2026**
