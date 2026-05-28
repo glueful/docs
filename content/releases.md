@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.46.0 | Gienah | 2026-05-28 | Minor | Low | Fluent Query Caching — `QueryBuilder::cache(ttl, tags)` wired to `QueryCacheService`; level-8 hardening kickoff |
 | 1.45.0 | Fomalhaut | 2026-05-27 | Minor | Moderate | The Second Factor — core email-PIN 2FA (opt-in), selectRaw() bindings, security docs |
 | 1.44.0 | Errai | 2026-05-22 | Minor | Moderate | Closing the Trust Gaps — real cache tagging, archive restore, honest security report |
 | 1.43.0 | Dabih | 2026-05-21 | Minor | Moderate | Production Hardening — ORM observability, API key hardening, k8s probes |
@@ -77,6 +78,48 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.46.0 - Gienah
+**Released: May 28, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-database"}
+#description
+`QueryBuilder::cache(ttl, tags)` is now actually wired up. Previously the fluent method set builder flags that execution ignored — a silent no-op since the method was introduced. It now caches read queries (`get`/`first`/`count`/`max`) through `QueryCacheService`, tagging entries with the involved tables plus any caller-supplied tags for targeted invalidation. Also marks the start of the framework-wide PHPStan level-8 hardening initiative — the ~914-error gap is now catalogued.
+::
+
+### Key Highlights
+
+::card
+#title
+Fluent Query Result Caching
+#description
+`QueryBuilder::cache(?int $ttl = null, array $tags = [])` activates caching for a single read query, with no global toggle required. Results are cached via `QueryCacheService` and tagged automatically by the tables involved, plus any caller-supplied `$tags` — so an app can invalidate targeted groups (`$cache->invalidateTags(['users'])`) alongside the automatic per-table invalidation. Backward compatible: existing `selectRaw`/builder usage is unchanged; the cache method is opt-in per query. The executor lazily resolves a cache backend and degrades to uncached execution if none is configured.
+::
+
+::card
+#title
+Closed: `->cache()` Was a Silent No-Op
+#description
+The fluent `->cache()` method existed before this release but set builder-local flags that `get()` never propagated to the executor, so per-query caching and the TTL were ignored, and there was no `tags` parameter. The advertised behavior didn't match the code — closing exactly the kind of "trust gap" the 1.44.0 "Errai" release was about. Now the method actually caches and accepts invalidation tags.
+::
+
+::card
+#title
+PHPStan Level-8 Hardening (Initiative Kickoff)
+#description
+The framework's eventual goal is to run PHPStan **level 8** across all of `src/` and enforce it in CI. The CI gate today remains level 6 (green), but the full ~914-error level-8 gap is now catalogued in `docs/LEVEL8_TYPING_DEBT.md` — with by-area counts (largest: `Database` 201), error categories, risk notes, and an area-by-area incremental adoption strategy (ratcheting baselines 6 → 7 → 8). This release also lands two binding-path typing fixes (`ParameterBinder`/`QueryExecutor`) as the first slice. Behavior-preserving internal work; no API change.
+::
+
+### Migration Notes
+
+- **No action required.** Framework-only release; no migrations, no env vars, no api-skeleton changes. The existing `^1.45` constraint already permits 1.46.
+- **`->cache()` semantics changed from "no-op" to "actually caches."** If you have code calling `->cache(ttl)` expecting nothing to happen, it'll now cache. The cache key is `query+params` (no auth/context scoping), so make sure cached queries don't return user-scoped rows without an appropriate user-discriminating clause in the SQL.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.45.0 - Fomalhaut
 **Released: May 27, 2026**
