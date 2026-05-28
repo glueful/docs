@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.45.0 | Fomalhaut | 2026-05-27 | Minor | Moderate | The Second Factor — core email-PIN 2FA (opt-in), selectRaw() bindings, security docs |
 | 1.44.0 | Errai | 2026-05-22 | Minor | Moderate | Closing the Trust Gaps — real cache tagging, archive restore, honest security report |
 | 1.43.0 | Dabih | 2026-05-21 | Minor | Moderate | Production Hardening — ORM observability, API key hardening, k8s probes |
 | 1.42.0 | Caph | 2026-05-20 | Minor | Moderate | OpenAPI Spec Excellence |
@@ -76,6 +77,57 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.45.0 - Fomalhaut
+**Released: May 27, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-lock"}
+#description
+Baseline email-PIN two-factor authentication ships in framework core — opt-in, **off by default**, and byte-for-byte identical on the wire to a normal login once completed. When `TWO_FACTOR_ENABLED=false` (the default) nothing changes: the `/2fa/*` routes aren't even registered. Alongside 2FA, `selectRaw()` gains parameter bindings (closing the last unsafe-by-design gap in the query builder), a new `docs/SECURITY.md` documents the SQL-injection and XSS model, and the admin permission middleware drops a dead MFA-token placeholder.
+::
+
+### Key Highlights
+
+::card
+#title
+Core Email-PIN 2FA (Opt-In)
+#description
+When enabled, `POST /auth/login` for an enrolled user returns a `challenge_token` and emails a 6-digit PIN instead of tokens; the client completes login at `POST /2fa/verify`. PINs are bcrypt-hashed via `Glueful\Security\OTP` and cached under `2fa:pin:{jti}` with a strictly-projected user array — no password hash can leak through the cache. New `src/Auth/TwoFactor/` services (`TwoFactorService`, `ChallengeTokenIssuer`, `JtiBlocklist`), a `TwoFactorController` (`/2fa/enable|verify|disable`, IP-rate-limited), `2fa:enable|disable|status` CLI commands, and a `config/auth.php` `two_factor` block. Richer factors (TOTP, WebAuthn, recovery codes) remain `glueful/mfa` scope.
+::
+
+::card
+#title
+Re-Validation and Session-Scoped Freshness
+#description
+`/2fa/verify` re-reads the account before minting a session and rejects if the user no longer exists, the status left the login allowlist, or 2FA was disabled during the challenge window — closing the "stale pre-2FA authentication" gap. Sessions are issued via `TokenManager::createUserSession` (real `sid`/`ver`, `auth_sessions` row, refresh-token store), and a **session-scoped** freshness marker keyed by the issued token's `sid` gates `/2fa/disable`, so a stolen token from a *different* session can't ride on a legitimate user's recent verify.
+::
+
+::card
+#title
+Identical Login Response Across Both Paths
+#description
+`AuthenticationService::authenticate()`'s username/password branch was split into `verifyCredentials()` + `issueSession()` to expose a "verified user, no session yet" gate (the provider short-circuit for token/API-key credentials is unchanged). `AuthController::login()` inserts the 2FA branch there, and both the no-2FA path and `/2fa/verify` shape their response through a new `LoginResponseShaper` — so a 2FA-completed login carries the same CSRF token and fires the same `LoginResponseBuilding`/`LoginResponseBuilt` events as a direct login.
+::
+
+::card
+#title
+`selectRaw()` Parameter Bindings + Security Docs
+#description
+`QueryBuilder::selectRaw(string $expression, array $bindings = [])` now binds positional `?` values, closing the last unsafe-by-design gap in the SELECT clause. Bindings are stored on `QueryState` and returned by `getBindings()` in true SQL clause order; a latent `clone()` column/binding mismatch is fixed along the way. New `docs/SECURITY.md` documents the framework's actual SQL-injection and XSS defenses. The admin permission middleware also drops its dead `validateMfaToken()`/`X-MFA-Token` placeholder.
+::
+
+### Migration Notes
+
+- **2FA is opt-in and off by default.** With `TWO_FACTOR_ENABLED=false` (the default) there is no behavioral change. To enable: run the `010_AddTwoFactorEnabledToUsers` migration (ships in api-skeleton `^1.28.0`), install `glueful/email-notification`, set `TWO_FACTOR_ENABLED=true`, and enroll users via `POST /2fa/enable` or `php glueful 2fa:enable <uuid>`.
+- **New optional env vars.** `TWO_FACTOR_ENABLED` (default `false`) plus tunables `TWO_FACTOR_PIN_LENGTH`, `TWO_FACTOR_PIN_TTL`, `TWO_FACTOR_CHALLENGE_TTL`, `TWO_FACTOR_DISABLE_FRESHNESS`, `TWO_FACTOR_TEMPLATE`. Defaults preserve current behavior.
+- **`X-MFA-Token` header path removed.** `require_mfa` routes now rely solely on the session MFA handshake. The removed header path always returned `false`, so no working flow relied on it.
+- **`selectRaw()` is backward compatible.** Existing `selectRaw($expr)` calls are unaffected; the bindings argument is optional.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.44.0 - Errai
 **Released: May 22, 2026**
