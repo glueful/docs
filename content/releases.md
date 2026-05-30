@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.47.0 | Hadar | 2026-05-30 | Minor | High | Extension System Re-Architecture — composer-only discovery, single `enabled` allow-list, pure resolver (breaking config change) |
 | 1.46.0 | Gienah | 2026-05-28 | Minor | Low | Fluent Query Caching — `QueryBuilder::cache(ttl, tags)` wired to `QueryCacheService`; level-8 hardening kickoff |
 | 1.45.0 | Fomalhaut | 2026-05-27 | Minor | Moderate | The Second Factor — core email-PIN 2FA (opt-in), selectRaw() bindings, security docs |
 | 1.44.0 | Errai | 2026-05-22 | Minor | Moderate | Closing the Trust Gaps — real cache tagging, archive restore, honest security report |
@@ -78,6 +79,51 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.47.0 - Hadar
+**Released: May 30, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-puzzle"}
+#description
+The extension system is rebuilt around a single model: **Composer discovers, one `enabled` list activates, a pure resolver orders and validates.** The four overlapping discovery sources, the multi-key config files, and the dev↔prod parity hazard are gone. This is a **breaking config change** — `config/extensions.php` and `config/serviceproviders.php` become a single `enabled` list of plain string FQCNs. Shipped as a minor per the pre-public policy; see the migration guide.
+::
+
+### Key Highlights
+
+::card
+#title
+One Discovery Path, One Allow-List
+#description
+Discovery is now **Composer-only**: installed `glueful-extension` packages are the candidates, and `config/extensions.php` → `enabled` is the single activation allow-list. Installing a package no longer auto-loads it — its provider FQCN must be enabled. The old `only` / `dev_only` / `disabled` / `local_path` / `scan_composer` keys, the local-folder scan, runtime PSR-4 registration, and `ProviderLocator` are removed. App providers move to the same single-key shape in `config/serviceproviders.php`.
+::
+
+::card
+#title
+Pure Resolver, No Dev↔Prod Drift
+#description
+A pure `ExtensionResolver` selects from `enabled`, validates (missing provider/dependency, framework-version mismatch via `composer/semver`, dependency cycle), and topologically orders providers — reading no environment, so development and production resolve identically. A single shared `ProviderClassResolver` is used by both the `ExtensionManager` and the container factory, so there is one resolution implementation, not two that drift. Production boots only from the compiled manifest (`extensions:cache`) and fails fast if it's missing.
+::
+
+::card
+#title
+CLI That Can't Leave You Broken
+#description
+`extensions:enable` / `extensions:disable` **validate before writing** — enabling an extension whose dependency isn't enabled, or disabling one another enabled extension depends on, is refused and the config is left untouched. They accept the package name, provider FQCN, or slug (case-insensitive), edit the `enabled` list, and recompile the cache. `extensions:list` shows each extension's state (`enabled ✓` / `available ○` / `enabled-but-missing ⚠`) and folds in the old `extensions:why`. `create:extension` now scaffolds a real Composer package + path repository.
+::
+
+### Migration Notes
+
+- **Breaking config change.** Convert `config/extensions.php` and `config/serviceproviders.php` to the single `enabled` list of plain string FQCNs (no `::class`). Map old keys per [`docs/EXTENSIONS_UPGRADE.md`](https://github.com/glueful/framework/blob/main/docs/EXTENSIONS_UPGRADE.md): `only`→`enabled`, `disabled`→omit, `dev_only`→`enabled` + `require-dev`, `local_path`→Composer path repository, `scan_composer`→removed.
+- **New dependency.** Adds `composer/semver` to the framework's `require` — run `composer update glueful/framework` so it installs (the resolver fatals at boot without it).
+- **Enable explicitly; cache in production.** `composer require` an extension, then `php glueful extensions:enable <name>`. Add `php glueful extensions:cache` to your production deploy step — production no longer resolves live.
+
+```bash
+composer update glueful/framework
+php glueful extensions:enable <name>
+php glueful extensions:cache   # required in production
+```
+
+---
 
 ## v1.46.0 - Gienah
 **Released: May 28, 2026**
