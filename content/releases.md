@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.48.0 | Imai | 2026-05-31 | Minor | Low | Router Verb Completeness — first-class `PATCH`/`OPTIONS`, explicit `OPTIONS` beats auto-CORS, documented route precedence |
 | 1.47.0 | Hadar | 2026-05-30 | Minor | High | Extension System Re-Architecture — composer-only discovery, single `enabled` allow-list, pure resolver (breaking config change) |
 | 1.46.0 | Gienah | 2026-05-28 | Minor | Low | Fluent Query Caching — `QueryBuilder::cache(ttl, tags)` wired to `QueryCacheService`; level-8 hardening kickoff |
 | 1.45.0 | Fomalhaut | 2026-05-27 | Minor | Moderate | The Second Factor — core email-PIN 2FA (opt-in), selectRaw() bindings, security docs |
@@ -79,6 +80,48 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.48.0 - Imai
+**Released: May 31, 2026**
+
+::u-alert{color="primary" variant="subtle" icon="i-tabler-route"}
+#description
+`PATCH` and `OPTIONS` become first-class routing verbs — both were previously unreachable through the public routing API. Explicit `OPTIONS` routes now win over the automatic CORS preflight responder, and the router's route-precedence model is documented and locked down with tests. Purely additive: no breaking changes, no new env vars, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+First-Class PATCH and OPTIONS
+#description
+New `$router->patch()` and `$router->options()` shortcuts join `get`/`post`/`put`/`delete`/`head`, with matching `#[Patch]` and `#[Options]` attributes. The generic `#[Route(methods: [...])]` form now accepts `PATCH`, `OPTIONS` and `HEAD` too — previously it threw `InvalidArgumentException` for anything but GET/POST/PUT/DELETE, so `PATCH` (the standard partial-update verb) had no public route-registration path at all.
+::
+
+::card
+#title
+Explicit OPTIONS Beats Auto-CORS
+#description
+`Router::dispatch()` still answers `OPTIONS` automatically for CORS preflight (a `204` with an `Allow` header) when no `OPTIONS` route is registered. But an explicitly registered `OPTIONS` route now runs its own handler instead of being silently shadowed by the preflight responder — so you can take over preflight when you need to, and the automatic behavior remains the default everywhere else.
+::
+
+::card
+#title
+Route Precedence, Documented and Pinned
+#description
+The router's precedence model is now explicit: **static routes beat dynamic ones**; a **literal first segment beats a parameter first segment** (`/users/{id}` over `/{resource}/{id}`, independent of order); and **within a first-segment group, registration order wins** — so register the more specific overlapping pattern first. The model is locked down by `RoutePrecedenceTest`, and a misleading in-code comment claiming a specificity sort that never existed was corrected.
+::
+
+### Migration Notes
+
+- **No action required.** Framework-only, fully backward-compatible release — no migrations, no env vars, no breaking changes. `composer update` is sufficient.
+- The existing api-skeleton `^1.47.0` constraint already permits 1.48.0; the skeleton constraint is bumped to `^1.48.0` for clarity.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.47.0 - Hadar
 **Released: May 30, 2026**
