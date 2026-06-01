@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.49.1 | Jishui | 2026-06-01 | Patch | Low | Reserved-word column names — `QueryValidator` accepts SQL reserved words (`from`, `order`, …) as column names |
 | 1.49.0 | Jishui | 2026-06-01 | Minor | Moderate | HTTP Auth, WhatsApp Plumbing & Dependency Hardening — `auth_basic` passthrough, `whatsapp` queue type, Intervention Image v4, security patches |
 | 1.48.0 | Imai | 2026-05-31 | Minor | Low | Router Verb Completeness — first-class `PATCH`/`OPTIONS`, explicit `OPTIONS` beats auto-CORS, documented route precedence |
 | 1.47.0 | Hadar | 2026-05-30 | Minor | High | Extension System Re-Architecture — composer-only discovery, single `enabled` allow-list, pure resolver (breaking config change) |
@@ -81,6 +82,33 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.49.1 - Jishui
+**Released: June 1, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+A focused bug fix: `QueryValidator` no longer rejects SQL reserved words used as column names (`from`, `order`, `group`, `key`, `values`, …). Column identifiers are always quoted by the query builders, so these were valid SQL all along. Framework-only — no API breaks, no env vars, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+Reserved words are valid column names
+#description
+`QueryValidator::validateColumnName()` previously threw `Column name '<x>' is a reserved SQL keyword` in strict mode for columns like `from` or `order`, even though `InsertBuilder`/`UpdateBuilder` always emit column identifiers through the driver's `wrapIdentifier()` (`` `from` `` / `"from"`) — valid SQL on every driver. The keyword check is dropped for *column* names; the SQL-injection character guard stays, and reserved-word checks for unquoted table/schema/alias names are unchanged. This also fixes a latent inconsistency where `to` was accepted only because `TO` was missing from the keyword list.
+::
+
+### Migration Notes
+
+- **`composer update` is sufficient** — no API changes, env vars, or migrations.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.49.0 - Jishui
 **Released: June 1, 2026**
