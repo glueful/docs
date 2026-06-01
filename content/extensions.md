@@ -116,6 +116,20 @@ description: Official Glueful extensions for RBAC, SSO, email, push, search, pay
     <a class="mt-5 inline-flex items-center gap-2 text-sm font-medium text-azure-radiance-600 hover:text-azure-radiance-700" href="https://packagist.org/packages/glueful/notiva" target="_blank" rel="noopener">glueful/notiva</a>
   </div>
 
+  <div class="rounded-2xl border border-green-100/80 bg-white/90 p-6 shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:ring-white/10">
+    <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-50 text-green-600 dark:bg-green-500/10">
+      <span class="i-lucide-box h-6 w-6 block"></span>
+    </div>
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Conversa</h3>
+    <p class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">SMS and WhatsApp messaging channels backed by swappable provider drivers (Twilio, Meta WhatsApp Cloud) with a message log, delivery webhooks, and templates.</p>
+    <div class="mt-4 flex flex-wrap gap-2 text-xs">
+      <span class="rounded-full bg-green-50 px-3 py-1 text-green-700 dark:bg-green-500/10 dark:text-green-300">SMS</span>
+      <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-700 dark:bg-white/10 dark:text-gray-300">WhatsApp</span>
+      <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-700 dark:bg-white/10 dark:text-gray-300">Twilio</span>
+    </div>
+    <a class="mt-5 inline-flex items-center gap-2 text-sm font-medium text-azure-radiance-600 hover:text-azure-radiance-700" href="https://packagist.org/packages/glueful/conversa" target="_blank" rel="noopener">glueful/conversa</a>
+  </div>
+
   <div class="rounded-2xl border border-emerald-100/80 bg-white/90 p-6 shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:ring-white/10">
     <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10">
       <span class="i-lucide-box h-6 w-6 block"></span>
