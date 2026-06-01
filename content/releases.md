@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.49.0 | Jishui | 2026-06-01 | Minor | Moderate | HTTP Auth, WhatsApp Plumbing & Dependency Hardening — `auth_basic` passthrough, `whatsapp` queue type, Intervention Image v4, security patches |
 | 1.48.0 | Imai | 2026-05-31 | Minor | Low | Router Verb Completeness — first-class `PATCH`/`OPTIONS`, explicit `OPTIONS` beats auto-CORS, documented route precedence |
 | 1.47.0 | Hadar | 2026-05-30 | Minor | High | Extension System Re-Architecture — composer-only discovery, single `enabled` allow-list, pure resolver (breaking config change) |
 | 1.46.0 | Gienah | 2026-05-28 | Minor | Low | Fluent Query Caching — `QueryBuilder::cache(ttl, tags)` wired to `QueryCacheService`; level-8 hardening kickoff |
@@ -80,6 +81,48 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.49.0 - Jishui
+**Released: June 1, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+A maintenance + hardening release: `Http\Client` now forwards per-request HTTP Basic auth, the notification queue accepts a `whatsapp` type, image processing moves to Intervention Image v4, and all known dependency advisories are patched. No framework API breaks, no new env vars, no migrations — and the PHP 8.3 floor is preserved.
+::
+
+### Key Highlights
+
+::card
+#title
+`auth_basic` + `whatsapp` plumbing
+#description
+`Http\Client::transformOptions()` now forwards the `auth_basic` option to Symfony HttpClient (it was silently dropped before), so callers can send `['auth_basic' => [$user, $pass], 'form_params' => [...]]` without hand-building an `Authorization` header. Separately, `whatsapp` is now a recognized `SendNotification` queue type, so phone-messaging extensions that register a `whatsapp` notification channel can be dispatched asynchronously through the framework's notification job.
+::
+
+::card
+#title
+Intervention Image v4
+#description
+`intervention/image` is upgraded to `^4.1` and `ImageProcessor` is ported to the v4 API (`decode`/`createImage`/`insert`/`flip(Direction)`/named `save` options). The public `ImageProcessor` and `image()` helper API is unchanged — apps using Glueful's image facade need no changes.
+::
+
+::card
+#title
+Dependency hardening
+#description
+All known dependency advisories are patched within the existing `^7.4` / `^10.5` constraints — Symfony components to `7.4.x` (including HIGH-severity mailer/mime header & SMTP-command injection CVEs) and PHPUnit to `10.5.63`. `composer audit` is clean. `symfony/event-dispatcher` and `symfony/string` are pinned to `^7.4` so a transitive update can't pull the Symfony 8.x (PHP 8.4-only) lines.
+::
+
+### Migration Notes
+
+- **`composer update` is sufficient** — no framework API changes, env vars, or migrations.
+- **Intervention Image is now `^4`.** Only apps depending on `intervention/image` *directly* (not via Glueful's `image()`/`ImageProcessor`) need to move to the [v4 API](https://image.intervention.io/v4).
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.48.0 - Imai
 **Released: May 31, 2026**
