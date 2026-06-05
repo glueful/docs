@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.50.0 | Kochab | 2026-06-04 | Minor | High | Provider-Agnostic Identity & Core-Owned Schema — user store extracted to `glueful/users`; framework owns config-gated capability migrations; lazy runtime DDL removed |
 | 1.49.1 | Jishui | 2026-06-01 | Patch | Low | Reserved-word column names — `QueryValidator` accepts SQL reserved words (`from`, `order`, …) as column names |
 | 1.49.0 | Jishui | 2026-06-01 | Minor | Moderate | HTTP Auth, WhatsApp Plumbing & Dependency Hardening — `auth_basic` passthrough, `whatsapp` queue type, Intervention Image v4, security patches |
 | 1.48.0 | Imai | 2026-05-31 | Minor | Low | Router Verb Completeness — first-class `PATCH`/`OPTIONS`, explicit `OPTIONS` beats auto-CORS, documented route precedence |
@@ -82,6 +83,50 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.50.0 - Kochab
+**Released: June 4, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-user-shield"}
+#description
+The concrete user store is extracted to the first-party `glueful/users` extension, leaving a **provider-agnostic core** that talks to identity through `UserProviderInterface` + the canonical `UserIdentity`. In parallel, the framework now **owns the database schema for its own subsystems** — the auth security spine plus DB-backed platform capabilities (queue, scheduler, notifications, metrics, locks, uploads, archive) — as first-class, config-gated, source-tracked migrations, replacing lazy runtime DDL. **Breaking** (shipped as a minor per the pre-public policy): apps must enable a user store. See the migration notes.
+::
+
+### Key Highlights
+
+::card
+#title
+Provider-Agnostic Identity
+#description
+The concrete user store — `User`, `UserRepository`, the in-core `UserProvider`, account/2FA/password-reset, and `EmailVerification` — moves to the first-party `glueful/users` extension. Core keeps the security spine and depends only on contracts: `UserProviderInterface` (lookup + credential verification) returning the canonical, immutable `UserIdentity`, with `IdentityResolver` applying the account-status gate and folding in claims providers (the `identity.claims_provider` tag — how RBAC like `glueful/aegis` adds roles). With no store installed, core binds a fail-closed `NullUserProvider` and authentication is disabled by design. `AuthenticatedUser` is retired in favour of `UserIdentity`; 2FA becomes an optional capability behind `TwoFactorServiceInterface`.
+::
+
+::card
+#title
+Core Owns Its Schema
+#description
+The framework ships first-class migrations under `framework/migrations/<capability>/` for the tables its own code reads and writes — auth (`auth_sessions`/`auth_refresh_tokens`/`api_keys`, always on) plus `uploads`, `queue`, `scheduler`, `notifications` (including the formerly runtime-only `notification_retry_queue`), `metrics`, `locks`, and `archive`. Each capability is **registered only when its config gate is on**, under its own source `glueful/framework:<capability>`, via `config/capabilities.php` and existing driver config. The lazy `ensure*Table*()` runtime DDL is removed from `DatabaseQueue`, `JobScheduler`, `NotificationRetryService`, and `ApiMetricsService` — schema now comes from `migrate:run`, not request-time DDL.
+::
+
+::card
+#title
+Ordered, Package-Scoped Migrations
+#description
+`MigrationPriority` tiers (`FOUNDATION`/`IDENTITY`/`DEFAULT`/`DEPENDENT`) and a `source` column on the `migrations` table let core, extensions, and the app contribute one ordered stream — two packages can ship the same filename without conflict, and pending order is deterministic via `(priority, basename, source)`. Plus a declarative permission catalog (`permissions:list`/`diff`/`sync`) and column-aware soft-delete (`QueryBuilder::delete()` only soft-deletes tables that have `deleted_at`).
+::
+
+### Migration Notes
+
+- **Breaking: enable a user store.** Core no longer ships `Glueful\Models\User` / `Glueful\Repository\UserRepository`, and `AuthenticatedUser` is removed. Install and enable `glueful/users` (the api-skeleton does so by default). Without a store, auth fails closed. See [`docs/IDENTITY.md`](https://github.com/glueful/framework/blob/main/docs/IDENTITY.md).
+- **`api_keys.user_id` → `user_uuid`.** The column (and `ApiKeyService` input / `ApiKey` model field) is renamed; it remains an indexed UUID with no FK.
+- **Schema is migration-owned.** Run `php glueful migrate:run`; capability tables install per `config/capabilities.php` + driver config (`queue.default`, `lock.default`, `uploads.enabled`). See [`docs/MIGRATIONS_AND_CAPABILITIES.md`](https://github.com/glueful/framework/blob/main/docs/MIGRATIONS_AND_CAPABILITIES.md).
+
+```bash
+composer require glueful/users
+php glueful migrate:run
+```
+
+---
 
 ## v1.49.1 - Jishui
 **Released: June 1, 2026**
