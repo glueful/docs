@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.50.1 | Kochab | 2026-06-05 | Patch | Moderate | Two silent no-op extension points fixed — `ServiceProvider::mergeConfig()` actually applies extension config defaults; `LoginResponseBuildingEvent` listeners actually modify the login response |
 | 1.50.0 | Kochab | 2026-06-04 | Minor | High | Provider-Agnostic Identity & Core-Owned Schema — user store extracted to `glueful/users`; framework owns config-gated capability migrations; lazy runtime DDL removed |
 | 1.49.1 | Jishui | 2026-06-01 | Patch | Low | Reserved-word column names — `QueryValidator` accepts SQL reserved words (`from`, `order`, …) as column names |
 | 1.49.0 | Jishui | 2026-06-01 | Minor | Moderate | HTTP Auth, WhatsApp Plumbing & Dependency Hardening — `auth_basic` passthrough, `whatsapp` queue type, Intervention Image v4, security patches |
@@ -83,6 +84,25 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.50.1 - Kochab
+**Released: June 5, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-bug"}
+#description
+Two extension points that silently did nothing are now fixed. **`ServiceProvider::mergeConfig()`** delegated to a `config.manager` service that was never registered, so an extension's `config/*.php` defaults never reached `config()` — every first-party extension ran on empty/hardcoded fallbacks unless the app shipped its own copy. And **`LoginResponseBuildingEvent`** listeners' changes were discarded by the login-response shaper. Both now work as documented. Framework-only: no env vars, no migrations, no API breaks.
+::
+
+### Key Highlights
+
+- **`mergeConfig()` actually merges now.** Backed by the new `ApplicationContext::mergeConfigDefaults()`, extension config defaults are merged **under** framework/app/env config files (your app's `config/*.php` still wins) and persist across `clearConfigCache()`. Affected extensions: `glueful/aegis`, `conversa`, `email-notification`, `entrada`, `meilisearch`, `notiva`, `payvia`, `runiva`.
+- **`LoginResponseBuildingEvent` listeners affect the response.** `LoginResponseShaper::shape()` now reads `$event->getResponse()` back, so a listener can add fields (e.g. organization/department context) to the login response.
+
+### Migration Notes
+
+`composer update glueful/framework` is sufficient — the api-skeleton `^1.50.0` constraint already permits 1.50.1. **Behavioral note:** enabled first-party extensions now receive their declared config defaults (previously ignored); review those defaults if you relied on the prior empty behavior.
+
+---
 
 ## v1.50.0 - Kochab
 **Released: June 4, 2026**
