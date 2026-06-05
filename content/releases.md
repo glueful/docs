@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.50.2 | Kochab | 2026-06-05 | Patch | Low | `@queryParam` route-doc tag — the OpenAPI generator parses an editor-clean query-param tag (no reserved-`@param` IDE false positives); path params no longer dropped when a query param is also documented |
 | 1.50.1 | Kochab | 2026-06-05 | Patch | Moderate | Two silent no-op extension points fixed — `ServiceProvider::mergeConfig()` actually applies extension config defaults; `LoginResponseBuildingEvent` listeners actually modify the login response |
 | 1.50.0 | Kochab | 2026-06-04 | Minor | High | Provider-Agnostic Identity & Core-Owned Schema — user store extracted to `glueful/users`; framework owns config-gated capability migrations; lazy runtime DDL removed |
 | 1.49.1 | Jishui | 2026-06-01 | Patch | Low | Reserved-word column names — `QueryValidator` accepts SQL reserved words (`from`, `order`, …) as column names |
@@ -84,6 +85,26 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.50.2 - Kochab
+**Released: June 5, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-file-text"}
+#description
+Route docblocks can now document query parameters with an editor-clean **`@queryParam name:type="…"`** tag that the OpenAPI generator actually parses. The old approach overloaded the reserved `@param` tag (`@param page query integer false "…"`), which IDEs/Intelephense mis-read as undefined PHPDoc types (P1133 warnings). A latent doc-gen bug is also fixed: routes that declared a query parameter alongside a `{id}` path segment silently lost the path parameter from their spec. Framework-only — no env vars, no migrations, no API breaks.
+::
+
+### Key Highlights
+
+- **`@queryParam` route-doc tag.** `CommentsDocGenerator` parses `@queryParam name:type="description" [{required}]` as an `in: query` OpenAPI parameter — no more reserved-`@param` false positives in your editor. The legacy positional `@param … query …` form still parses, so existing route docblocks are unaffected.
+- **Path params no longer dropped.** URL `{name}` path parameters were auto-derived only when *no* parameters were documented at all; a route with a query param plus a `{id}` lost its path param from the generated spec. Path params are now always derived from the URL and merged with documented params (de-duplicated by name; an explicit docblock still wins).
+- **`routes/resource.php` migrated** to `@queryParam` for the `/data/{table}` list endpoint's `page`/`limit`/`sort`/`order` params (they now actually appear in the spec).
+
+### Migration Notes
+
+`composer update glueful/framework` is sufficient — the api-skeleton `^1.50.1` constraint already permits 1.50.2. No action required; the new tag is opt-in and the legacy `@param` form continues to work.
+
+---
 
 ## v1.50.1 - Kochab
 **Released: June 5, 2026**
