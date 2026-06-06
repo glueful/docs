@@ -149,34 +149,41 @@ $queue = app($context, \Glueful\Queue\QueueManager::class);
 $queue->push(App\Jobs\SendEmail::class, ['userId' => $id]);
 ```
 
-### Notification Service Provider
+### Config-Driven Service
 
-Build a service from config using a `FactoryDefinition`:
+Build a service from config using a `FactoryDefinition`. The factory closure receives the
+container, so resolve the `ApplicationContext` from it to read config:
 
 ```php
+use Glueful\Bootstrap\ApplicationContext;
 use Glueful\Container\Providers\BaseServiceProvider;
 use Glueful\Container\Definition\FactoryDefinition;
+use Psr\Container\ContainerInterface;
 
-final class NotificationServiceProvider extends BaseServiceProvider
+final class SmsGatewayServiceProvider extends BaseServiceProvider
 {
     public function defs(): array
     {
         return [
-            'notifications' => new FactoryDefinition(
-                'notifications',
-                function () {
-                    $manager = new NotificationManager();
-                    $manager->registerChannel('email', new EmailChannel(config($context, 'mail')));
-                    $manager->registerChannel('sms', new SmsChannel(config($context, 'sms')));
-                    $manager->registerChannel('push', new PushChannel(config($context, 'push')));
+            SmsGateway::class => new FactoryDefinition(
+                SmsGateway::class,
+                static function (ContainerInterface $c): SmsGateway {
+                    $context = $c->get(ApplicationContext::class);
 
-                    return $manager;
+                    return new SmsGateway(
+                        apiKey: (string) config($context, 'services.sms.key'),
+                        sandbox: (bool) config($context, 'services.sms.sandbox', false),
+                    );
                 }
             ),
         ];
     }
 }
 ```
+
+To register a custom **notification channel**, don't build the registry yourself — implement
+`Glueful\Notifications\Contracts\NotificationChannel` and call `registerNotificationChannel()`
+from your provider's `boot()`. See [Notifications → Extending Channels](/features/notifications#extending-channels).
 
 ## Custom Providers
 

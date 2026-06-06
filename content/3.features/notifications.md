@@ -515,33 +515,68 @@ public function testWelcomeEmail()
 
 ## Extending Channels
 
-Add SMS, push, or other channels:
+A channel implements `Glueful\Notifications\Contracts\NotificationChannel`:
 
 ```php
 namespace App\Channels;
 
-class SmsChannel
+use Glueful\Notifications\Contracts\Notifiable;
+use Glueful\Notifications\Contracts\NotificationChannel;
+
+final class SmsChannel implements NotificationChannel
 {
-    public function send($notifiable, $data): array
+    public function __construct(private readonly SmsProvider $sms)
+    {
+    }
+
+    public function getChannelName(): string
+    {
+        return 'sms';
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->sms->isConfigured();
+    }
+
+    public function format(array $data, Notifiable $notifiable): array
+    {
+        return $data;
+    }
+
+    public function getConfig(): array
+    {
+        return [];
+    }
+
+    public function send(Notifiable $notifiable, array $data): bool
     {
         $phone = $notifiable->routeNotificationFor('sms');
-        $message = $data['message'];
+        if (!is_string($phone) || $phone === '') {
+            return false;
+        }
 
-        // Send SMS via provider
-        $response = $this->smsProvider->send($phone, $message);
-
-        return [
-            'status' => $response->success ? 'success' : 'failed'
-        ];
+        return $this->sms->send($phone, (string) ($data['body'] ?? ''))->isSuccessful();
     }
 }
 ```
 
-Register channel:
+Register the channel from your extension's `ServiceProvider::boot()` with the framework helper. It resolves the shared channel registry and is the supported wiring path — the framework no longer hardcodes channel providers, so a channel that isn't registered here won't reach the async dispatcher:
 
 ```php
-$channelManager->register('sms', new SmsChannel());
+use Glueful\Bootstrap\ApplicationContext;
+use Glueful\Extensions\ServiceProvider;
+
+final class SmsServiceProvider extends ServiceProvider
+{
+    public function boot(ApplicationContext $context): void
+    {
+        $this->registerNotificationChannel($this->app->get(SmsChannel::class));
+    }
+}
 ```
+
+**Structured results (optional).** For richer delivery telemetry — a provider message id, error code, retryability, and send latency — implement `Glueful\Notifications\Contracts\RichNotificationChannel` instead and return a `NotificationResult` from `sendNotification()`. The dispatcher prefers `sendNotification()` when present and falls back to `send(): bool` otherwise, so it's fully opt-in and the base contract above stays unchanged.
 
 ## Next Steps
 
