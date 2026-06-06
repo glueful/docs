@@ -298,22 +298,28 @@ class MaintenanceModeMiddleware implements RouteMiddleware
 
 ## Built-in Middleware Aliases
 
-Registered aliases you can use directly in routes/groups:
-- `auth` — Authentication middleware
-- `rate_limit` — Rate limiter (with params: `max,window[,type]`)
-- `csrf` — CSRF protection
-- `security_headers` — Security headers
-- `allow_ip` — IP allowlist checks
-- `admin` — Admin permission checks
-- `request_logging` — Request/response logging
-- `metrics` — Metrics collection
-- `tracing` — Distributed tracing
-- `async` — Inject FiberScheduler for per-route concurrency
-- `lockdown` — Emergency lockdown
-- `gate_permissions` — Gate-based permission checks
-- `auth_to_request` — Attach auth context to request attributes
+The framework registers these string aliases (in `CoreProvider`); use them by name in a route's `->middleware([...])` or a group's `middleware`:
 
-Note: Aliases are registered in providers (see CoreProvider) and may vary if customized. Use strings like `'rate_limit:60,60'` or mix with class instances.
+| Alias | Middleware | What it does |
+| ----- | ---------- | ------------ |
+| `auth` | `AuthMiddleware` | Authenticates the request (JWT / session / API key) and populates the user context; returns **401** if unauthenticated. |
+| `rate_limit` | `EnhancedRateLimiterMiddleware` | Enforces rate limits. Attach the alias, but set the actual limits with the **`->rateLimit($max, $minutes)` builder** — the limiter reads the route's rate-limit config, *not* `rate_limit:max,window` string params. |
+| `require_scope` | `RequireScopeMiddleware` | Enforces `#[RequireScope('write:posts')]` — gates the route by API-key scope. The attribute auto-attaches this middleware. |
+| `gate_permissions` | `GateAttributeMiddleware` | Enforces `#[RequiresPermission]` / `#[RequiresRole]` on the handler through the authorization **Gate** (RBAC providers such as `glueful/aegis` back it). |
+| `auth_to_request` | `AuthToRequestAttributesMiddleware` | Copies the authenticated identity + claims into request attributes so downstream permission checks can read them. |
+| `admin` | `AdminPermissionMiddleware` | Requires an admin-level permission. |
+| `validate` | `ValidationMiddleware` | Runs `#[Validate]` attribute validation before the handler. |
+| `field_selection` | `FieldSelectionMiddleware` | Applies GraphQL-style field selection / expansion (`?fields=`, `?expand=`). |
+| `csrf` | `CSRFMiddleware` | CSRF token protection for state-changing requests. |
+| `security_headers` | `SecurityHeadersMiddleware` | Adds security response headers. |
+| `allow_ip` | `AllowIpMiddleware` | Restricts the route to an IP allowlist. |
+| `lockdown` | `LockdownMiddleware` | Emergency / maintenance lockdown. |
+| `conditional_cache` | `ConditionalCacheMiddleware` | Conditional (ETag / `304 Not Modified`) response caching. |
+| `metrics` | `MetricsMiddleware` | Records API metrics for the request. |
+| `tracing` | `TracingMiddleware` | Emits request tracing / observability spans. |
+| `request_logging` | `RequestResponseLoggingMiddleware` | Logs the request and response. |
+
+The classes live under `Glueful\Routing\Middleware\*`, except `gate_permissions`/`auth_to_request` (`Glueful\Permissions\Middleware\*`), `validate` (`Glueful\Validation\Middleware\*`), and `rate_limit` (`Glueful\Api\RateLimiting\Middleware\*`). Aliases are registered in `CoreProvider`; enabled extensions can register their own. In a `middleware([...])` array you can mix bare names, `name:param` strings (for middleware that read runtime params), and class instances.
 
 ## PSR-15 Middleware
 
