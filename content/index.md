@@ -202,7 +202,7 @@ seo:
   <span class="font-bold text-raspberry-600">Add Official Extensions</span>
 
   #description
-  <div>Extend the core with official packages for RBAC, social login, email delivery, push notifications, full-text search, payments, and runtime integrations without turning the framework itself into a monolith.</div>
+  <div>Extend the core with official packages for identity &amp; accounts, RBAC, social login, email delivery, push notifications, SMS/WhatsApp, full-text search, payments, and runtime integrations without turning the framework itself into a monolith.</div>
 
   :::
 ::
@@ -298,7 +298,7 @@ seo:
   <span class="font-bold text-raspberry-600">Extension Ecosystem</span>
 
   #description
-  <div>Start with the lean framework, then add Aegis, Entrada, Payvia, Meilisearch, Notiva, email-notification, and other Glueful extensions as your product needs grow.</div>
+  <div>Start with the lean framework, then add Users, Aegis, Entrada, Payvia, Meilisearch, Notiva, Conversa, email-notification, and other Glueful extensions as your product needs grow.</div>
 
   :::
 
