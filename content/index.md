@@ -1,314 +1,348 @@
 ---
 seo:
   title: Glueful — Build Production PHP APIs Faster
-  description: Start from the Glueful API skeleton and ship secure, documented PHP APIs with explicit routing, DI, auth, queues, storage, and operational tooling.
+  description: Start from the Glueful API skeleton and ship secure, documented PHP APIs with explicit routing, context-aware DI, auth, queues, storage, and OpenAPI generation.
 ---
-::u-page-hero{orientation = "horizontal" class="home-page-hero"}
 
+::div{class="relative mx-auto w-full max-w-(--ui-container) px-6 pt-20 pb-16 sm:pt-28 lg:pt-32"}
 
-::div{class="absolute inset-0 bg-gradient-to-br from-azure-radiance-50/20 via-rose-50/15 to-raspberry-50/20 dark:from-azure-radiance-950/10 dark:via-rose-950/8 dark:to-raspberry-950/10 -z-10"}
-::
+:::u-badge{variant="subtle" color="neutral" size="lg"}
+PHP 8.3+ · API-skeleton first
+:::
 
-#headline
-<span class="font-bold text-raspberry-600">Glueful</span>
+<h1 class="mt-6 max-w-4xl text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tighter text-balance text-highlighted">Build production PHP APIs without starting from zero.</h1>
 
-#title
-<span class="font-light text-gray-900 dark:text-white text-5xl lg:text-6xl">Build <span class="font-semibold text-raspberry-600">production PHP APIs</span></span><br><span class="font-bold text-raspberry-600 text-5xl lg:text-6xl">without starting from zero</span>
+<p class="mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">A pragmatic, high-performance API framework. Start from <strong class="font-semibold text-highlighted whitespace-nowrap">glueful/api-skeleton</strong> and grow into a full platform — explicit routing, context-aware DI, auth &amp; identity, queues, storage, and generated OpenAPI docs — without the boilerplate.</p>
 
-#description
+:::div{class="mt-8 flex flex-wrap items-center gap-3"}
+::::u-button{size="xl" to="/getting-started" trailing-icon="i-lucide-rocket" class="bg-raspberry-500 hover:bg-raspberry-600 text-white"}
+Get started
+::::
 
-<p class="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-3xl">
-  Start with <strong class="text-azure-radiance-600">glueful/api-skeleton</strong>, then grow into a full API platform with explicit routing, context-aware DI, authentication flows, queues, notifications, storage, OpenAPI generation, and operational CLI tooling.
-</p>
+::::u-button{size="xl" color="neutral" variant="outline" icon="i-tabler-brand-github-filled" to="https://github.com/glueful" target="_blank"}
+Star on GitHub
+::::
+:::
 
-<div class="flex flex-wrap items-center justify-center gap-6 mt-8 text-sm text-gray-600 dark:text-gray-400">
-  <div class="flex items-center gap-2">
-    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-    <span>API Skeleton First</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-    <span>Explicit Routes + DI</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <div class="w-2 h-2 bg-orange-500 rounded-full"></div>
-    <span>Built For Real Deployments</span>
-  </div>
-</div>
+:::div{class="hero-code mt-14 w-full overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-xl shadow-black/5 dark:border-white/10 dark:bg-gray-900 dark:shadow-black/30"}
+::::code-group
 
-#links
-  :::u-button{class="bg-azure-radiance-500 hover:bg-azure-radiance-600 text-white hover:shadow-azure-radiance-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
-  ---
-  size: xl
-  to: /getting-started
-  trailing-icon: i-lucide-rocket
-  ---
-  Start With The Skeleton
-  :::
+```php [routes/api.php]
+$router->post('/users', [UserController::class, 'store'])
+    ->middleware(['auth', 'rate_limit'])
+    ->name('users.store');
+```
 
-  :::u-button{class="hover:shadow-primary-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
-  ---
-  color: neutral
-  icon: i-tabler-brand-github-filled
-  size: xl
-  target: _blank
-  to: https://github.com/glueful
-  variant: solid
-  ---
-  GitHub
-  :::
+```php [UserController.php]
+#[Controller(prefix: '/api/v1')]
+final class UserController extends BaseController
+{
+    public function __construct(
+        ApplicationContext $context,
+        private readonly UserService $users,
+    ) {
+        parent::__construct($context);
+    }
 
-  :::u-button{class="hover:shadow-primary-500/25 transform hover:scale-105 transition-all duration-300 hover:animate-none"}
-  ---
-  color: neutral
-  size: xl
-  to: /extensions
-  variant: outline
-  trailing-icon: i-lucide-box
-  ---
-  Browse Extensions
-  :::
-#default
-  :::prose-pre{code = "composer create-project glueful/api-skeleton my-project" filename = "Terminal"}
-  ```bash [Terminal]
-  composer create-project glueful/api-skeleton my-project
-  cd my-project
-  php glueful install --quiet
-  php glueful scaffold:controller UserController --api
-  php glueful generate:openapi --ui
-  php glueful serve
-  ```
-  :::
-::
+    #[Post('/users')]
+    public function store(Request $request): Response
+    {
+        $dto  = CreateUserDTO::fromRequest(RequestHelper::getRequestData($request));
+        $user = $this->users->create($this->getContext(), $dto);
 
-::div{class="hidden lg:block fixed right-56 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-azure-radiance-400/60 to-transparent dark:via-azure-radiance-600/60 z-10"}
-::
-::div{class="hidden lg:block fixed right-52 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-raspberry-400/40 to-transparent dark:via-raspberry-600/40 z-10"}
-::
-::div{class="hidden lg:block fixed left-48 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-raspberry-400/60 to-transparent dark:via-raspberry-600/60 z-10"}
-::
-::div{class="hidden lg:block fixed left-44 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-azure-radiance-400/40 to-transparent dark:via-azure-radiance-600/40 z-10"}
-::
+        return $this->created($user, 'User created');
+    }
+}
+```
 
-::div{class="h-px bg-gradient-to-r from-transparent via-raspberry-400/50 via-purple-400/50 to-transparent dark:via-raspberry-600/50 dark:via-purple-600/50"}
-::
+```json [Response]
+{
+  "success": true,
+  "message": "User created",
+  "data": {
+    "uuid": "u_a1b2c3",
+    "email": "ada@example.com",
+    "status": "active"
+  }
+}
+```
 
-::u-page-section{class="relative overflow-x-hidden bg-white dark:bg-gray-950 py-0"}
-
-#title
-<div class="mt-12 mb-6 scroll-mt-[calc(48px+45px+var(--ui-header-height))] lg:scroll-mt-[calc(48px+var(--ui-header-height))] [&>a]:focus-visible:outline-(--ui-primary) [&>a>code]:border-dashed hover:[&>a>code]:border-(--ui-primary) hover:[&>a>code]:text-(--ui-primary) [&>a>code]:text-xl/7 [&>a>code]:font-bold [&>a>code]:transition-colors text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
-  <div class="*:leading-9">
-    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300 ">A faster path from idea to deployed API</p>
-  </div>
-  <div class="hidden @min-[1020px]:block"><img src="/images/light/line-2.svg" alt="Line Decoration" class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]"></div>
-</div>
-
-#description
-
-<div class="text-left mb-12 text-gray-600 dark:text-gray-300 max-w-3xl">
-  Glueful is opinionated where it helps: start from a working API app, use explicit routes and controllers, rely on context-aware DI instead of hidden globals, and add higher-level features only when your app needs them.
-</div>
-
-<div class="flex items-center gap-8 mb-8 text-sm text-gray-500 dark:text-gray-400 text-left">
-  <div class="flex items-center gap-2">
-    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"></div>
-    <span>PHP 8.3+</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-600"></div>
-    <span>ApplicationContext + DI</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <div class="w-3 h-3 rounded-full bg-gradient-to-r from-green-500 to-green-600"></div>
-    <span>OpenAPI + CLI Tooling</span>
-  </div>
-</div>
-
-:::clean-code-showcase
+::::
 :::
 
 ::
 
-::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
+::div{class="border-y border-gray-200/70 dark:border-white/10 bg-gray-50/60 dark:bg-white/5"}
+  <div class="mx-auto max-w-5xl px-6 py-5 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm text-gray-600 dark:text-gray-300">
+    <span class="inline-flex items-center gap-2"><span class="i-lucide-badge-check h-4 w-4 text-gray-400 dark:text-gray-500"></span> MIT licensed</span>
+    <span class="inline-flex items-center gap-2"><span class="i-lucide-file-json h-4 w-4 text-gray-400 dark:text-gray-500"></span> OpenAPI built-in</span>
+    <span class="inline-flex items-center gap-2"><span class="i-lucide-boxes h-4 w-4 text-gray-400 dark:text-gray-500"></span> Context-aware DI</span>
+    <span class="inline-flex items-center gap-2"><span class="i-lucide-terminal h-4 w-4 text-gray-400 dark:text-gray-500"></span> First-class CLI</span>
+    <span class="inline-flex items-center gap-2"><span class="i-lucide-blocks h-4 w-4 text-gray-400 dark:text-gray-500"></span> 9 official extensions</span>
+    <span class="inline-flex items-center gap-2"><span class="i-lucide-gauge h-4 w-4 text-gray-400 dark:text-gray-500"></span> 40k+ resp/sec</span>
+  </div>
 ::
 
-::u-page-section{class="isolate relative overflow-hidden bg-gradient-to-br from-raspberry-50/50 via-white to-purple-50/50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-16"}
+<section class="border-t border-gray-200/70 dark:border-white/10">
+  <div class="mx-auto w-full max-w-(--ui-container) px-6 py-20 sm:py-24">
+    <div class="grid grid-cols-1 overflow-hidden rounded-2xl border border-gray-200/80 bg-gray-200/70 dark:border-white/10 dark:bg-white/10 lg:grid-cols-3 lg:gap-px">
+      <div class="bg-white p-8 dark:bg-gray-950 lg:p-10">
+        <p class="font-mono text-xs uppercase tracking-widest text-gray-400 dark:text-gray-500">Getting started</p>
+        <h3 class="mt-4 text-2xl font-medium tracking-tight text-gray-900 dark:text-white">Up and running in seconds</h3>
+        <p class="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Scaffold the API skeleton and start a real server — SQLite, queues, and OpenAPI are configured out of the box.</p>
+        <div class="mt-6 flex flex-wrap gap-2">
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">php glueful serve</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">migrate:run</code>
+        </div>
+      </div>
+      <div class="flex flex-col justify-center gap-4 bg-white p-8 dark:bg-gray-950 lg:col-span-2 lg:p-10">
+        <div class="rounded-xl bg-gray-900 p-4 ring-1 ring-white/10">
+          <div class="mb-2 font-mono text-[11px] uppercase tracking-widest text-gray-500">Create a project</div>
+          <div class="font-mono text-sm text-gray-100"><span class="text-emerald-400">$</span> composer create-project glueful/api-skeleton my-api</div>
+        </div>
+        <div class="rounded-xl bg-gray-900 p-4 ring-1 ring-white/10">
+          <div class="mb-2 font-mono text-[11px] uppercase tracking-widest text-gray-500">Start the server</div>
+          <div class="font-mono text-sm text-gray-100"><span class="text-emerald-400">$</span> cd my-api &amp;&amp; php glueful serve</div>
+        </div>
+      </div>
+      <div class="bg-white p-8 dark:bg-gray-950">
+        <h3 class="text-lg font-medium tracking-tight text-gray-900 dark:text-white">A CLI for everything</h3>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Scaffold code, run migrations and workers, and generate docs — one consistent <code class="rounded bg-gray-100 px-1 py-0.5 font-mono text-[0.8em] text-gray-700 dark:bg-white/10 dark:text-gray-200">php glueful</code> entrypoint.</p>
+        <div class="mt-5 flex flex-wrap gap-2">
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">scaffold:controller</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">migrate:run</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">queue:work</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">generate:openapi</code>
+        </div>
+      </div>
+      <div class="bg-white p-8 dark:bg-gray-950">
+        <h3 class="text-lg font-medium tracking-tight text-gray-900 dark:text-white">Explicit routing, DI &amp; auth</h3>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Context-aware services, attribute routing, and JWT / session / API-key auth over a pluggable user store.</p>
+        <div class="mt-5 flex flex-wrap gap-2">
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">ApplicationContext</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">#[Controller]</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">#[RequireScope]</code>
+        </div>
+      </div>
+      <div class="bg-white p-8 dark:bg-gray-950">
+        <h3 class="text-lg font-medium tracking-tight text-gray-900 dark:text-white">Queues, OpenAPI &amp; extensions</h3>
+        <p class="mt-2 text-sm leading-relaxed text-gray-600 dark:text-gray-300">Background jobs, generated OpenAPI + typed SDKs, and an official extension ecosystem you add as you grow.</p>
+        <div class="mt-5 flex flex-wrap gap-2">
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">queue:work</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">generate:openapi --ui</code>
+          <code class="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 font-mono text-xs text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">glueful/aegis</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+::div{class="path-fade relative overflow-hidden border-t border-gray-200/70 dark:border-white/10"}
+
+:::div{class="mx-auto grid w-full max-w-(--ui-container) grid-cols-1 lg:grid-cols-5 lg:items-stretch"}
+
+::::div{class="px-6 py-20 sm:py-24 lg:col-span-2 lg:self-center lg:py-16 lg:pr-12"}
+<h2 class="text-3xl sm:text-4xl font-medium tracking-tight text-gray-900 dark:text-white">A request has one clear path</h2>
+<p class="mt-5 text-base leading-relaxed text-gray-600 dark:text-gray-300">Thin controllers, validation in DTOs, business logic in services, data access in repositories — easy to read, easy to test, with no hidden magic or global state.</p>
+<ul class="mt-7 space-y-3 text-sm text-gray-700 dark:text-gray-200"><li class="flex items-start gap-2.5"><span class="i-lucide-check mt-0.5 h-4 w-4 shrink-0 text-raspberry-600"></span>Thin controllers that just shape the response</li><li class="flex items-start gap-2.5"><span class="i-lucide-check mt-0.5 h-4 w-4 shrink-0 text-raspberry-600"></span>Validation in DTOs, orchestration in services</li><li class="flex items-start gap-2.5"><span class="i-lucide-check mt-0.5 h-4 w-4 shrink-0 text-raspberry-600"></span>Context-aware DI — no hidden globals</li><li class="flex items-start gap-2.5"><span class="i-lucide-check mt-0.5 h-4 w-4 shrink-0 text-raspberry-600"></span>N+1 detection &amp; query caching built in</li></ul>
+
+:::::u-button{class="mt-8" to="/essentials/routing" color="neutral" variant="outline" trailing-icon="i-lucide-arrow-up-right"}
+Explore the architecture
+:::::
+
+::::
+
+::::div{class="hero-code relative mx-6 mb-12 overflow-hidden rounded-xl border border-gray-300 bg-white shadow-xl shadow-black/5 dark:border-white/15 dark:bg-gray-900 lg:col-span-3 lg:mx-0 lg:mb-0 lg:mt-24 lg:rounded-bl-none lg:rounded-br-none lg:rounded-tr-2xl lg:rounded-tl-2xl lg:border-b-0 lg:border-r-0 lg:shadow-2xl"}
+:::::code-group
+
+```php [routes/api.php]
+$router->post('/users', [UserController::class, 'store'])
+    ->middleware(['auth', 'rate_limit']);
+```
+
+```php [UserController.php]
+public function store(Request $request): Response
+{
+    $dto  = CreateUserDTO::fromRequest(RequestHelper::getRequestData($request));
+    $user = $this->users->create($this->getContext(), $dto);
+
+    return $this->created($user, 'User created');
+}
+```
+
+```php [UserService.php]
+public function create(ApplicationContext $ctx, CreateUserDTO $dto): array
+{
+    return db($ctx)->transaction(function () use ($dto) {
+        $user = $this->users->insert($dto->toArray());
+        $this->events->dispatch(new UserCreated($user));
+
+        return $user;
+    });
+}
+```
+
+```php [UserRepository.php]
+public function insert(array $data): array
+{
+    $data['uuid'] = Utils::generateNanoID();
+    $this->db->table('users')->insert($data);
+
+    return $this->findByUuid($data['uuid']);
+}
+```
+
+:::::
+::::
+
+:::
+
+::
+
+::u-page-section
+---
+class: border-t border-gray-300 dark:border-white/10
+ui:
+  container: py-12! sm:py-16! lg:py-20!
+---
+
+#headline
+<span class="block w-full font-mono text-xs font-medium uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Out of the box</span>
 
 #title
-<div class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-left @container relative flex">
-  <div class="*:leading-9">
-    <p class="my-5 leading-7 text-pretty font-normal text-gray-600 dark:text-gray-300">Why developers adopt <span class="text-azure-radiance-500 font-semibold">Glueful</span></p>
-  </div>
-  <div class="hidden @min-[1020px]:block">
-    <img class="absolute top-0 right-0 size-full transform scale-95 translate-x-[70%]" src="/images/light/line-2.svg" alt="Line Decoration"/>
-  </div>
-</div>
+<span class="block text-left w-full text-3xl sm:text-4xl lg:text-5xl tracking-tight font-semibold text-highlighted">What you get immediately</span>
 
 #description
+<span class="block text-lg text-left text-gray-600 dark:text-gray-300">The starter path shortens the gap between “new project” and “working API with operational basics.”</span>
 
-<div class="text-lg text-gray-600 dark:text-gray-300 text-left max-w-3xl">
-  <p>Glueful is strongest when you want a pragmatic API framework that starts lean but already includes the hard parts teams usually stitch together later.</p>
-</div>
+#default
 
-<div class="flex items-center gap-8 mb-12 text-sm text-gray-500 dark:text-gray-400">
-  <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-azure-radiance-600">Fast</span>
-    <span>Onboarding</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-azure-radiance-600">Explicit</span>
-    <span>Architecture</span>
-  </div>
-  <div class="flex items-center gap-2">
-    <span class="text-2xl font-bold text-azure-radiance-600">Built-In</span>
-    <span>API Ops</span>
-  </div>
-</div>
+:::div{class="mx-auto mt-4 grid max-w-(--ui-container) grid-cols-1 gap-px overflow-hidden rounded-2xl border border-gray-300 bg-gray-300 dark:border-white/15 dark:bg-white/15 sm:grid-cols-2 lg:grid-cols-3"}
 
-#features
-  :::u-page-feature
+::::div{class="bg-white p-6 dark:bg-gray-900"}
+:::::div{class="icon-tile mb-5 flex size-9 items-center justify-center rounded-lg"}
+:u-icon{name="i-lucide-wand-sparkles" class="size-5 text-raspberry-600 dark:text-raspberry-400"}
+:::::
+<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">Scaffolding</h3>
+<p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">Generate controllers, models, DTOs, jobs, rules, tests, factories, seeders, filters, and middleware with the scaffold commands.</p>
+::::
 
-  #title
-  <span class="font-bold text-raspberry-600">Start From A Working API App</span>
+::::div{class="bg-white p-6 dark:bg-gray-900"}
+:::::div{class="icon-tile mb-5 flex size-9 items-center justify-center rounded-lg"}
+:u-icon{name="i-lucide-book-open-text" class="size-5 text-raspberry-600 dark:text-raspberry-400"}
+:::::
+<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">API documentation</h3>
+<p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">generate:openapi --ui produces your spec and a browsable UI — no separate docs stack to maintain.</p>
+::::
 
-  #description
-  <div>`glueful/api-skeleton` gives you bootstrap, config, starter routes, migrations, SQLite by default, queue configuration, OpenAPI configuration, extension loading, and a real CLI entrypoint on day one.</div>
+::::div{class="bg-white p-6 dark:bg-gray-900"}
+:::::div{class="icon-tile mb-5 flex size-9 items-center justify-center rounded-lg"}
+:u-icon{name="i-lucide-server-cog" class="size-5 text-raspberry-600 dark:text-raspberry-400"}
+:::::
+<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">Operational defaults</h3>
+<p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">Health checks, security scanning, route diagnostics, queue presets, and deployment-oriented config from the start.</p>
+::::
 
-  :::
+::::div{class="bg-white p-6 dark:bg-gray-900"}
+:::::div{class="icon-tile mb-5 flex size-9 items-center justify-center rounded-lg"}
+:u-icon{name="i-lucide-gauge" class="size-5 text-raspberry-600 dark:text-raspberry-400"}
+:::::
+<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">Rate limiting</h3>
+<p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">Per-route, builder-configured throttling with sliding-window algorithms and pluggable storage.</p>
+::::
 
-  :::u-page-feature
+::::div{class="bg-white p-6 dark:bg-gray-900"}
+:::::div{class="icon-tile mb-5 flex size-9 items-center justify-center rounded-lg"}
+:u-icon{name="i-lucide-filter" class="size-5 text-raspberry-600 dark:text-raspberry-400"}
+:::::
+<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">Field selection</h3>
+<p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">GraphQL-style fields and expand projection with depth limits and whitelist protection.</p>
+::::
 
-  #title
-  <span class="font-bold text-raspberry-600">Stay Explicit As You Scale</span>
+::::div{class="bg-white p-6 dark:bg-gray-900"}
+:::::div{class="icon-tile mb-5 flex size-9 items-center justify-center rounded-lg"}
+:u-icon{name="i-lucide-flask-conical" class="size-5 text-raspberry-600 dark:text-raspberry-400"}
+:::::
+<h3 class="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">Testing</h3>
+<p class="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">PHPUnit 10 with a real booted app for feature tests and a lightweight SQLite harness for libraries.</p>
+::::
 
-  #description
-  <div>Glueful’s `ApplicationContext`, explicit routing, and container-driven services make the architecture easier to reason about than magic-heavy frameworks that hide request state and service resolution.</div>
+:::
 
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">Ship More Than CRUD</span>
-
-  #description
-  <div>Auth flows, notifications, queues, rate limiting, distributed locks, file uploads, OpenAPI generation, and production checks are already part of the framework story, not an afterthought.</div>
-
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">Add Official Extensions</span>
-
-  #description
-  <div>Extend the core with official packages for identity &amp; accounts, RBAC, social login, email delivery, push notifications, SMS/WhatsApp, full-text search, payments, and runtime integrations without turning the framework itself into a monolith.</div>
-
-  :::
 ::
 
-::div{class="h-px bg-gradient-to-r from-transparent via-raspberry-400/50 via-purple-400/50 to-transparent dark:via-raspberry-600/50 dark:via-purple-600/50"}
-::
+::u-page-section
+---
+class: pkg-glow border-t border-gray-300 dark:border-white/10
+ui:
+  container: py-12! sm:py-16! lg:py-20!
+---
 
-::u-page-section{class="bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-900/50 dark:to-gray-950 py-16"}
+#headline
+<span class="block w-full text-left font-mono text-xs font-medium uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Official packages</span>
 
 #title
-<span class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-center mb-4">
-  <span class="text-gray-900 dark:text-white font-light">What developers get <span class="text-raspberry-600 font-semibold">immediately</span></span>
-</span>
+<span class="text-3xl sm:text-4xl lg:text-5xl tracking-tight font-semibold text-highlighted block text-left w-full">Grow with official extensions</span>
 
 #description
-<div class="text-center mb-12 text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-  Glueful’s starter path is valuable because it shortens the gap between “new project” and “working API with operational basics.”
-</div>
+<div class="block text-left w-full text-lg text-gray-600 dark:text-gray-300">Keep the core lean; add product capabilities as Composer packages when you need them.</div>
 
-#features
-  :::u-page-feature
+#default
 
-  #title
-  <span class="font-bold text-raspberry-600">Scaffolding</span>
+<div class="grid  grid-cols-1 overflow-hidden rounded-2xl border border-gray-300 dark:border-white/15 lg:grid-cols-2"><div class="flex min-h-72 flex-col border-b border-gray-300 bg-white/70 p-10 backdrop-blur-sm dark:border-white/15 dark:bg-gray-900/70 lg:min-h-80 lg:border-r lg:p-14"><p class="font-mono text-xs uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Auth</p><h3 class="mt-4 text-2xl font-medium tracking-tight text-gray-900 dark:text-white lg:text-3xl">Identity &amp; access</h3><p class="mt-4 max-w-md text-sm leading-relaxed text-gray-500 dark:text-gray-400 sm:text-base">Authenticate users and authorize every request — a pluggable user store, role-based access control, and OAuth / SSO.</p><div class="mt-auto flex flex-wrap gap-2 pt-12"><a href="https://packagist.org/packages/glueful/users" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Users</a><a href="https://packagist.org/packages/glueful/aegis" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Aegis</a><a href="https://packagist.org/packages/glueful/entrada" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Entrada</a></div></div><div class="flex min-h-72 flex-col border-b border-gray-300 bg-white/70 p-10 backdrop-blur-sm dark:border-white/15 dark:bg-gray-900/70 lg:min-h-80 lg:p-14"><p class="font-mono text-xs uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Messaging</p><h3 class="mt-4 text-2xl font-medium tracking-tight text-gray-900 dark:text-white lg:text-3xl">Reach your users</h3><p class="mt-4 max-w-md text-sm leading-relaxed text-gray-500 dark:text-gray-400 sm:text-base">Transactional email, push notifications, and SMS / WhatsApp messaging from one consistent delivery API.</p><div class="mt-auto flex flex-wrap gap-2 pt-12"><a href="https://packagist.org/packages/glueful/email-notification" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Email</a><a href="https://packagist.org/packages/glueful/notiva" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Notiva</a><a href="https://packagist.org/packages/glueful/conversa" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Conversa</a></div></div><div class="flex min-h-72 flex-col border-b border-gray-300 bg-white/70 p-10 backdrop-blur-sm dark:border-white/15 dark:bg-gray-900/70 lg:min-h-80 lg:border-b-0 lg:border-r lg:p-14"><p class="font-mono text-xs uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Data &amp; billing</p><h3 class="mt-4 text-2xl font-medium tracking-tight text-gray-900 dark:text-white lg:text-3xl">Search &amp; payments</h3><p class="mt-4 max-w-md text-sm leading-relaxed text-gray-500 dark:text-gray-400 sm:text-base">Full-text search and a unified payment-gateway bridge — added as Composer packages when you need them.</p><div class="mt-auto flex flex-wrap gap-2 pt-12"><a href="https://packagist.org/packages/glueful/meilisearch" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Meilisearch</a><a href="https://packagist.org/packages/glueful/payvia" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Payvia</a></div></div><div class="flex min-h-72 flex-col bg-white/70 p-10 backdrop-blur-sm dark:bg-gray-900/70 lg:min-h-80 lg:p-14"><p class="font-mono text-xs uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Runtime</p><h3 class="mt-4 text-2xl font-medium tracking-tight text-gray-900 dark:text-white lg:text-3xl">Performance at scale</h3><p class="mt-4 max-w-md text-sm leading-relaxed text-gray-500 dark:text-gray-400 sm:text-base">Run long-lived PHP processes on RoadRunner, Swoole, or FrankenPHP for higher throughput on the same code.</p><div class="mt-auto flex flex-wrap gap-2 pt-12"><a href="https://packagist.org/packages/glueful/runiva" target="_blank" rel="noopener" class="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1 font-mono text-xs text-gray-700 transition-colors hover:text-raspberry-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-200 dark:hover:text-raspberry-400">Runiva</a></div></div></div>
 
-  #description
-  <div>Generate controllers, models, requests, jobs, rules, tests, factories, seeders, filters, and middleware with the `scaffold:*` commands instead of hand-rolling boilerplate.</div>
-
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">API Documentation</span>
-
-  #description
-  <div>Use `php glueful generate:openapi --ui` to generate your API spec and a browsable UI without wiring a separate documentation stack together.</div>
-
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">Operational Defaults</span>
-
-  #description
-  <div>Health checks, security scanning, route diagnostics, queue presets, storage configuration, and deployment-oriented config are present from the start.</div>
-
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">API Ergonomics</span>
-
-  #description
-  <div>Versioning, field selection, rate limiting, eventing, notifications, and extension hooks make Glueful fit real API teams better than a bare router-and-container setup.</div>
-
-  :::
+:::div{class="text-center"}
+  ::::u-button{color="neutral" variant="outline" size="lg" to="/extensions" trailing-icon="i-lucide-arrow-right"}
+  Browse all extensions
+  ::::
+:::
 ::
 
-::div{class="h-px bg-gradient-to-r from-transparent via-azure-radiance-400/50 via-purple-400/50 to-transparent dark:via-azure-radiance-600/50 dark:via-purple-600/50"}
-::
+::div{class="relative overflow-hidden border-t border-gray-300 bg-gradient-to-t from-raspberry-500/5 to-transparent dark:border-white/10 dark:from-raspberry-500/10"}
 
-::u-page-section{class="api-generation-container bg-gradient-to-b from-white to-azure-radiance-50/40 dark:from-gray-950 dark:to-gray-900"}
+:::div{class="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 sm:py-24 lg:grid-cols-2 lg:gap-16"}
 
-#title
+::::div{class="lg:pr-8"}
+<span class="block font-mono text-xs font-medium uppercase tracking-widest text-raspberry-600 dark:text-raspberry-400">Quickstart</span>
+<h2 class="mt-4 text-3xl font-medium tracking-tight text-gray-900 dark:text-white sm:text-4xl lg:text-5xl">From new project to first endpoint in minutes</h2>
+<p class="mt-6 max-w-md text-base leading-relaxed text-gray-600 dark:text-gray-300 sm:text-lg">Scaffold the skeleton, generate a controller, and ship documented JSON — in a handful of commands, no boilerplate to wire up first.</p>
 
-<span class="text-3xl sm:text-4xl lg:text-5xl text-pretty tracking-tight font-bold text-highlighted text-center mb-4">
-  <span class="text-gray-900 dark:text-white font-light">From starter app to <span class="text-raspberry-600 font-semibold">production API platform</span></span>
-</span>
+:::::u-button{size="xl" to="/getting-started" trailing-icon="i-lucide-rocket" class="mt-8 bg-raspberry-500 hover:bg-raspberry-600 text-white"}
+Read the quickstart
+:::::
+::::
 
-#description
+::::div{class="dark"}
+:::::hero-terminal
+---
+lines:
+  - segments:
+      - { text: "$ ", style: prompt }
+      - { text: "composer create-project glueful/api-skeleton my-api", style: cmd }
+  - segments:
+      - { text: "  Installing dependencies… done", style: dim }
+  - segments:
+      - { text: "$ ", style: prompt }
+      - { text: "cd my-api && php glueful serve", style: cmd }
+  - segments:
+      - { text: "  ✓ Server running ", style: success }
+      - { text: "http://localhost:8000", style: url }
+  - segments:
+      - { text: "$ ", style: prompt }
+      - { text: "php glueful scaffold:controller Post ", style: cmd }
+      - { text: "--api", style: flag }
+  - segments:
+      - { text: "  ✓ Created PostController", style: success }
+  - segments:
+      - { text: "$ ", style: prompt }
+      - { text: "curl ", style: cmd }
+      - { text: "localhost:8000/api/posts", style: url }
+  - segments:
+      - { text: "  {\"success\":true,\"data\":[]}", style: success }
+---
+:::::
+::::
 
-<div class="text-center mb-12 text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-  Start with routes and controllers in the skeleton. Then add database-backed resources, auth and sessions, queues and notifications, storage, extensions, and generated OpenAPI docs as the application grows.
-</div>
+:::
 
-#features
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">Good Fit For</span>
-
-  #description
-  <div>Internal APIs, SaaS backends, webhook-heavy services, queue-driven workloads, and teams that want explicit PHP architecture without rebuilding the same API infrastructure on every project.</div>
-
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">Extension Ecosystem</span>
-
-  #description
-  <div>Start with the lean framework, then add Users, Aegis, Entrada, Payvia, Meilisearch, Notiva, Conversa, email-notification, and other Glueful extensions as your product needs grow.</div>
-
-  :::
-
-  :::u-page-feature
-
-  #title
-  <span class="font-bold text-raspberry-600">Next Step</span>
-
-  #description
-  <div>Start with the install path, build your first endpoint, then move into routing, validation, auth, queues, and deployment with the docs path that matches the framework’s current API surface.</div>
-
-  :::
 ::

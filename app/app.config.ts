@@ -1,5 +1,6 @@
 export default defineAppConfig({
   ui: {
+    colorMode: false,
     colors: {
       primary: 'raspberry',
       secondary: 'azure-radiance',
