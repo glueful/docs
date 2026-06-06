@@ -40,7 +40,7 @@ $queue->push(SendWelcomeEmail::class, [
 ]);
 
 // Dispatch events (PSR-14 compatible)
-Event::dispatch(new UserRegistered($user));
+app($context, EventService::class)->dispatch(new UserRegistered($user));
 ```
 
 ## Production Ready

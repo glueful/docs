@@ -173,14 +173,15 @@ class RateLimitMiddleware implements RouteMiddleware
     {
         $key = 'rate_limit:' . $request->getClientIp();
 
-        $attempts = Cache::get($key, 0);
+        $cache = \Glueful\Cache\CacheFactory::create();
+        $attempts = $cache->get($key, 0);
 
         if ($attempts >= $this->maxAttempts) {
             // Prefer the built-in 'rate_limit' middleware for production-ready behavior.
             return Response::error('Too many requests', 429);
         }
 
-        Cache::set($key, $attempts + 1, $this->windowSeconds);
+        $cache->set($key, $attempts + 1, $this->windowSeconds);
 
         $response = $next($request);
 

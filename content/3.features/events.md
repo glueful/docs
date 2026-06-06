@@ -29,10 +29,12 @@ class UserRegisteredEvent extends BaseEvent
 ### 2. Listen to Event
 
 ```php
-use Glueful\Events\Event;
+use Glueful\Events\EventService;
 use App\Events\UserRegisteredEvent;
 
-Event::listen(UserRegisteredEvent::class, function($event) {
+$events = app($context, EventService::class);
+
+$events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // Send welcome email (queue async)
     $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(SendWelcomeEmailJob::class, ['user_id' => $event->userId]);
@@ -47,9 +49,9 @@ Event::listen(UserRegisteredEvent::class, function($event) {
 ### 3. Dispatch Event
 
 ```php
-use Glueful\Events\Event;
+use Glueful\Events\EventService;
 
-Event::dispatch(new UserRegisteredEvent($user->id, $user->email));
+app($context, EventService::class)->dispatch(new UserRegisteredEvent($user->id, $user->email));
 ```
 
 ## When to Use Events
@@ -70,10 +72,12 @@ Event::dispatch(new UserRegisteredEvent($user->id, $user->email));
 ### Dispatch Events
 
 ```php
-use Glueful\Events\Event;
+use Glueful\Events\EventService;
+
+$events = app($context, EventService::class);
 
 // Dispatch with data
-Event::dispatch(new OrderPlacedEvent($orderId, $total));
+$events->dispatch(new OrderPlacedEvent($orderId, $total));
 
 // Multiple listeners will execute
 ```
@@ -81,14 +85,15 @@ Event::dispatch(new OrderPlacedEvent($orderId, $total));
 ### Register Listeners
 
 ```php
+$events = app($context, EventService::class);
+
 // Closure listener
-Event::listen(OrderPlacedEvent::class, function($event) {
+$events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Order placed', ['id' => $event->orderId]);
 });
 
-// Class listener (optionally via service container reference)
-Event::listen(OrderPlacedEvent::class, SendOrderConfirmationListener::class);
-// Or lazy via container: Event::listen(OrderPlacedEvent::class, '@send_order_confirmation:handle');
+// Lazy listener via container service reference (id or id:method)
+$events->addListener(OrderPlacedEvent::class, '@send_order_confirmation:handle');
 ```
 
 ## Event Subscribers
@@ -128,17 +133,25 @@ class UserLifecycleSubscriber implements EventSubscriberInterface
 }
 ```
 
+Register the subscriber with the event service:
+
+```php
+app($context, EventService::class)->subscribe(UserLifecycleSubscriber::class);
+```
+
 ## Async Event Handling
 
 Queue expensive listeners:
 
 ```php
-Event::listen(UserRegisteredEvent::class, function($event) {
+$events = app($context, EventService::class);
+
+$events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // This listener runs synchronously
     app($context, \Psr\Log\LoggerInterface::class)->info('User registered');
 });
 
-Event::listen(UserRegisteredEvent::class, function($event) {
+$events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // Queue this expensive work
     $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(ProcessNewUserJob::class, ['user_id' => $event->userId]);
@@ -163,20 +176,22 @@ class UserRegisteredEvent extends BaseEvent
 }
 
 // Listeners
-Event::listen(UserRegisteredEvent::class, function($event) {
+$events = app($context, EventService::class);
+
+$events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // Send welcome email
     $queue = app($context, \Glueful\Queue\QueueManager::class);
     $queue->push(SendWelcomeEmailJob::class, ['user_id' => $event->userId]);
 });
 
-Event::listen(UserRegisteredEvent::class, function($event) {
+$events->addListener(UserRegisteredEvent::class, function($event) {
     // Track analytics
     Analytics::track('user.registered', [
         'email' => $event->email
     ]);
 });
 
-Event::listen(UserRegisteredEvent::class, function($event) {
+$events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // Create default preferences
     db($context)->table('user_preferences')->insert([
         'user_id' => $event->userId,
@@ -185,7 +200,7 @@ Event::listen(UserRegisteredEvent::class, function($event) {
 });
 
 // Dispatch
-Event::dispatch(new UserRegisteredEvent(
+$events->dispatch(new UserRegisteredEvent(
     $user->id,
     $user->email,
     $user->name
@@ -206,20 +221,22 @@ class OrderPlacedEvent extends BaseEvent
     }
 }
 
+$events = app($context, EventService::class);
+
 // Process payment
-Event::listen(OrderPlacedEvent::class, function($event) {
+$events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
     app($context, \Glueful\Queue\QueueManager::class)
         ->push(ProcessPaymentJob::class, ['order_id' => $event->orderId]);
 });
 
 // Send confirmation
-Event::listen(OrderPlacedEvent::class, function($event) {
+$events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
     app($context, \Glueful\Queue\QueueManager::class)
         ->push(SendOrderConfirmationJob::class, ['order_id' => $event->orderId]);
 });
 
 // Update inventory
-Event::listen(OrderPlacedEvent::class, function($event) {
+$events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
     app($context, \Glueful\Queue\QueueManager::class)
         ->push(UpdateInventoryJob::class, ['order_id' => $event->orderId]);
 });
@@ -237,7 +254,7 @@ class PostUpdatedEvent extends BaseEvent
     }
 }
 
-Event::listen(PostUpdatedEvent::class, function($event) {
+app($context, EventService::class)->addListener(PostUpdatedEvent::class, function($event) {
     // Clear post cache
     $cache = \Glueful\Cache\CacheFactory::create();
     $cache->delete('post:' . $event->postUuid);
@@ -255,9 +272,12 @@ Glueful emits these events automatically:
 
 ```php
 // Request received
+use Glueful\Events\EventService;
 use Glueful\Events\Http\RequestEvent;
 
-Event::listen(RequestEvent::class, function($event) {
+$events = app($context, EventService::class);
+
+$events->addListener(RequestEvent::class, function($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Request', [
         'method' => $event->request->getMethod(),
         'path' => $event->request->getPathInfo()
@@ -267,7 +287,7 @@ Event::listen(RequestEvent::class, function($event) {
 // Response sent
 use Glueful\Events\Http\ResponseEvent;
 
-Event::listen(ResponseEvent::class, function($event) {
+$events->addListener(ResponseEvent::class, function($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Response', [
         'status' => $event->response->getStatusCode()
     ]);
@@ -280,14 +300,14 @@ Event::listen(ResponseEvent::class, function($event) {
 // Login success
 use Glueful\Events\Auth\SessionCreatedEvent;
 
-Event::listen(SessionCreatedEvent::class, function($event) {
+$events->addListener(SessionCreatedEvent::class, function($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('User logged in', ['user_id' => $event->userId]);
 });
 
 // Login failure
 use Glueful\Events\Auth\AuthenticationFailedEvent;
 
-Event::listen(AuthenticationFailedEvent::class, function($event) {
+$events->addListener(AuthenticationFailedEvent::class, function($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->warning('Login failed', ['email' => $event->email]);
 });
 ```
@@ -298,14 +318,14 @@ Event::listen(AuthenticationFailedEvent::class, function($event) {
 // Cache hit
 use Glueful\Events\Cache\CacheHitEvent;
 
-Event::listen(CacheHitEvent::class, function($event) {
+$events->addListener(CacheHitEvent::class, function($event) {
     // Track cache hit ratio
 });
 
 // Cache miss
 use Glueful\Events\Cache\CacheMissEvent;
 
-Event::listen(CacheMissEvent::class, function($event) {
+$events->addListener(CacheMissEvent::class, function($event) {
     // Track cache miss ratio
 });
 ```
@@ -316,7 +336,7 @@ Event::listen(CacheMissEvent::class, function($event) {
 // Query executed
 use Glueful\Events\Database\QueryExecutedEvent;
 
-Event::listen(QueryExecutedEvent::class, function($event) {
+$events->addListener(QueryExecutedEvent::class, function($event) use ($context) {
     if ($event->time > 100) { // 100ms
         app($context, \Psr\Log\LoggerInterface::class)->warning('Slow query', [
             'sql' => $event->sql,
@@ -354,20 +374,23 @@ return [
 ### Keep Listeners Fast
 
 ```php
+$events = app($context, EventService::class);
+
 // ✅ Good - quick logging
-Event::listen(OrderPlacedEvent::class, function($event) {
+$events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Order placed', ['id' => $event->orderId]);
 });
 
 // ❌ Bad - slow API call
-Event::listen(OrderPlacedEvent::class, function($event) {
+$events->addListener(OrderPlacedEvent::class, function($event) {
     // This blocks all other listeners!
     $this->externalApi->notify($event->orderId);
 });
 
 // ✅ Good - queue slow work
-Event::listen(OrderPlacedEvent::class, function($event) {
-    Queue::push(new NotifyExternalApiJob($event->orderId));
+$events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
+    app($context, \Glueful\Queue\QueueManager::class)
+        ->push(NotifyExternalApiJob::class, ['order_id' => $event->orderId]);
 });
 ```
 
@@ -402,7 +425,7 @@ class UserUpdatedEvent extends BaseEvent
 Prevent further listeners from executing:
 
 ```php
-Event::listen(OrderPlacedEvent::class, function($event) {
+app($context, EventService::class)->addListener(OrderPlacedEvent::class, function($event) {
     if ($event->total > 10000) {
         // Manual review required
         $event->stopPropagation();
@@ -414,13 +437,13 @@ Event::listen(OrderPlacedEvent::class, function($event) {
 ## Testing Events
 
 ```php
-use Glueful\Events\Event;
+use Glueful\Events\EventService;
 
 public function testUserRegistrationDispatchesEvent()
 {
     $dispatched = false;
 
-    Event::listen(UserRegisteredEvent::class, function($event) use (&$dispatched) {
+    app($this->context, EventService::class)->addListener(UserRegisteredEvent::class, function($event) use (&$dispatched) {
         $dispatched = true;
         $this->assertEquals('test@example.com', $event->email);
     });
@@ -446,18 +469,20 @@ public function createPost($data)
     $post = $this->getConnection()->table('posts')->insert($data);
 
     // Dispatch event for side effects
-    Event::dispatch(new PostCreatedEvent($post->uuid));
+    app($context, EventService::class)->dispatch(new PostCreatedEvent($post->uuid));
 
     return $post;
 }
 
 // Side effects as listeners
-Event::listen(PostCreatedEvent::class, function($event) {
+$events = app($context, EventService::class);
+
+$events->addListener(PostCreatedEvent::class, function($event) {
     $cache = \Glueful\Cache\CacheFactory::create();
     $cache->delete('posts:latest');
 });
 
-Event::listen(PostCreatedEvent::class, function($event) {
+$events->addListener(PostCreatedEvent::class, function($event) use ($context) {
     app($context, \Glueful\Queue\QueueManager::class)
         ->push(NotifySubscribersJob::class, ['post_uuid' => $event->postUuid]);
 });

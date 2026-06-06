@@ -149,54 +149,31 @@ $queue = app($context, \Glueful\Queue\QueueManager::class);
 $queue->push(App\Jobs\SendEmail::class, ['userId' => $id]);
 ```
 
-### Event Service Provider
-
-```php
-class EventServiceProvider
-{
-    public function register(Container $container): void
-    {
-        $container->singleton(EventDispatcher::class);
-    }
-
-    public function boot(Container $container): void
-    {
-        $events = $container->make(EventDispatcher::class);
-
-        // Register event listeners
-        $events->listen(UserRegistered::class, SendWelcomeEmail::class);
-        $events->listen(UserRegistered::class, CreateUserProfile::class);
-        $events->listen(OrderCreated::class, SendOrderConfirmation::class);
-        $events->listen(OrderCreated::class, UpdateInventory::class);
-    }
-}
-```
-
 ### Notification Service Provider
 
+Build a service from config using a `FactoryDefinition`:
+
 ```php
-class NotificationServiceProvider
+use Glueful\Container\Providers\BaseServiceProvider;
+use Glueful\Container\Definition\FactoryDefinition;
+
+final class NotificationServiceProvider extends BaseServiceProvider
 {
-    public function register(Container $container): void
+    public function defs(): array
     {
-        $container->singleton('notifications', function ($app) {
-            $manager = new NotificationManager();
+        return [
+            'notifications' => new FactoryDefinition(
+                'notifications',
+                function () {
+                    $manager = new NotificationManager();
+                    $manager->registerChannel('email', new EmailChannel(config($context, 'mail')));
+                    $manager->registerChannel('sms', new SmsChannel(config($context, 'sms')));
+                    $manager->registerChannel('push', new PushChannel(config($context, 'push')));
 
-            // Register channels
-            $manager->registerChannel('email', new EmailChannel(
-                $app['config']->get('mail')
-            ));
-
-            $manager->registerChannel('sms', new SmsChannel(
-                $app['config']->get('sms')
-            ));
-
-            $manager->registerChannel('push', new PushChannel(
-                $app['config']->get('push')
-            ));
-
-            return $manager;
-        });
+                    return $manager;
+                }
+            ),
+        ];
     }
 }
 ```
@@ -205,26 +182,26 @@ class NotificationServiceProvider
 
 ### Repository Provider
 
+Map interfaces to implementations with `alias()`/`AliasDefinition`, and autowire the concrete classes:
+
 ```php
-class RepositoryServiceProvider
+use Glueful\Container\Providers\BaseServiceProvider;
+
+final class RepositoryServiceProvider extends BaseServiceProvider
 {
-    public function register(Container $container): void
+    public function defs(): array
     {
-        // Bind repository interfaces
-        $container->bind(
-            UserRepositoryInterface::class,
-            UserRepository::class
-        );
+        return [
+            // Autowire the concrete repositories
+            App\Repositories\OrderRepository::class => $this->autowire(App\Repositories\OrderRepository::class),
+            App\Repositories\ProductRepository::class => $this->autowire(App\Repositories\ProductRepository::class),
 
-        $container->bind(
-            OrderRepositoryInterface::class,
-            OrderRepository::class
-        );
-
-        $container->bind(
-            ProductRepositoryInterface::class,
-            ProductRepository::class
-        );
+            // Map type-hints to the concrete ids
+            App\Contracts\OrderRepositoryInterface::class =>
+                $this->alias(App\Contracts\OrderRepositoryInterface::class, App\Repositories\OrderRepository::class),
+            App\Contracts\ProductRepositoryInterface::class =>
+                $this->alias(App\Contracts\ProductRepositoryInterface::class, App\Repositories\ProductRepository::class),
+        ];
     }
 }
 ```
@@ -232,124 +209,68 @@ class RepositoryServiceProvider
 ### API Client Provider
 
 ```php
-class ApiServiceProvider
+use Glueful\Container\Providers\BaseServiceProvider;
+use Glueful\Container\Definition\FactoryDefinition;
+
+final class ApiServiceProvider extends BaseServiceProvider
 {
-    public function register(Container $container): void
+    public function defs(): array
     {
-        // Stripe
-        $container->singleton(StripeClient::class, function ($app) {
-            return new StripeClient(
-                $app['config']->get('services.stripe.secret')
-            );
-        });
+        return [
+            StripeClient::class => new FactoryDefinition(
+                StripeClient::class,
+                fn() => new StripeClient(config($context, 'services.stripe.secret'))
+            ),
 
-        // SendGrid
-        $container->singleton(SendGridClient::class, function ($app) {
-            return new SendGridClient(
-                $app['config']->get('services.sendgrid.api_key')
-            );
-        });
+            SendGridClient::class => new FactoryDefinition(
+                SendGridClient::class,
+                fn() => new SendGridClient(config($context, 'services.sendgrid.api_key'))
+            ),
 
-        // AWS S3
-        $container->singleton(S3Client::class, function ($app) {
-            $config = $app['config']->get('filesystems.s3');
+            S3Client::class => new FactoryDefinition(
+                S3Client::class,
+                function () {
+                    $config = config($context, 'filesystems.s3');
 
-            return new S3Client([
-                'credentials' => [
-                    'key' => $config['key'],
-                    'secret' => $config['secret'],
-                ],
-                'region' => $config['region'],
-                'version' => 'latest',
-            ]);
-        });
-    }
-}
-```
-
-### Validation Provider
-
-```php
-class ValidationServiceProvider
-{
-    public function boot(Container $container): void
-    {
-        $validator = $container->make(Validator::class);
-
-        // Register custom rules
-        $validator->extend('phone', function ($value) {
-            return preg_match('/^\+?[1-9]\d{1,14}$/', $value);
-        });
-
-        $validator->extend('strong_password', function ($value) {
-            return strlen($value) >= 8
-                && preg_match('/[A-Z]/', $value)
-                && preg_match('/[a-z]/', $value)
-                && preg_match('/[0-9]/', $value);
-        });
+                    return new S3Client([
+                        'credentials' => [
+                            'key' => $config['key'],
+                            'secret' => $config['secret'],
+                        ],
+                        'region' => $config['region'],
+                        'version' => 'latest',
+                    ]);
+                }
+            ),
+        ];
     }
 }
 ```
 
 ## Advanced Patterns
 
-### Deferred Providers
-
-Load providers only when needed:
-
-```php
-class ImageServiceProvider
-{
-    public array $provides = [
-        ImageProcessor::class,
-        'image',
-    ];
-
-    public function register(Container $container): void
-    {
-        $container->singleton('image', function ($app) {
-            return new ImageProcessor(
-                $app['config']->get('image')
-            );
-        });
-    }
-
-    public function isDeferred(): bool
-    {
-        return true;
-    }
-}
-```
-
-### Conditional Registration
-
-```php
-public function register(Container $container): void
-{
-    // Only in production
-    if ($container['config']->get('app.env') === 'production') {
-        $container->singleton(ErrorTracker::class, SentryTracker::class);
-    }
-
-    // Only in development
-    if ($container['config']->get('app.debug')) {
-        $container->singleton(DebugBar::class);
-    }
-}
-```
-
 ### Environment-Specific Services
 
-```php
-public function register(Container $container): void
-{
-    $env = $container['config']->get('app.env');
+Branch on configuration when building a definition:
 
-    $container->singleton(PaymentGateway::class, match ($env) {
-        'production' => StripePaymentGateway::class,
-        'staging' => StripeTestGateway::class,
-        default => FakePaymentGateway::class,
-    });
+```php
+use Glueful\Container\Providers\BaseServiceProvider;
+
+final class PaymentServiceProvider extends BaseServiceProvider
+{
+    public function defs(): array
+    {
+        $impl = match (config($context, 'app.env')) {
+            'production' => StripePaymentGateway::class,
+            'staging' => StripeTestGateway::class,
+            default => FakePaymentGateway::class,
+        };
+
+        return [
+            $impl => $this->autowire($impl),
+            PaymentGateway::class => $this->alias(PaymentGateway::class, $impl),
+        ];
+    }
 }
 ```
 
@@ -411,45 +332,49 @@ class OrderServiceTest extends TestCase
 
 ```php
 // ✅ Good - focused provider
-class CacheServiceProvider
+final class CacheServiceProvider extends BaseServiceProvider
 {
-    public function register(Container $container): void
+    public function defs(): array
     {
-        // Only cache-related bindings
+        // Only cache-related definitions
+        return [/* ... */];
     }
 }
 
 // ❌ Bad - mixed concerns
-class AppServiceProvider
+final class AppServiceProvider extends BaseServiceProvider
 {
-    public function register(Container $container): void
+    public function defs(): array
     {
         // Cache, queue, email, payment, etc.
+        return [/* ... */];
     }
 }
 ```
 
-### 2. Use Boot for Side Effects
+### 2. Avoid Side Effects in defs()
+
+`defs()` should only return definitions. Keep wiring that triggers work (event
+subscriptions, channel registration) out of definition building; do it lazily on
+first use, or use a lifecycle `ServiceProvider` (`register()`/`boot()`) for an
+extension. See [Extensions](/extending/extensions).
 
 ```php
-// ✅ Good - register in register(), bootstrap in boot()
-public function register(Container $container): void
+// ✅ Good - defs() just declares services
+public function defs(): array
 {
-    $container->singleton(EventDispatcher::class);
+    return [
+        EventService::class => $this->autowire(EventService::class),
+    ];
 }
 
-public function boot(Container $container): void
+// ❌ Bad - resolving and mutating services while declaring them
+public function defs(): array
 {
-    $events = $container->make(EventDispatcher::class);
-    $events->listen(...);
-}
+    $events = app($this->getContext(), EventService::class); // don't resolve here
+    $events->addListener(/* ... */);
 
-// ❌ Bad - side effects in register()
-public function register(Container $container): void
-{
-    $container->singleton(EventDispatcher::class);
-    $events = $container->make(EventDispatcher::class);
-    $events->listen(...); // Don't do this in register()
+    return [/* ... */];
 }
 ```
 
