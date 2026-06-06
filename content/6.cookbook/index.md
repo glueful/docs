@@ -17,6 +17,7 @@ Explore practical recipes by topic:
 - [ Extensions](/cookbook/extensions)
 - [ Notification](/cookbook/notifications)
 - [ Performance Optimization Guide](/cookbook/performance)
+- [ Memory Management](/cookbook/memory-management)
 - [ Queues & Jobs](/cookbook/queues-and-jobs)
 - [ Security Guide](/cookbook/security)
 - [ Session Analytics](/cookbook/sessions-analytics)
