@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.51.0 | Larawag | 2026-06-06 | Minor | High | Notification subsystem refinement — core in-app `database` channel, dispatch-time channel validation, optional/safe persistence (`NOTIFICATIONS_DATABASE_STORE`), injectable async queue, structured `NotificationResult`, and extension-driven channel registration (breaking: `ChannelManager` renames + context-required jobs) |
 | 1.50.2 | Kochab | 2026-06-05 | Patch | Low | `@queryParam` route-doc tag — the OpenAPI generator parses an editor-clean query-param tag (no reserved-`@param` IDE false positives); path params no longer dropped when a query param is also documented |
 | 1.50.1 | Kochab | 2026-06-05 | Patch | Moderate | Two silent no-op extension points fixed — `ServiceProvider::mergeConfig()` actually applies extension config defaults; `LoginResponseBuildingEvent` listeners actually modify the login response |
 | 1.50.0 | Kochab | 2026-06-04 | Minor | High | Provider-Agnostic Identity & Core-Owned Schema — user store extracted to `glueful/users`; framework owns config-gated capability migrations; lazy runtime DDL removed |
@@ -85,6 +86,51 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.51.0 - Larawag
+**Released: June 6, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bell-ringing"}
+#description
+A five-part refinement of the core notification subsystem. The framework now ships a real in-app **`database`** channel (the default `['database']` channel resolves end-to-end instead of failing as `channel_not_found`), validates channels at **dispatch** rather than construction, makes persistence **optional and safe** (`NOTIFICATIONS_DATABASE_STORE=false`), abstracts **async queue dispatch** behind an injectable seam, adds **structured channel results** (`NotificationResult`), and routes all channel registration through one **extension `boot()`** path. Mostly additive — but two deliberate breaking changes land in channel registration/dispatch. See the migration notes.
+::
+
+### Key Highlights
+
+::card
+#title
+Real `database` Channel + Dispatch-Time Validation
+#description
+`Glueful\Notifications\Channels\DatabaseChannel` is registered by default in `NotificationsProvider`, so the framework's default `['database']` channel resolves end-to-end instead of failing as `channel_not_found`. It is an in-app *acknowledge* channel — it performs no writes of its own (the notification and its delivery records stay owned by `NotificationService`), and its availability tracks the `notifications` persistence capability. Channel validation also moves from construction to dispatch: `NotificationService` no longer rejects `default_channels` against a hardcoded list — names are normalized structurally only (trimmed, de-duplicated, non-empty, **case preserved**), and unknown channels surface at dispatch via the registry's existing `channel_not_found` / `channel_unavailable`. One source of truth (the `ChannelManager` registry); custom channels work without core changes.
+::
+
+::card
+#title
+Optional, Safe Persistence + Injectable Async Queue
+#description
+A new `NotificationStoreInterface` abstracts the store; `NotificationRepository` implements it (existing callers unaffected), and a `NullNotificationStore` binds instead when the `notifications` capability is off. The null store degrades explicitly — reads return empty/null/zero, transient writes no-op, and durability-implying operations (`savePreference`, `markAllAsRead`, `deleteOldNotifications`, scheduling, retries) throw `NotificationPersistenceDisabledException` rather than silently losing state. In parallel, `NotificationQueueDispatcherInterface` (default `QueueManagerNotificationDispatcher`) abstracts async dispatch so `send()` never requires a queue and queueing stays unit-testable.
+::
+
+::card
+#title
+Structured Results + Extension-Driven Registration
+#description
+Channels may opt into a richer `sendNotification(): NotificationResult` (provider message id, error code/message, retryability, latency) via the new `RichNotificationChannel` interface; the dispatcher prefers it and falls back to adapting legacy `send(): bool`, so `NotificationChannel::send()` is unchanged. And channels/`NotificationExtension` hooks now register through an extension's `ServiceProvider::boot()` via `registerNotificationChannel()` / `registerNotificationExtension()` into the shared container `ChannelManager`/dispatcher — one path, no per-job glue. `registerChannel()` is idempotent for the same class and throws `ChannelAlreadyRegisteredException` when a *different* class claims a registered name; `replaceChannel()` overrides intentionally.
+::
+
+### Migration Notes
+
+- **Breaking: `ChannelManager` channel-name methods renamed (no aliases).** Replace `getAvailableChannels()` with `getRegisteredChannelNames()`; for only the currently-available channels' names, use the new `getActiveChannelNames()`. `getActiveChannels()` (returning channel objects) is unchanged.
+- **Breaking: notification jobs/commands require an `ApplicationContext`.** `DispatchNotificationChannels`, `SendNotification`, `ProcessRetriesCommand`, and `NotificationRetryTask` resolve the shared container dispatcher and throw `NotificationContextRequiredException` if constructed without a context — they no longer build ad-hoc managers or hardcode the `EmailNotification` provider. The queue worker and console kernel already provide a context.
+- **Channel packages register from `boot()`.** Custom or not-yet-migrated channel extensions must register their channel/hooks via the new `registerNotificationChannel()` / `registerNotificationExtension()` helpers; until they do, that channel won't auto-wire into the shared dispatcher used by the async jobs.
+- **Retry config key moved** from the `emailnotification` namespace to channel-agnostic `notifications.retry` (built-in defaults otherwise).
+- **No new env vars, no migrations.** The `notifications` capability default stays `true`; set `NOTIFICATIONS_DATABASE_STORE=false` to run without a database store.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.50.2 - Kochab
 **Released: June 5, 2026**
