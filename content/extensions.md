@@ -1,6 +1,6 @@
 ---
 title: Extensions
-description: Official Glueful extensions for RBAC, SSO, email, push, search, payments, and runtime integrations.
+description: Official Glueful extensions for identity/accounts, RBAC, SSO, email, push, SMS/WhatsApp, search, payments, and runtime integrations.
 ---
 
 ::u-page-section
@@ -60,6 +60,20 @@ description: Official Glueful extensions for RBAC, SSO, email, push, search, pay
 </div>
 
 <div class="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+  <div class="rounded-2xl border border-indigo-100/80 bg-white/90 p-6 shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:ring-white/10">
+    <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10">
+      <span class="i-lucide-box h-6 w-6 block"></span>
+    </div>
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">Users</h3>
+    <p class="mt-3 text-sm leading-6 text-gray-600 dark:text-gray-300">First-party identity store and account lifecycle — the concrete user provider behind Glueful's auth contracts: <code>users</code>/<code>profiles</code> tables, credential verification, email verification and OTP, password reset, optional email-PIN 2FA, and the account endpoints (<code>/me</code>, <code>/users</code>). Core ships no user store of its own, so install this (or another <code>UserProviderInterface</code>) to enable authentication. The api-skeleton enables it by default.</p>
+    <div class="mt-4 flex flex-wrap gap-2 text-xs">
+      <span class="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">Identity</span>
+      <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-700 dark:bg-white/10 dark:text-gray-300">Accounts</span>
+      <span class="rounded-full bg-gray-100 px-3 py-1 text-gray-700 dark:bg-white/10 dark:text-gray-300">2FA</span>
+    </div>
+    <a class="mt-5 inline-flex items-center gap-2 text-sm font-medium text-azure-radiance-600 hover:text-azure-radiance-700" href="https://packagist.org/packages/glueful/users" target="_blank" rel="noopener">glueful/users</a>
+  </div>
+
   <div class="rounded-2xl border border-raspberry-100/80 bg-white/90 p-6 shadow-sm ring-1 ring-black/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/5 dark:ring-white/10">
     <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-raspberry-50 text-raspberry-600 dark:bg-raspberry-500/10">
       <span class="i-lucide-box h-6 w-6 block"></span>

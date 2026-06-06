@@ -187,11 +187,10 @@ class UserRepository implements UserRepositoryInterface
     }
 }
 
-// Bind interface to implementation
-$container->bind(
-    UserRepositoryInterface::class,
-    UserRepository::class
-);
+// Bind interface to implementation in a provider's defs():
+//   UserRepository::class => $this->autowire(UserRepository::class),
+//   UserRepositoryInterface::class =>
+//       $this->alias(UserRepositoryInterface::class, UserRepository::class),
 
 // Use in controller
 class UserController
@@ -269,23 +268,25 @@ interface NotificationChannelInterface
     public function send($recipient, $message);
 }
 
+use Psr\Container\ContainerInterface;
+
 class NotificationFactory
 {
-    public function __construct(private Container $container) {}
+    public function __construct(private ContainerInterface $container) {}
 
     public function make(string $channel): NotificationChannelInterface
     {
         return match ($channel) {
-            'email' => $this->container->make(EmailChannel::class),
-            'sms' => $this->container->make(SmsChannel::class),
-            'push' => $this->container->make(PushChannel::class),
+            'email' => $this->container->get(EmailChannel::class),
+            'sms' => $this->container->get(SmsChannel::class),
+            'push' => $this->container->get(PushChannel::class),
             default => throw new \InvalidArgumentException("Unknown channel: {$channel}"),
         };
     }
 }
 
-// Register factory
-$container->singleton(NotificationFactory::class);
+// Register the factory in a provider's defs():
+//   NotificationFactory::class => $this->autowire(NotificationFactory::class),
 
 // Use factory
 class NotificationService
@@ -433,50 +434,53 @@ public function __construct(Database $db)
 }
 ```
 
-### 4. Use Singletons Wisely
+### 4. Use Shared Services Wisely
+
+Definitions are shared (one instance) by default. Prefer shared, stateless
+services; be careful sharing stateful objects across a request.
 
 ```php
-// ✅ Good - stateless singletons
-$container->singleton(Database::class);
-$container->singleton(CacheInterface::class);
+// In a provider's defs():
 
-// ⚠️ Careful - stateful singletons
-$container->singleton(ShoppingCart::class); // May cause issues
+// ✅ Good - stateless shared services
+Database::class => $this->autowire(Database::class),            // shared by default
+CacheInterface::class => $this->alias(CacheInterface::class, 'cache.store'),
+
+// ⚠️ Careful - stateful shared services may cause cross-request issues
+ShoppingCart::class => $this->autowire(ShoppingCart::class, shared: false),
 ```
 
 ## Container Methods
 
-### Binding
+The container is PSR-11. You declare services in provider `defs()` (see above);
+at runtime you mostly resolve them.
+
+### Registering at Runtime
+
+`load()` adds definitions to the active container; values may be a
+`DefinitionInterface`, a `callable` factory, or a plain value. This is handy in
+tests for overriding bindings.
 
 ```php
-// Bind service
-$container->bind('service', callable $factory);
+container($context)->load([
+    'service' => fn() => new MyService(),     // factory
+    MyInterface::class => $existingInstance,  // value
+]);
 
-// Singleton (shared instance)
-$container->singleton('service', callable $factory);
-
-// Bind instance
-$container->instance('service', $instance);
-
-// Alias
-$container->alias('name', 'actual-name');
+// Build a child container with overrides (does not mutate the parent)
+$scoped = container($context)->with([
+    PaymentGateway::class => fn() => new FakePaymentGateway(),
+]);
 ```
 
 ### Resolving
 
 ```php
 // Resolve service
-$service = $container->make('service');
 $service = $container->get('service');
-$service = $container['service'];
 
-// Check if bound
-if ($container->bound('service')) {
-    //...
-}
-
-// Check if singleton
-if ($container->isShared('service')) {
+// Check if defined/resolvable
+if ($container->has('service')) {
     //...
 }
 ```

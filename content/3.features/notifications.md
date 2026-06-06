@@ -378,20 +378,23 @@ Queue expensive notifications:
 Listen to notification lifecycle:
 
 ```php
+use Glueful\Events\EventService;
 use Glueful\Notifications\Events\NotificationSent;
 use Glueful\Notifications\Events\NotificationFailed;
 
-Event::listen(NotificationSent::class, function($event) {
-    logger()->info('Notification sent', [
-        'type' => $event->type,
-        'channel' => $event->channel
+$events = app($context, EventService::class);
+
+$events->addListener(NotificationSent::class, function($event) use ($context) {
+    app($context, \Psr\Log\LoggerInterface::class)->info('Notification sent', [
+        'type' => $event->getNotification()->getType(),
+        'channel' => $event->getChannel()
     ]);
 });
 
-Event::listen(NotificationFailed::class, function($event) {
-    logger()->error('Notification failed', [
-        'type' => $event->type,
-        'error' => $event->error
+$events->addListener(NotificationFailed::class, function($event) use ($context) {
+    app($context, \Psr\Log\LoggerInterface::class)->error('Notification failed', [
+        'type' => $event->getNotification()->getType(),
+        'error' => $event->getReason()
     ]);
 });
 ```

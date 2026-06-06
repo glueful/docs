@@ -251,8 +251,9 @@ class WarmCacheJob
             ->where('is_featured', true)
             ->get();
 
+        $cache = \Glueful\Cache\CacheFactory::create();
         foreach ($products as $product) {
-            Cache::set('product:' . $product->uuid, $product, 3600);
+            $cache->set('product:' . $product->uuid, $product, 3600);
         }
     }
 }
@@ -462,14 +463,15 @@ class SendDigestJob
 public function handle(): void
 {
     $today = date('Y-m-d');
+    $cache = \Glueful\Cache\CacheFactory::create();
 
-    if (Cache::has("report:generated:{$today}")) {
+    if ($cache->has("report:generated:{$today}")) {
         return; // Already ran today
     }
 
     $this->generateReport();
 
-    Cache::set("report:generated:{$today}", true, 86400);
+    $cache->set("report:generated:{$today}", true, 86400);
 }
 ```
 

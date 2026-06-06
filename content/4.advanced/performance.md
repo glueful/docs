@@ -102,7 +102,9 @@ $table->index(['status', 'created_at']);
 ```php
 public function getActiveUsers()
 {
-    return Cache::remember('users:active', function() {
+    $cache = \Glueful\Cache\CacheFactory::create();
+
+    return $cache->remember('users:active', function() {
         return db($context)->table('users')
             ->where('status', 'active')
             ->get();
@@ -115,7 +117,9 @@ public function getActiveUsers()
 ```php
 public function getWeather($city)
 {
-    return Cache::remember("weather:{$city}", function() use ($city) {
+    $cache = \Glueful\Cache\CacheFactory::create();
+
+    return $cache->remember("weather:{$city}", function() use ($city) {
         return $this->httpClient->get("api.weather.com?city={$city}");
     }, 1800);
 }
@@ -126,7 +130,9 @@ public function getWeather($city)
 ```php
 public function getStatistics()
 {
-    return Cache::remember('stats:dashboard', function() {
+    $cache = \Glueful\Cache\CacheFactory::create();
+
+    return $cache->remember('stats:dashboard', function() {
         return [
             'users' => db($context)->table('users')->count(),
             'posts' => db($context)->table('posts')->count(),
@@ -139,11 +145,13 @@ public function getStatistics()
 ### Cache Invalidation
 
 ```php
+$cache = \Glueful\Cache\CacheFactory::create();
+
 // Clear specific cache
-Cache::delete('users:active');
+$cache->delete('users:active');
 
 // Clear pattern
-Cache::deletePattern('users:*');
+$cache->deletePattern('users:*');
 
 // Clear on update
 public function update($id, $data)
@@ -151,8 +159,9 @@ public function update($id, $data)
     db($context)->table('users')->where('id', $id)->update($data);
 
     // Invalidate cache
-    Cache::delete('users:active');
-    Cache::delete("user:{$id}");
+    $cache = \Glueful\Cache\CacheFactory::create();
+    $cache->delete('users:active');
+    $cache->delete("user:{$id}");
 }
 ```
 

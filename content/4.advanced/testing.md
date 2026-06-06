@@ -41,7 +41,7 @@ Example using the base test case:
 ```php
 use Glueful\Testing\TestCase;
 
-final class UsersRepositoryTest extends TestCase
+final class ArticlesRepositoryTest extends TestCase
 {
     private \Glueful\Repository\RepositoryFactory $repoFactory;
 
@@ -60,10 +60,11 @@ final class UsersRepositoryTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_lists_active_users(): void
+    public function test_lists_published_articles(): void
     {
-        $users = $this->repoFactory->users();
-        $list = $users->findWhere(['status' => 'active']);
+        // getRepository() returns a generic repository for any table/resource
+        $articles = $this->repoFactory->getRepository('articles');
+        $list = $articles->findWhere(['status' => 'published']);
         $this->assertIsArray($list);
     }
 }
@@ -280,8 +281,9 @@ public function test_send_welcome_email_job(): void
 ```php
 public function test_user_registered_event_is_dispatched(): void
 {
-    // Dispatch a framework event directly
-    \Glueful\Events\Event::dispatch(new \App\Events\UserRegisteredEvent($userData));
+    // Dispatch a framework event via the EventService
+    app($context, \Glueful\Events\EventService::class)
+        ->dispatch(new \App\Events\UserRegisteredEvent($userData));
 
     // Assert side effects triggered by your listener(s)
     $this->assertTrue(true);

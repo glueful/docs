@@ -15,7 +15,6 @@
     "@iconify-json/simple-icons": "^1.2.53",
     "@iconify-json/tabler": "^1.2.23",
     "@iconify-json/vscode-icons": "^1.2.30",
-    "@nuxt/content": "^3.7.1",
     "@nuxt/image": "^1.11.0",
     "@nuxt/ui": "^4.0.1",
     "@nuxtjs/color-mode": "3.5.2",
@@ -24,6 +23,7 @@
     "nuxt-og-image": "^5.1.11"
   },
   "devDependencies": {
+    "@nuxt/content": "^3.14.0",
     "@nuxt/eslint": "^1.9.0",
     "better-sqlite3": "^12.4.1",
     "eslint": "^9.36.0",

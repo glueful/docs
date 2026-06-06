@@ -113,9 +113,9 @@ $repository->update($uuid, [
     'status' => 'inactive',
 ]);
 
-// Bulk update by condition
+// Bulk update a set of records by UUID
 $repository->bulkUpdate(
-    ['status' => 'pending'],
+    ['uuid1', 'uuid2', 'uuid3'],
     ['status' => 'active']
 );
 ```
@@ -388,15 +388,15 @@ Centralize repository instantiation:
 use Glueful\Repository\RepositoryFactory;
 
 // Recommended: resolve from container
-$factory = app($context, RepositoryFactory::class); // or service($context, 'repository')
-
-// Get specific repository (typed helper)
-$users = $factory->users();
+$factory = app($context, RepositoryFactory::class);
 
 // Get a typed repository by class
-$notifications = $factory->get(\Glueful\Repository\NotificationRepository::class);
+$notifications = $factory->get(\App\Repositories\ArticleRepository::class);
 
-// Get generic repository for a table/resource
+// Built-in typed helper for the notifications repository
+$notifications = $factory->notifications();
+
+// Get a generic repository for a table/resource
 $repository = $factory->getRepository('any_table');
 ```
 
@@ -405,24 +405,28 @@ $repository = $factory->getRepository('any_table');
 Repositories emit lifecycle events:
 
 ```php
-use Glueful\Events\EntityCreatedEvent;
-use Glueful\Events\EntityUpdatedEvent;
+use Glueful\Events\EventService;
+use Glueful\Events\Database\EntityCreatedEvent;
+use Glueful\Events\Database\EntityUpdatedEvent;
+
+$events = app($context, EventService::class);
 
 // Listen to repository events
-Event::listen(EntityCreatedEvent::class, function ($event) {
+$events->addListener(EntityCreatedEvent::class, function ($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Entity created', [
-        'table' => $event->table,
-        'uuid' => $event->uuid,
+        'table' => $event->getTable(),
+        'id' => $event->getEntityId(),
     ]);
 
     // Clear cache
-    Cache::delete("entities:{$event->table}");
+    $cache = \Glueful\Cache\CacheFactory::create();
+    $cache->delete("entities:{$event->getTable()}");
 });
 
-Event::listen(EntityUpdatedEvent::class, function ($event) {
+$events->addListener(EntityUpdatedEvent::class, function ($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Entity updated', [
-        'table' => $event->table,
-        'uuid' => $event->uuid,
+        'table' => $event->getTable(),
+        'id' => $event->getEntityId(),
     ]);
 });
 ```
@@ -451,13 +455,15 @@ class UserRepositoryTest extends TestCase
 
     public function test_creates_user()
     {
-        $user = $this->repository->create([
+        $uuid = $this->repository->create([
             'name' => 'John Doe',
             'email' => 'john@example.com',
             'status' => 'active',
         ]);
 
-        $this->assertNotNull($user['uuid']);
+        $this->assertNotNull($uuid);
+
+        $user = $this->repository->find($uuid);
         $this->assertEquals('John Doe', $user['name']);
     }
 
