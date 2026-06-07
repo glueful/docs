@@ -22,6 +22,5 @@ Explore practical recipes by topic:
 - [ Middleware](/cookbook/middleware)
 - [ Permissions and Authorization](/cookbook/permissions-and-authorization)
 - [ Routing](/cookbook/routing)
-- [ Setup and Installation](/cookbook/setup)
 - [ Storage](/cookbook/storage)
 - [ Service Options Resolver](/cookbook/configuration)
