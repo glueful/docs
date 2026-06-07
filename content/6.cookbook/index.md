@@ -26,4 +26,3 @@ Explore practical recipes by topic:
 - [ Setup and Installation](/cookbook/setup)
 - [ Storage](/cookbook/storage)
 - [ Configuration Options](/cookbook/configuration)
-- [ Testing](/cookbook/testing)
