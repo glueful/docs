@@ -7,7 +7,6 @@ Explore practical recipes by topic:
 
 - [ Deployment Guide](/cookbook/deployment)
 - [ Error Handling Guide](/cookbook/error-handling)
-- [ File Uploads (Local and S3)](/cookbook/file-uploads)
 - [ API Metrics](/cookbook/api-metrics)
 - [ Caching](/cookbook/caching)
 - [ Console Commands](/cookbook/console-commands)
