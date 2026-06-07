@@ -638,6 +638,112 @@ docker-compose -f docker-compose.prod.yml restart app
 **Permission denied?**
 - Run: `docker-compose exec app chown -R www-data:www-data /var/www`
 
+## Cloud Platforms
+
+The container image you build above deploys to any managed container runtime. The snippets below are starting points — consult each provider's docs for IAM, networking, and secrets specifics.
+
+### AWS (ECS / Fargate)
+
+```json
+// task-definition.json (excerpt)
+{
+  "family": "glueful-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "containerDefinitions": [
+    {
+      "name": "glueful-app",
+      "image": "your-account.dkr.ecr.region.amazonaws.com/glueful:latest",
+      "portMappings": [{ "containerPort": 80, "protocol": "tcp" }],
+      "environment": [{ "name": "APP_ENV", "value": "production" }],
+      "secrets": [
+        { "name": "DB_PASSWORD", "valueFrom": "arn:aws:secretsmanager:region:account:secret:glueful/db-password" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/glueful-app",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+```
+
+Pair it with a managed database (e.g. `aws rds create-db-instance --engine mysql --multi-az --storage-encrypted ...`) and store credentials in Secrets Manager rather than the task definition.
+
+### Google Cloud (Cloud Run)
+
+```yaml
+# cloudrun.yaml
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: glueful-app
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: "10"
+    spec:
+      containerConcurrency: 80
+      containers:
+      - image: gcr.io/PROJECT_ID/glueful:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: APP_ENV
+          value: production
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: glueful-db-password
+              key: password
+        resources:
+          limits: { memory: "1Gi", cpu: "1" }
+```
+
+```bash
+gcloud builds submit --tag gcr.io/PROJECT_ID/glueful
+gcloud run deploy glueful-app --image gcr.io/PROJECT_ID/glueful \
+  --platform managed --region us-central1 --memory 1Gi --cpu 1 --max-instances 10
+```
+
+### Azure (Container Instances)
+
+```yaml
+# azure-deployment.yaml
+apiVersion: '2019-12-01'
+location: eastus
+name: glueful-app
+properties:
+  containers:
+  - name: glueful-app
+    properties:
+      image: your-registry.azurecr.io/glueful:latest
+      resources:
+        requests: { cpu: 1, memoryInGb: 1 }
+      ports:
+      - port: 80
+        protocol: TCP
+      environmentVariables:
+      - name: APP_ENV
+        value: production
+      - name: DB_PASSWORD
+        secureValue: "$(DB_PASSWORD)"
+  osType: Linux
+  ipAddress:
+    type: Public
+    ports:
+    - protocol: tcp
+      port: 80
+  restartPolicy: Always
+```
+
 ## Next Steps
 
 - [Production Setup](/deployment/production) - Server deployment

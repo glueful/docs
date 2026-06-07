@@ -5,7 +5,6 @@ description: Practical recipes for common tasks
 
 Explore practical recipes by topic:
 
-- [ Deployment Guide](/cookbook/deployment)
 - [ Error Handling Guide](/cookbook/error-handling)
 - [ API Metrics](/cookbook/api-metrics)
 - [ Caching](/cookbook/caching)
