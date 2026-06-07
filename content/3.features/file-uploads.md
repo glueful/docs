@@ -148,6 +148,22 @@ public function uploadGallery()
 
 For images, videos, and audio files, use `uploadMedia()` to get automatic thumbnail generation and metadata extraction.
 
+::u-alert{color="warning" variant="subtle" icon="i-lucide-package"}
+**Thumbnails and rich metadata require the `glueful/media` extension** (since framework 1.52.0).
+The upload pipeline (`FileUploader`, `handleUpload()`, `uploadMedia()`) and the `MediaMetadata`
+value object stay in core, but thumbnail generation and dimension/duration extraction were
+extracted into [`glueful/media`](https://github.com/glueful/media).
+
+Without `glueful/media` installed and enabled, `uploadMedia()` still succeeds, but the result has
+`thumb_url => null` and a **type-only** `MediaMetadata` (MIME type only — no `width`, `height`, or
+`duration_s`). To enable thumbnails and full metadata:
+
+```bash
+composer require glueful/media
+php glueful extensions:enable media
+```
+::
+
 ### Basic Media Upload
 
 ```php
@@ -232,7 +248,10 @@ Configure in `config/filesystem.php`:
 
 ### Metadata Extraction
 
-The framework uses [getID3](https://github.com/JamesHeinrich/getID3) for pure PHP metadata extraction - no external binaries needed.
+With the `glueful/media` extension installed, metadata is extracted via
+[getID3](https://github.com/JamesHeinrich/getID3) — pure PHP, no external binaries needed.
+(Without the extension, `getMetadataExtractor()` returns a type-only extractor that reports the
+MIME type but no dimensions or duration.)
 
 ```php
 // Access the metadata extractor directly

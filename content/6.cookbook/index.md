@@ -21,7 +21,7 @@ Explore practical recipes by topic:
 - [ Queues & Jobs](/cookbook/queues-and-jobs)
 - [ Security Guide](/cookbook/security)
 - [ Session Analytics](/cookbook/sessions-analytics)
-- [ Image Processing Examples](/cookbook/image-processing)
+- [ Image Processing Examples](/cookbook/image-processing) (extension: `glueful/media`)
 - [ Logging](/cookbook/logging)
 - [ Middleware](/cookbook/middleware)
 - [ Permissions and Authorization](/cookbook/permissions-and-authorization)
