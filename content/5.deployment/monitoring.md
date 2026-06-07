@@ -1,9 +1,13 @@
 ---
 title: Monitoring
-description: Monitor your application in production
+description: Production monitoring — health probes, what to track, and wiring up APM/error tracking.
 ---
 
-Track your application's health, performance, and errors in production.
+Track your application's health, performance, and errors in production: health probes, what to track, and how to wire up external APM/error-tracking.
+
+::u-alert{color="neutral" variant="subtle" icon="i-lucide-activity"}
+The framework's **built-in** metrics live in the [API Metrics](/cookbook/api-metrics) guide (`ApiMetricsService` / `MetricsMiddleware` / `MetricsController`) and [Session Analytics](/cookbook/sessions-analytics). This page covers operational monitoring — probes and external tooling. Vendor-specific snippets below (Sentry, Datadog, StatsD) are illustrative; use each SDK's own integration.
+::
 
 ## Quick Start
 
