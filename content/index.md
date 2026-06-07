@@ -1,7 +1,7 @@
 ---
 seo:
-  title: Glueful — Build Production PHP APIs Faster
-  description: Start from the Glueful API skeleton and ship secure, documented PHP APIs with explicit routing, context-aware DI, auth, queues, storage, and OpenAPI generation.
+  title: Glueful — Production PHP APIs, explicit by default
+  description: A high-performance, explicit PHP API framework — context-aware DI, auth, queues, uploads, and generated OpenAPI, with no hidden magic. Start from glueful/api-skeleton and grow with official extensions.
 ---
 
 ::div{class="relative mx-auto w-full max-w-(--ui-container) px-6 pt-20 pb-16 sm:pt-28 lg:pt-32"}
@@ -10,17 +10,17 @@ seo:
 API-skeleton first
 :::
 
-<h1 class="hero-rise hero-rise-2 mt-6 max-w-4xl text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tighter text-balance text-highlighted">Build production PHP APIs without starting from zero.</h1>
+<h1 class="hero-rise hero-rise-2 mt-6 max-w-4xl text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tighter text-balance text-highlighted">Production PHP APIs, explicit by default.</h1>
 
-<p class="hero-rise hero-rise-3 mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">A pragmatic, high-performance API framework. Start from <strong class="font-semibold text-highlighted whitespace-nowrap">glueful/api-skeleton</strong> and grow into a full platform — explicit routing, context-aware DI, auth &amp; identity, queues, storage, and generated OpenAPI docs — without the boilerplate.</p>
+<p class="hero-rise hero-rise-3 mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">A high-performance framework with routing, context-aware DI, auth, queues, uploads, and generated OpenAPI docs — no hidden magic, no bloated core. Start from <strong class="font-semibold text-highlighted whitespace-nowrap">glueful/api-skeleton</strong> and add official extensions as your app grows.</p>
 
 :::div{class="hero-rise hero-rise-4 mt-8 flex flex-wrap items-center gap-3"}
 ::::u-button{size="xl" to="/getting-started" trailing-icon="i-lucide-rocket" class="bg-raspberry-500 hover:bg-raspberry-600 text-white"}
 Get started
 ::::
 
-::::u-button{size="xl" color="neutral" variant="outline" icon="i-tabler-brand-github-filled" to="https://github.com/glueful" target="_blank"}
-Star on GitHub
+::::u-button{size="xl" color="neutral" variant="outline" trailing-icon="i-lucide-arrow-right" to="/extensions"}
+Browse extensions
 ::::
 :::
 
