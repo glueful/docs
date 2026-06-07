@@ -1,7 +1,7 @@
 ---
 seo:
-  title: Glueful — Build Production PHP APIs Faster
-  description: Start from the Glueful API skeleton and ship secure, documented PHP APIs with explicit routing, context-aware DI, auth, queues, storage, and OpenAPI generation.
+  title: Glueful — Production PHP APIs, explicit by default
+  description: A high-performance, explicit PHP API framework — context-aware DI, auth, queues, uploads, and generated OpenAPI, with no hidden magic. Start from glueful/api-skeleton and grow with official extensions.
 ---
 
 ::div{class="relative mx-auto w-full max-w-(--ui-container) px-6 pt-20 pb-16 sm:pt-28 lg:pt-32"}
