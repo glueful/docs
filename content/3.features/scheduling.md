@@ -225,8 +225,13 @@ class DailyCleanupJob
             ->where('created_at', '<', date('Y-m-d', strtotime('-90 days')))
             ->delete();
 
-        // Delete temporary files
-        Storage::cleanupOldFiles('temp/', 86400);
+        // Delete temporary files older than a day
+        $disk = app($context, \Glueful\Storage\StorageManager::class)->disk();
+        foreach ($disk->listContents('temp/', true) as $item) {
+            if ($item->isFile() && $item->lastModified() < time() - 86400) {
+                $disk->delete($item->path());
+            }
+        }
     }
 }
 ```
@@ -284,8 +289,8 @@ class WeeklyReportJob
                 ->sum('total'),
         ];
 
-        // Email report
-        Notifications::send(
+        // Email report ($admin implements Glueful\Notifications\Contracts\Notifiable)
+        app($context, \Glueful\Notifications\Services\NotificationService::class)->send(
             type: 'report.weekly',
             notifiable: $admin,
             subject: 'Weekly Report',
@@ -315,7 +320,9 @@ class BackupDatabaseJob
         exec("mysqldump -u{$user} -p{$pass} {$db} > {$path}/{$filename}");
 
         // Upload to S3
-        Storage::disk('s3')->put("backups/{$filename}", file_get_contents("{$path}/{$filename}"));
+        app($context, \Glueful\Storage\StorageManager::class)
+            ->disk('s3')
+            ->write("backups/{$filename}", file_get_contents("{$path}/{$filename}"));
 
         app($context, \Psr\Log\LoggerInterface::class)->info('Database backup completed', ['file' => $filename]);
     }
