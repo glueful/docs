@@ -115,9 +115,12 @@ class AuthMiddleware implements RouteMiddleware
 ```php
 class RequestLoggingMiddleware implements RouteMiddleware
 {
+    // Middleware are resolved from the container, so declare dependencies in the constructor.
+    public function __construct(private \Psr\Log\LoggerInterface $logger) {}
+
     public function handle(Request $request, callable $next): mixed
     {
-        app($context, \Psr\Log\LoggerInterface::class)->info('Request started', [
+        $this->logger->info('Request started', [
             'method' => $request->getMethod(),
             'uri' => $request->getRequestUri(),
             'ip' => $request->getClientIp(),
@@ -125,7 +128,7 @@ class RequestLoggingMiddleware implements RouteMiddleware
 
         $response = $next($request);
 
-        app($context, \Psr\Log\LoggerInterface::class)->info('Request completed', [
+        $this->logger->info('Request completed', [
             'status' => $response->getStatusCode(),
         ]);
 
@@ -280,9 +283,12 @@ Apply middleware conditionally:
 ```php
 class MaintenanceModeMiddleware implements RouteMiddleware
 {
+    // Inject the context so config() can be read inside the handler.
+    public function __construct(private \Glueful\Bootstrap\ApplicationContext $context) {}
+
     public function handle(Request $request, callable $next): mixed
     {
-        if (config($context, 'app.maintenance_mode') && !$this->isWhitelisted($request)) {
+        if (config($this->context, 'app.maintenance_mode') && !$this->isWhitelisted($request)) {
             return Response::error('Service under maintenance', 503);
         }
 
@@ -291,7 +297,7 @@ class MaintenanceModeMiddleware implements RouteMiddleware
 
     private function isWhitelisted(Request $request): bool
     {
-        $whitelistedIps = config($context, 'app.maintenance_whitelist', []);
+        $whitelistedIps = config($this->context, 'app.maintenance_whitelist', []);
         return in_array($request->getClientIp(), $whitelistedIps);
     }
 }

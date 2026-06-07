@@ -31,7 +31,7 @@ final class AppServiceProvider extends BaseServiceProvider
             // Factory with config
             'payment.gateway' => new FactoryDefinition(
                 'payment.gateway',
-                fn() => new App\Payments\StripePaymentGateway(config($context, 'services.stripe'))
+                fn() => new App\Payments\StripePaymentGateway(config($this->context, 'services.stripe'))
             ),
 
             // Alias interface to id
@@ -171,8 +171,8 @@ final class SmsGatewayServiceProvider extends BaseServiceProvider
                     $context = $c->get(ApplicationContext::class);
 
                     return new SmsGateway(
-                        apiKey: (string) config($context, 'services.sms.key'),
-                        sandbox: (bool) config($context, 'services.sms.sandbox', false),
+                        apiKey: (string) config($this->context, 'services.sms.key'),
+                        sandbox: (bool) config($this->context, 'services.sms.sandbox', false),
                     );
                 }
             ),
@@ -226,18 +226,18 @@ final class ApiServiceProvider extends BaseServiceProvider
         return [
             StripeClient::class => new FactoryDefinition(
                 StripeClient::class,
-                fn() => new StripeClient(config($context, 'services.stripe.secret'))
+                fn() => new StripeClient(config($this->context, 'services.stripe.secret'))
             ),
 
             SendGridClient::class => new FactoryDefinition(
                 SendGridClient::class,
-                fn() => new SendGridClient(config($context, 'services.sendgrid.api_key'))
+                fn() => new SendGridClient(config($this->context, 'services.sendgrid.api_key'))
             ),
 
             S3Client::class => new FactoryDefinition(
                 S3Client::class,
                 function () {
-                    $config = config($context, 'filesystems.s3');
+                    $config = config($this->context, 'filesystems.s3');
 
                     return new S3Client([
                         'credentials' => [
@@ -267,7 +267,7 @@ final class PaymentServiceProvider extends BaseServiceProvider
 {
     public function defs(): array
     {
-        $impl = match (config($context, 'app.env')) {
+        $impl = match (config($this->context, 'app.env')) {
             'production' => StripePaymentGateway::class,
             'staging' => StripeTestGateway::class,
             default => FakePaymentGateway::class,
@@ -293,7 +293,7 @@ class UserServiceTest extends TestCase
         parent::setUp();
 
         // Replace provider bindings
-        container($context)->load([
+        $this->getContainer()->load([
             EmailService::class => fn() => new FakeEmailService(),
             PaymentGateway::class => fn() => new FakePaymentGateway(),
         ]);
@@ -301,7 +301,7 @@ class UserServiceTest extends TestCase
 
     public function test_creates_user()
     {
-        $service = app($context, UserService::class);
+        $service = $this->get(UserService::class);
         $user = $service->create(['email' => 'test@example.com']);
 
         $this->assertNotNull($user);
@@ -320,12 +320,12 @@ class OrderServiceTest extends TestCase
         $gateway = $this->createMock(PaymentGateway::class);
         $gateway->method('charge')->willReturn(['status' => 'success']);
 
-        container($context)->load([
+        $this->getContainer()->load([
             PaymentGateway::class => fn() => $gateway,
         ]);
 
         // Test
-        $service = app($context, OrderService::class);
+        $service = $this->get(OrderService::class);
         $order = $service->processOrder($orderData);
 
         $this->assertEquals('completed', $order->status);
