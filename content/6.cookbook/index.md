@@ -9,7 +9,7 @@ Explore practical recipes by topic:
 - [ Error Handling Guide](/cookbook/error-handling)
 - [ API Metrics](/cookbook/api-metrics)
 - [ Caching](/cookbook/caching)
-- [ Console Commands](/cookbook/console-commands)
+- [ Writing Console Commands](/cookbook/console-commands)
 - [ Database Advanced Features](/cookbook/database)
 - [ Extensions](/cookbook/extensions)
 - [ Notification](/cookbook/notifications)

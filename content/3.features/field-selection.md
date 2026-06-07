@@ -169,4 +169,4 @@ Middleware converts these into proper JSON error responses.
 
 - **[Routing](/cookbook/routing#field-selection)**
 - **[Middleware](/cookbook/middleware)**
-- **[Console Commands](/cookbook/console-commands#field-selection-commands)**
+- **[CLI Reference: Field Selection](/cli-reference#field-selection)**
