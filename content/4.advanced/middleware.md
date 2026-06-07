@@ -295,6 +295,7 @@ class MaintenanceModeMiddleware implements RouteMiddleware
         return in_array($request->getClientIp(), $whitelistedIps);
     }
 }
+```
 
 ## Built-in Middleware Aliases
 
@@ -354,7 +355,6 @@ How it works (for reference):
 ## Further Reading
 
 - Middleware Cookbook: RouteMiddleware interface, parameters, and advanced patterns — see /cookbook/middleware
-```
 
 ## Terminating Middleware
 

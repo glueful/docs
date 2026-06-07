@@ -84,7 +84,7 @@ JWT_SECRET=your-secret-key
 $debug = env('APP_DEBUG');
 ```
 
-## Configuration Files
+## Configuration File Examples
 
 ### app.php
 
@@ -256,6 +256,7 @@ return [
 
     'cache_enabled' => env('CACHE_ENABLED', env('APP_ENV') === 'production'),
 ];
+```
 
 ## Configuration Loading & Overrides
 
@@ -272,7 +273,6 @@ Glueful merges framework defaults with your application overrides:
 - Caching: see Features → Caching for `config/cache.php`
 - Logging: see Advanced → Logging for `config/logging.php`
 - Security: see Features → CORS & CSRF and Security for `config/security.php`
-```
 
 ## Secrets Management
 
