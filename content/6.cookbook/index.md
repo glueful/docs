@@ -13,7 +13,6 @@ Explore practical recipes by topic:
 - [ Caching](/cookbook/caching)
 - [ Console Commands](/cookbook/console-commands)
 - [ Database Advanced Features](/cookbook/database)
-- [ Events](/cookbook/events)
 - [ Extensions](/cookbook/extensions)
 - [ Notification](/cookbook/notifications)
 - [ Performance Optimization Guide](/cookbook/performance)
