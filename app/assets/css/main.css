@@ -94,3 +94,33 @@
 :root.dark .dark-logo {
   display: block;
 }
+
+/* Hero entrance motion — staggered fade + rise.
+   Uses `both` fill-mode so elements hold opacity:0 during their delay and stay
+   visible after; if animations are unsupported the rule no-ops (content stays
+   visible). Disabled under prefers-reduced-motion. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-rise {
+  animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hero-rise-1 { animation-delay: 0.05s; }
+.hero-rise-2 { animation-delay: 0.15s; }
+.hero-rise-3 { animation-delay: 0.28s; }
+.hero-rise-4 { animation-delay: 0.42s; }
+.hero-rise-5 { animation-delay: 0.58s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-rise {
+    animation: none;
+  }
+}
