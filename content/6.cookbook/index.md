@@ -25,6 +25,5 @@ Explore practical recipes by topic:
 - [ Routing](/cookbook/routing)
 - [ Setup and Installation](/cookbook/setup)
 - [ Storage](/cookbook/storage)
-- [ Symfony Lock Integration](/cookbook/distributed-locks)
 - [ Configuration Options](/cookbook/configuration)
 - [ Testing](/cookbook/testing)
