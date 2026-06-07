@@ -31,4 +31,3 @@ Explore practical recipes by topic:
 - [ Symfony Lock Integration](/cookbook/distributed-locks)
 - [ Configuration Options](/cookbook/configuration)
 - [ Testing](/cookbook/testing)
-- [ Validation](/cookbook/validation)
