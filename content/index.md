@@ -19,8 +19,8 @@ API-skeleton first
 Get started
 ::::
 
-::::u-button{size="xl" color="neutral" variant="outline" icon="i-tabler-brand-github-filled" to="https://github.com/glueful" target="_blank"}
-Star on GitHub
+::::u-button{size="xl" color="neutral" variant="outline" trailing-icon="i-lucide-arrow-right" to="/extensions"}
+Browse extensions
 ::::
 :::
 
