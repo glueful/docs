@@ -152,7 +152,7 @@ Explore the architecture
 
 ::::
 
-::::div{class="hero-code relative mx-6 mb-12 overflow-hidden rounded-xl border border-gray-300 bg-white shadow-xl shadow-black/5 dark:border-white/15 dark:bg-gray-900 lg:col-span-3 lg:mx-0 lg:mb-0 lg:mt-24 lg:rounded-bl-none lg:rounded-br-none lg:rounded-tr-2xl lg:rounded-tl-2xl lg:border-b-0 lg:border-r-0 lg:shadow-2xl"}
+::::div{class="hero-code relative mx-6 mb-12 overflow-hidden rounded-xl border border-gray-300 bg-white shadow-xl shadow-black/5 dark:border-white/15 dark:bg-gray-900 lg:col-span-3 lg:mx-0 lg:mb-0 lg:mt-24 lg:rounded-bl-none lg:rounded-br-none lg:rounded-tr-none lg:rounded-tl-2xl lg:border-b-0 lg:border-r-0 lg:shadow-2xl"}
 :::::code-group
 
 ```php [routes/api.php]
