@@ -45,11 +45,34 @@ $queue->push(SendWelcomeEmailJob::class, ['userId' => $userId]);
 - Reliable retries/delays: workers rehydrate the job with the data and run handle(), ensuring consistent behavior on every attempt.
 - Clear contracts: jobs read inputs via getData(), keeping state explicit and idempotent-friendly.
 
-### 3. Run Workers
+### 3. Run a Worker
 
 ```bash
 php glueful queue:work
 ```
+
+Plain `queue:work` runs **one** worker that processes jobs until stopped.
+
+```bash
+# Drain the queue and exit (useful for cron / one-shot processing)
+php glueful queue:work --once
+
+# Target a specific connection
+php glueful queue:work --connection=redis
+```
+
+::u-alert{color="info" variant="subtle" icon="i-lucide-package"}
+**Need a supervised fleet or autoscaling?** Since framework 1.52.0, core ships only the
+lean single-worker `queue:work`. Multi-worker supervision, autoscaling, and worker/job
+metrics live in the optional [`glueful/queue-ops`](https://github.com/glueful/queue-ops)
+extension, which adds `queue:supervise` and `queue:autoscale`.
+
+```bash
+composer require glueful/queue-ops
+php glueful extensions:enable queue-ops
+php glueful migrate:run
+```
+::
 
 ## When to Use Jobs
 
@@ -489,6 +512,10 @@ php glueful queue:work
 
 ### Multiple Workers
 
+Core's `queue:work` runs a single worker per invocation. To run more than one, start
+several processes — either by hand, or (recommended for production) under a process
+supervisor.
+
 ```bash
 # Terminal 1
 php glueful queue:work --queue=high
@@ -502,6 +529,8 @@ php glueful queue:work --queue=low
 
 ### Supervisor (Production)
 
+Run multiple lean workers under your OS process manager (Supervisor, systemd):
+
 `/etc/supervisor/conf.d/queue-worker.conf`:
 
 ```ini
@@ -512,6 +541,29 @@ autorestart=true
 user=www-data
 numprocs=4
 ```
+
+### Managed Fleets & Autoscaling
+
+::u-alert{color="info" variant="subtle" icon="i-lucide-package"}
+**Requires the `glueful/queue-ops` extension.** If you'd rather have Glueful supervise a
+worker fleet for you (a single supervisor process spawning and restarting leaf workers)
+or scale workers automatically based on queue depth, install
+[`glueful/queue-ops`](https://github.com/glueful/queue-ops). It adds:
+
+- `queue:supervise` — a supervisor that spawns and monitors leaf workers
+- `queue:autoscale` — scales workers up/down based on load
+- persisted worker/job metrics (`queue_workers`, `queue_job_metrics`)
+
+```bash
+composer require glueful/queue-ops
+php glueful extensions:enable queue-ops
+php glueful migrate:run
+```
+
+Worker-fleet config (`queue.workers.{process,auto_scaling,resource_limits,…}` and per-queue
+`workers`/`max_workers`/`auto_scale`) moves to the extension's `queue_ops.*` namespace
+(the same env vars still apply).
+::
 
 ## Next Steps
 

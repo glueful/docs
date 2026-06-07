@@ -180,6 +180,9 @@ systemctl restart php8.3-fpm
 
 ## Queue Workers
 
+Core's `queue:work` runs a **single** lean worker per process. For production, run several
+under a process supervisor — set `numprocs` to the number of workers you want.
+
 ### Supervisor Configuration
 
 `/etc/supervisor/conf.d/glueful-worker.conf`:
@@ -198,6 +201,16 @@ redirect_stderr=true
 stdout_logfile=/var/www/your-app/storage/logs/worker.log
 stopwaitsecs=3600
 ```
+
+::u-alert{color="info" variant="subtle" icon="i-lucide-package"}
+**Want a Glueful-managed fleet or autoscaling?** Since framework 1.52.0, supervised
+multi-worker fleets and autoscaling live in the optional
+[`glueful/queue-ops`](https://github.com/glueful/queue-ops) extension. Install it
+(`composer require glueful/queue-ops && php glueful extensions:enable queue-ops && php glueful migrate:run`)
+to replace per-worker `numprocs` supervision with a single `queue:supervise` process and add
+the `queue:autoscale` daemon. Without it, the `numprocs` pattern above is the supported way
+to run multiple workers.
+::
 
 Start workers:
 
@@ -449,6 +462,12 @@ composer install --no-dev --optimize-autoloader --classmap-authoritative
 
 echo "Running migrations..."
 php vendor/bin/glueful migrate:run
+
+echo "Refreshing CLI command manifest..."
+# Rebuild after enabling/removing extensions or upgrading the framework — a stale
+# storage/cache/glueful_commands_manifest.php (e.g. referencing a removed command like
+# queue:autoscale) breaks CLI boot.
+php vendor/bin/glueful commands:cache --clear
 
 echo "Production audit..."
 php vendor/bin/glueful system:production --check || true

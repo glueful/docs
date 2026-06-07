@@ -148,6 +148,9 @@ for server in "${SERVERS[@]}"; do
         git pull origin main
         composer install --no-dev --optimize-autoloader --classmap-authoritative
         php vendor/bin/glueful migrate:run
+        # Refresh CLI command manifest (a stale manifest referencing a removed command —
+        # e.g. queue:autoscale after dropping glueful/queue-ops — breaks CLI boot).
+        php vendor/bin/glueful commands:cache --clear
         sudo supervisorctl restart glueful-worker:*
 EOF
 

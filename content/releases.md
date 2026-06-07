@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.52.0 | Mizar | 2026-06-07 | Minor | High | Lean core — Archive, CDN / edge-cache, queue operations (supervision / autoscaling / metrics), and rich media (image processing / thumbnails / metadata) extracted to optional `glueful/*` extensions behind narrow core seams; `intervention/image` + `james-heinrich/getid3` dropped from core; each restored via one `composer require` (breaking: removed classes / commands / config) |
 | 1.51.0 | Larawag | 2026-06-06 | Minor | High | Notification subsystem refinement — core in-app `database` channel, dispatch-time channel validation, optional/safe persistence (`NOTIFICATIONS_DATABASE_STORE`), injectable async queue, structured `NotificationResult`, and extension-driven channel registration (breaking: `ChannelManager` renames + context-required jobs) |
 | 1.50.2 | Kochab | 2026-06-05 | Patch | Low | `@queryParam` route-doc tag — the OpenAPI generator parses an editor-clean query-param tag (no reserved-`@param` IDE false positives); path params no longer dropped when a query param is also documented |
 | 1.50.1 | Kochab | 2026-06-05 | Patch | Moderate | Two silent no-op extension points fixed — `ServiceProvider::mergeConfig()` actually applies extension config defaults; `LoginResponseBuildingEvent` listeners actually modify the login response |
@@ -86,6 +87,54 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.52.0 - Mizar
+**Released: June 7, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-package-export"}
+#description
+A coordinated breaking release that makes **core lean**: four subsystems move out of the framework into standalone, opt-in `glueful/*` extensions, each behind a narrow seam core consumes only if bound. **Archive** → `glueful/archive`, **CDN / edge-cache** → `glueful/cdn`, **queue operations** (supervision / autoscaling / worker-metrics) → `glueful/queue-ops`, and **rich media** (image processing / thumbnails / metadata) → `glueful/media`. A plain core install boots, serves uploads, runs a lean single-worker `queue:work`, and caches responses with **none** of these subsystems' heavy dependencies present — `intervention/image` and `james-heinrich/getid3` are removed from core. Every subsystem is restored with a single `composer require`. See the migration notes.
+::
+
+### Key Highlights
+
+::card
+#title
+Archive & CDN / Edge-Cache Extracted (seam-backed)
+#description
+`glueful/archive` now owns the generic table-archive product (`ArchiveService`, `archive:manage`, the archive schema + the `ARCHIVE_DATABASE_SCHEMA` gate) — core had no consumer of it. `glueful/cdn` owns edge purging, cache-control headers, the provider adapters, and `cache:purge`; core keeps only the `Glueful\Cache\Contracts\EdgeCacheInterface` seam bound by default to the no-op `NullEdgeCache`, so `ResponseCachingTrait` keeps emitting surrogate keys with or without the extension. Restore with `composer require glueful/archive` / `composer require glueful/cdn`.
+::
+
+::card
+#title
+Queue Ops Extracted; Core Ships a Lean Worker
+#description
+The supervised-fleet surface (`Process/*`, `WorkerMonitor`, `queue:autoscale`, and the old `queue:work` sub-actions `spawn`/`scale`/`status`/`stop`/`restart`/`health`) moves to `glueful/queue-ops`, restoring `queue:supervise` + `queue:autoscale`. Core gains a lean single-loop `QueueWorker`: plain `php glueful queue:work` runs one worker and resolves the `WorkerMonitorInterface` seam to a no-op `NullWorkerMonitor`. New additive flags ship in core regardless — `queue:work --once` / `--connection=`, and `WorkerOptions` now treats `max-jobs`/`max-runtime` `0` as **unlimited**. The `queue.workers.*` ops config relocates to the extension's `queue_ops.*` (same env vars); core keeps per-queue `priority`/`memory_limit`/`timeout`/`max_jobs`, `queue.workers.performance.*`, and `queue.monitoring.*`.
+::
+
+::card
+#title
+Rich Media Extracted; Uploads Stay in Core
+#description
+Image processing, thumbnail generation, and media-metadata extraction move to `glueful/media`, along with the two heavy deps (`intervention/image`, `james-heinrich/getid3`). Core keeps the upload pipeline — `FileUploader`, the `Glueful\Uploader\Contracts\MediaProcessorInterface` seam, and the unchanged `MediaMetadata` value object. Without the extension, uploads still succeed: `uploadMedia()` returns `thumb_url: null` + a type-only `MediaMetadata`, and the blob-resize endpoint serves the original image (returning `415` only on an explicit format conversion). The `image()` helper and `config/image.php` are now extension-provided. Restore with `composer require glueful/media`.
+::
+
+### Migration Notes
+
+- **Restore any subsystem with one `composer require`** (auto-discovered via `extra.glueful`): `glueful/archive`, `glueful/cdn`, `glueful/queue-ops`, `glueful/media`. Run `php glueful migrate:run` for those that ship schema (archive).
+- **Refresh the production command manifest on deploy.** This release removes the core `archive:manage`, `cache:purge`, and `queue:autoscale` commands; a `storage/cache/glueful_commands_manifest.php` generated before the upgrade still references them and breaks CLI boot. Run `php glueful commands:cache --clear` — `php glueful cache:clear` does **not** clear the command manifest.
+- **No-extension behavior is graceful, not fatal.** Seams degrade to no-ops/defaults: `NullEdgeCache` (response caching still emits surrogate keys), lean `queue:work`, type-only media metadata + original-served variants. Removed helpers/commands (`image()`, `queue:autoscale`, the `queue:work` sub-actions) are *absent* (function/command-not-found), not error-printing stubs.
+- **Namespace maps** (when restoring an extension and updating app code): `Glueful\Services\ImageProcessor` → `Glueful\Extensions\Media\ImageProcessor`; `Glueful\Cache\EdgeCacheService` → `Glueful\Extensions\Cdn\EdgeCachePurger`; `Glueful\Queue\Monitoring\WorkerMonitor` → `Glueful\Extensions\QueueOps\Monitoring\WorkerMonitor`; `Glueful\Services\Archive\*` → `Glueful\Extensions\Archive\*`. Full maps in the framework `UPGRADE.md`.
+- **No new framework env vars, no core migrations.** The api-skeleton is bumped to `^1.52.0` and ships **lean** (extensions are opt-in; its published `config/image.php`, `cache.edge`, `queue.workers.*` ops blocks, and `capabilities.archive` were removed).
+
+```bash
+composer update glueful/framework
+# then, to restore what you use:
+composer require glueful/media glueful/queue-ops glueful/cdn glueful/archive
+php glueful commands:cache --clear
+```
+
+---
 
 ## v1.51.0 - Larawag
 **Released: June 6, 2026**
