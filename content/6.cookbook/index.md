@@ -5,7 +5,6 @@ description: Practical recipes for common tasks
 
 Explore practical recipes by topic:
 
-- [ Dependency Injection and Services](/cookbook/di-and-services)
 - [ Deployment Guide](/cookbook/deployment)
 - [ Error Handling Guide](/cookbook/error-handling)
 - [ File Uploads (Local and S3)](/cookbook/file-uploads)
