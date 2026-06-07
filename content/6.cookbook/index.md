@@ -24,4 +24,4 @@ Explore practical recipes by topic:
 - [ Routing](/cookbook/routing)
 - [ Setup and Installation](/cookbook/setup)
 - [ Storage](/cookbook/storage)
-- [ Configuration Options](/cookbook/configuration)
+- [ Service Options Resolver](/cookbook/configuration)

@@ -5,6 +5,10 @@ description: Manage environment-based configuration
 
 Configure your application for different environments with environment variables and configuration files.
 
+::u-alert{color="neutral" variant="subtle" icon="i-lucide-sliders-horizontal"}
+This page covers **application** config (`config/*.php` + env). For validating the options a single service accepts at runtime, see the [Service Options Resolver](/cookbook/configuration).
+::
+
 ## Configuration Files
 
 Configuration lives in `config/` directory:
