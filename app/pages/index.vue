@@ -20,35 +20,6 @@ defineOgImageComponent('Docs', {
   title,
   description
 })
-
-// Scroll-reveal: tag elements in the markdown with `data-reveal` (fade + rise) or
-// `data-reveal-stagger` (cascade their children). The hidden start state only applies
-// after this arms `.reveal-ready`, so SSR / no-JS / reduced-motion renders fully visible.
-onMounted(() => {
-  const root = document.querySelector('.lp')
-  if (!root) return
-  if (window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
-
-  const targets = Array.from(
-    root.querySelectorAll<HTMLElement>('[data-reveal], [data-reveal-stagger]')
-  )
-  if (!targets.length) return
-  root.classList.add('reveal-ready')
-
-  if (!('IntersectionObserver' in window)) {
-    targets.forEach(el => el.classList.add('in'))
-    return
-  }
-  const io = new IntersectionObserver((entries, obs) => {
-    for (const e of entries) {
-      if (e.isIntersecting) {
-        e.target.classList.add('in')
-        obs.unobserve(e.target)
-      }
-    }
-  }, { threshold: 0.1, rootMargin: '0px 0px -8% 0px' })
-  targets.forEach(el => io.observe(el))
-})
 </script>
 
 <template>
@@ -216,62 +187,5 @@ onMounted(() => {
 }
 .hero-code pre.shiki {
   padding: 1rem 1.25rem;
-}
-
-/* ---- Scroll reveal (armed by JS via .reveal-ready; SSR/no-JS = visible) ---- */
-.lp.reveal-ready [data-reveal] {
-  opacity: 0;
-  transform: translateY(18px);
-  will-change: opacity, transform;
-}
-.lp.reveal-ready [data-reveal].in {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* Stagger a container's direct children — opacity only, so it never clips inside the
-   overflow-hidden / gap-px card grids. */
-.lp.reveal-ready [data-reveal-stagger] > * { opacity: 0; }
-.lp.reveal-ready [data-reveal-stagger].in > * {
-  opacity: 1;
-  transition: opacity 0.5s ease, box-shadow 0.25s ease;
-}
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(1) { transition-delay: 0s; }
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(2) { transition-delay: 0.07s; }
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(3) { transition-delay: 0.14s; }
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(4) { transition-delay: 0.21s; }
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(5) { transition-delay: 0.28s; }
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(6) { transition-delay: 0.35s; }
-.lp.reveal-ready [data-reveal-stagger].in > *:nth-child(n + 7) { transition-delay: 0.42s; }
-
-/* ---- Tier 2: card hover accent (inset ring — no layout shift, clip-safe) + icon nudge ---- */
-.lp .reveal-cards > * {
-  transition: box-shadow 0.25s ease;
-}
-.lp .reveal-cards > *:hover {
-  box-shadow: inset 0 0 0 1px rgb(238 49 130 / 0.28);
-}
-.lp .reveal-cards > *:hover .icon-tile {
-  transform: scale(1.06);
-  transition: transform 0.25s ease;
-}
-/* primary CTAs: nudge the trailing icon on hover */
-.lp a.bg-raspberry-500 :where([class*="i-lucide-rocket"], [class*="i-lucide-arrow"]) {
-  transition: transform 0.2s ease;
-}
-.lp a.bg-raspberry-500:hover :where([class*="i-lucide-rocket"], [class*="i-lucide-arrow"]) {
-  transform: translateX(2px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lp.reveal-ready [data-reveal],
-  .lp.reveal-ready [data-reveal-stagger] > * {
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-  }
 }
 </style>
