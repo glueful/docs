@@ -10,9 +10,9 @@ seo:
 API-skeleton first
 :::
 
-<h1 class="hero-rise hero-rise-2 mt-6 max-w-4xl text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tighter text-balance text-highlighted">Build production PHP APIs without starting from zero.</h1>
+<h1 class="hero-rise hero-rise-2 mt-6 max-w-4xl text-5xl sm:text-6xl lg:text-7xl font-medium tracking-tighter text-balance text-highlighted">Production PHP APIs, explicit by default.</h1>
 
-<p class="hero-rise hero-rise-3 mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">A pragmatic, high-performance API framework. Start from <strong class="font-semibold text-highlighted whitespace-nowrap">glueful/api-skeleton</strong> and grow into a full platform — explicit routing, context-aware DI, auth &amp; identity, queues, storage, and generated OpenAPI docs — without the boilerplate.</p>
+<p class="hero-rise hero-rise-3 mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-gray-600 dark:text-gray-300">A high-performance framework with routing, context-aware DI, auth, queues, uploads, and generated OpenAPI docs — no hidden magic, no bloated core. Start from <strong class="font-semibold text-highlighted whitespace-nowrap">glueful/api-skeleton</strong> and add official extensions as your app grows.</p>
 
 :::div{class="hero-rise hero-rise-4 mt-8 flex flex-wrap items-center gap-3"}
 ::::u-button{size="xl" to="/getting-started" trailing-icon="i-lucide-rocket" class="bg-raspberry-500 hover:bg-raspberry-600 text-white"}
