@@ -9,6 +9,7 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 | Version | Codename | Date | Type | Risk | Primary Theme |
 | ------- | -------- | ---- | ---- | ---- | ------------- |
+| 1.53.0 | Nunki | 2026-06-08 | Minor | Low | Generic DB extension seams — chainable pre-execution query interceptors (`addQueryInterceptor`) and `Connection::table()` decorator hooks (`addTableHook`), both no-ops on a plain install — plus four bug fixes (SecureSerializer namespace-wildcard + `C:` validation, table-qualified WHERE on UPDATE/DELETE, `Connection::class` container resolution). Backward compatible; the infrastructure prerequisite for the forthcoming `glueful/tenancy` extension |
 | 1.52.0 | Mizar | 2026-06-07 | Minor | High | Lean core — Archive, CDN / edge-cache, queue operations (supervision / autoscaling / metrics), and rich media (image processing / thumbnails / metadata) extracted to optional `glueful/*` extensions behind narrow core seams; `intervention/image` + `james-heinrich/getid3` dropped from core; each restored via one `composer require` (breaking: removed classes / commands / config) |
 | 1.51.0 | Larawag | 2026-06-06 | Minor | High | Notification subsystem refinement — core in-app `database` channel, dispatch-time channel validation, optional/safe persistence (`NOTIFICATIONS_DATABASE_STORE`), injectable async queue, structured `NotificationResult`, and extension-driven channel registration (breaking: `ChannelManager` renames + context-required jobs) |
 | 1.50.2 | Kochab | 2026-06-05 | Patch | Low | `@queryParam` route-doc tag — the OpenAPI generator parses an editor-clean query-param tag (no reserved-`@param` IDE false positives); path params no longer dropped when a query param is also documented |
@@ -87,6 +88,41 @@ description: Curated highlights, migration guidance, and structured summaries of
 | 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
 | 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
 | 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+
+## v1.53.0 - Nunki
+**Released: June 8, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+A backward-compatible release that adds two **generic, chainable database extension seams** — so extensions can enforce scopes, narrow queries, or veto statements without patching core — and folds in **four bug fixes** uncovered while building the upcoming `glueful/tenancy` extension. Both seams are no-ops on a plain install (zero behavior change). No env vars, no migrations, no breaking changes; `composer update glueful/framework` suffices.
+::
+
+### Key Highlights
+
+::card
+#title
+Chainable DB Extension Seams (interceptors + table hooks)
+#description
+`QueryExecutor::addQueryInterceptor()` registers **pre-execution** interceptors that run before every statement and may **throw to veto** it — suitable for enforcement (access/scope guards, read-only modes, SQL allow/deny policies), unlike the existing post-execution query log which only observes. `Connection::addTableHook()` decorates the `QueryBuilder` returned by `Connection::table()`, keyed by table name — for auto-applying scopes/columns/conditions to **raw** query-builder access (raw-level soft-deletes, org/tenant scoping, environment filtering). Both seams are **chainable**: every registration runs in order (no last-writer-wins), and both are inert when nothing is registered.
+::
+
+::card
+#title
+Four Bug Fixes (queue deserialization, write-path, container)
+#description
+**SecureSerializer:** namespace-wildcard allowlist entries (e.g. `Glueful\Queue\Jobs\*`) are now actually honored — worker-side `Job::unserialize()` was broken for those classes — and `C:` (Serializable) tokens are now allowlist-validated. **Query builder:** a table-qualified WHERE column on a write (`->where('t.col', $v)->update([...])` / `->delete()`) no longer throws `InvalidArgumentException` — an incomplete identifier-unwrap left a stray quote the column validator rejected (SELECT was unaffected). **Container:** `Connection::class` now resolves from the DI container (it was bound only as `'database'`), so the documented `db($ctx)` and `app($ctx, Connection::class)` accessors work out of the box instead of throwing "Service not found".
+::
+
+### Migration Notes
+
+- **No action required.** `composer update glueful/framework` picks up 1.53.0. No new env vars, no migrations, no API breaks; the seams are opt-in and inert unless an extension registers a hook.
+- The api-skeleton `^1.52.0` constraint already permits 1.53.0 — no skeleton changes ship in this release.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.52.0 - Mizar
 **Released: June 7, 2026**
