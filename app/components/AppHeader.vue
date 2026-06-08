@@ -7,7 +7,8 @@ const { header } = useAppConfig()
 
 const menuItems = [
   { label: 'Docs', to: '/getting-started' },
-  { label: 'Catalog', to: '/extensions' }
+  { label: 'Extensions', to: '/extensions' },
+  { label: 'Tooling', to: '/tooling' }
 ]
 </script>
 
@@ -16,9 +17,23 @@ const menuItems = [
     :to="header?.to || '/'"
   >
     <template #left>
-      <NuxtLink :to="header?.to || '/'">
-        <AppLogo class="w-auto h-13 shrink-0" />
-      </NuxtLink>
+      <div class="flex items-center gap-2.5">
+        <NuxtLink :to="header?.to || '/'">
+          <AppLogo class="w-auto h-10 shrink-0" />
+        </NuxtLink>
+
+        <UButton
+          v-if="header?.version"
+          :to="`https://github.com/glueful/framework/releases/tag/v${header.version}`"
+          target="_blank"
+          :label="`v${header.version}`"
+          color="neutral"
+          variant="subtle"
+          size="xs"
+          class="font-mono rounded-full"
+          :aria-label="`Glueful framework ${header.version} — view release notes on GitHub`"
+        />
+      </div>
     </template>
 
     <UNavigationMenu

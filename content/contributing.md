@@ -252,8 +252,8 @@ Any other context or examples.
 
 ```bash
 # Clone repository
-git clone https://github.com/glueful/glueful.git
-cd glueful
+git clone https://github.com/glueful/framework.git
+cd framework
 
 # Install dependencies
 composer install
@@ -433,8 +433,7 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ## Questions?
 
-- 📧 Email: contributors@glueful.com
-- 💬 Discord: [Join our server](https://discord.gg/glueful)
-- 🐛 Issues: [GitHub Issues](https://github.com/glueful/glueful/issues)
+- 📧 Email: contributors@glueful.dev
+- 🐛 Issues: [GitHub Issues](https://github.com/glueful/framework/issues)
 
 Thank you for contributing to Glueful! 🎉
