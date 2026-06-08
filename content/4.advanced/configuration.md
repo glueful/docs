@@ -495,4 +495,3 @@ JWT_SECRET=
 
 - [Testing](/advanced/testing) - Test configuration
 - [Middleware](/advanced/middleware) - Environment-aware middleware
-- [Deployment](/deployment/production) - Production configuration

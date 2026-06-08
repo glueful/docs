@@ -29,6 +29,8 @@ export default defineAppConfig({
   header: {
     title: '',
     to: '/',
+    // Current framework version shown next to the logo — bump on each framework release.
+    version: '1.53.0',
     logo: {
       alt: '',
       light: '',
@@ -72,7 +74,7 @@ export default defineAppConfig({
       }]
   },
   toc: {
-    title: 'Table of Contents',
+    title: 'On this page',
     bottom: {
       title: 'Community',
       edit: 'https://github.com/glueful/docs/edit/main/content',
@@ -84,7 +86,7 @@ export default defineAppConfig({
       }, {
         icon: 'i-lucide-book-open',
         label: 'Glueful docs',
-        to: 'https://glueful.com/docs',
+        to: 'https://glueful.com/getting-started',
         target: '_blank'
       }]
     }

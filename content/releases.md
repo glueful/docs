@@ -5,88 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
-## Release Summary
+## v1.53.0 - Nunki
+**Released: June 8, 2026**
 
-| Version | Codename | Date | Type | Risk | Primary Theme |
-| ------- | -------- | ---- | ---- | ---- | ------------- |
-| 1.52.0 | Mizar | 2026-06-07 | Minor | High | Lean core — Archive, CDN / edge-cache, queue operations (supervision / autoscaling / metrics), and rich media (image processing / thumbnails / metadata) extracted to optional `glueful/*` extensions behind narrow core seams; `intervention/image` + `james-heinrich/getid3` dropped from core; each restored via one `composer require` (breaking: removed classes / commands / config) |
-| 1.51.0 | Larawag | 2026-06-06 | Minor | High | Notification subsystem refinement — core in-app `database` channel, dispatch-time channel validation, optional/safe persistence (`NOTIFICATIONS_DATABASE_STORE`), injectable async queue, structured `NotificationResult`, and extension-driven channel registration (breaking: `ChannelManager` renames + context-required jobs) |
-| 1.50.2 | Kochab | 2026-06-05 | Patch | Low | `@queryParam` route-doc tag — the OpenAPI generator parses an editor-clean query-param tag (no reserved-`@param` IDE false positives); path params no longer dropped when a query param is also documented |
-| 1.50.1 | Kochab | 2026-06-05 | Patch | Moderate | Two silent no-op extension points fixed — `ServiceProvider::mergeConfig()` actually applies extension config defaults; `LoginResponseBuildingEvent` listeners actually modify the login response |
-| 1.50.0 | Kochab | 2026-06-04 | Minor | High | Provider-Agnostic Identity & Core-Owned Schema — user store extracted to `glueful/users`; framework owns config-gated capability migrations; lazy runtime DDL removed |
-| 1.49.1 | Jishui | 2026-06-01 | Patch | Low | Reserved-word column names — `QueryValidator` accepts SQL reserved words (`from`, `order`, …) as column names |
-| 1.49.0 | Jishui | 2026-06-01 | Minor | Moderate | HTTP Auth, WhatsApp Plumbing & Dependency Hardening — `auth_basic` passthrough, `whatsapp` queue type, Intervention Image v4, security patches |
-| 1.48.0 | Imai | 2026-05-31 | Minor | Low | Router Verb Completeness — first-class `PATCH`/`OPTIONS`, explicit `OPTIONS` beats auto-CORS, documented route precedence |
-| 1.47.0 | Hadar | 2026-05-30 | Minor | High | Extension System Re-Architecture — composer-only discovery, single `enabled` allow-list, pure resolver (breaking config change) |
-| 1.46.0 | Gienah | 2026-05-28 | Minor | Low | Fluent Query Caching — `QueryBuilder::cache(ttl, tags)` wired to `QueryCacheService`; level-8 hardening kickoff |
-| 1.45.0 | Fomalhaut | 2026-05-27 | Minor | Moderate | The Second Factor — core email-PIN 2FA (opt-in), selectRaw() bindings, security docs |
-| 1.44.0 | Errai | 2026-05-22 | Minor | Moderate | Closing the Trust Gaps — real cache tagging, archive restore, honest security report |
-| 1.43.0 | Dabih | 2026-05-21 | Minor | Moderate | Production Hardening — ORM observability, API key hardening, k8s probes |
-| 1.42.0 | Caph | 2026-05-20 | Minor | Moderate | OpenAPI Spec Excellence |
-| 1.41.0 | Beid | 2026-03-03 | Minor | Moderate | Profile-Driven Logging Bootstrap |
-| 1.40.4 | Alnair | 2026-02-21 | Patch | Low | PHPCS Line Length Fix |
-| 1.40.3 | Alnair | 2026-02-21 | Patch | Medium | Mutation WHERE + Queue Config + Async Notification |
-| 1.40.2 | Alnair | 2026-02-21 | Patch | Low | Config Merge Safe Dedup |
-| 1.40.1 | Alnair | 2026-02-21 | Patch | Low | Config Merge Fix |
-| 1.40.0 | Alnair | 2026-02-21 | Minor | Medium | Notification Delivery Orchestration |
-| 1.39.0 | Menkent | 2026-02-20 | Minor | High | Token/Session Reimplementation |
-| 1.38.0 | Lesath | 2026-02-17 | Minor | Low | Auth Token-Refresh Performance Optimization |
-| 1.37.0 | Kaus | 2026-02-15 | Minor | Low | Deferred Extension Commands + ORM Builder Fixes |
-| 1.36.0 | Jabbah | 2026-02-14 | Minor | Low | Model Event Isolation + Base64 Extension Fix |
-| 1.35.0 | Izar | 2026-02-14 | Minor | Low | Cloud Storage + Blob Fix |
-| 1.34.0 | Hamal | 2026-02-14 | Minor | Low | Auth Pipeline Hardening + Blob Upload DI |
-| 1.33.0 | Gacrux | 2026-02-14 | Minor | Low | Container-Enforced Request Resolution |
-| 1.32.0 | Fomalhaut | 2026-02-11 | Minor | Low | Schema Builder `alterTable` Callback API |
-| 1.31.0 | Enif | 2026-02-09 | Minor | Low | Centralized Context Propagation + ORM Default Context |
-| 1.30.1 | Diphda | 2026-02-09 | Patch | Low | JWTService Context Initialization Fix |
-| 1.30.0 | Diphda | 2026-02-09 | Minor | Low | Exception Handler Consolidation |
-| 1.29.0 | Capella | 2026-02-07 | Minor | Low | Queue System Overhaul — Leaf Workers + Presets |
-| 1.28.3 | Bellatrix | 2026-02-07 | Patch | Low | CLI Option Shortcut Collision Fix |
-| 1.28.2 | Bellatrix | 2026-02-07 | Patch | Low | CLI Migration Discovery + PostgreSQL Schema Safety |
-| 1.28.1 | Bellatrix | 2026-02-06 | Patch | Low | Router Stability + Cache-Aware Registration |
-| 1.28.0 | Bellatrix | 2026-02-05 | Minor | Medium | Route Caching Support |
-| 1.27.0 | Avior | 2026-02-04 | Minor | Low | DX CLI Commands + Transaction Callbacks |
-| 1.26.0 | Atria | 2026-01-31 | Minor | Low | Extension Discovery Fixes |
-| 1.25.0 | Ankaa | 2026-01-31 | Minor | Low | Multi-File Route Discovery |
-| 1.24.0 | Alpheratz | 2026-01-31 | Minor | Low | Encryption Service |
-| 1.23.0 | Aldebaran | 2026-01-31 | Minor | Low | Blob Visibility + Signed URLs |
-| 1.22.0 | Achernar | 2026-01-30 | Minor | Medium | Global State Removal / ApplicationContext DI |
-| 1.21.0 | Mira | 2026-01-24 | Minor | Low | File Uploader Refactoring |
-| 1.20.0 | Regulus | 2026-01-24 | Minor | Low | Framework Simplification |
-| 1.19.2 | Canopus | 2026-01-24 | Patch | Low | ValidationException Consolidation + Query Building |
-| 1.19.1 | Canopus | 2026-01-22 | Patch | Low | Simplified Configuration |
-| 1.19.0 | Canopus | 2026-01-22 | Minor | Low | Search & Filtering DSL |
-| 1.18.0 | Hadar | 2026-01-22 | Minor | Low | Webhooks System |
-| 1.17.0 | Alnitak | 2026-01-22 | Minor | Low | Rate Limiting Enhancements |
-| 1.16.0 | Meissa | 2026-01-22 | Minor | Low | API Versioning Strategy |
-| 1.15.0 | Rigel | 2026-01-22 | Minor | Low | Real-Time Development Server |
-| 1.14.0 | Bellatrix | 2026-01-22 | Minor | Low | Interactive CLI Wizards |
-| 1.13.0 | Saiph | 2026-01-22 | Minor | Low | Enhanced Scaffold Commands + Factories/Seeders |
-| 1.12.0 | Mintaka | 2026-01-21 | Minor | Low | API Resource Transformers |
-| 1.11.0 | Alnilam | 2026-01-21 | Minor | Low | ORM / Active Record |
-| 1.10.0 | Elnath | 2026-01-21 | Minor | Low | Exception Handler + Request Validation |
-| 1.9.2 | Deneb | 2026-01-20 | Patch | Low | OpenAPI 3.1 + resource route expansion |
-| 1.9.1 | Castor | 2026-01-19 | Patch | Low | OpenAPI documentation refactor + UI generation |
-| 1.9.0 | Betelgeuse | 2026-01-17 | Minor | Medium | PHP 8.3 minimum + Symfony 7.3 compat |
-| 1.8.1 | Vega    | 2025-11-23 | Patch  | Low    | Password policy + async stream helper |
-| 1.8.0 | Spica   | 2025-11-13 | Minor  | Low    | Session + login response events |
-| 1.7.4 | Arcturus | 2025-10-28 | Patch  | Low    | Auth status gate + migration docs |
-| 1.7.3 | Pollux  | 2025-10-21 | Patch  | Low    | QueryBuilder 2-arg where/orWhere fix |
-| 1.7.2 | Antares | 2025-10-21 | Patch  | Low    | Route loading resilience + dev server logs |
-| 1.7.1 | Canopus | 2025-10-21 | Patch  | Low    | Extension discovery/boot fix |
-| 1.7.0 | Procyon | 2025-10-18 | Minor  | Medium | Async & concurrency subsystem |
-| 1.6.2 | Capella | 2025-10-14 | Patch  | Low    | Mail templates config ownership |
-| 1.6.1 | Arcturus | 2025-10-14 | Patch  | Low    | JWT RS256 signing |
-| 1.6.0 | Sirius  | 2025-10-13 | Minor   | Low    | DI artifacts + conditional caching + DSN utils |
-| 1.5.0 | Orion   | 2025-10-13 | Minor   | Medium | Notifications DI + safer email flow |
-| 1.4.2 | Rigel   | 2025-10-11 | Patch   | Low    | Docs + PSR-4 tidy-up |
-| 1.4.1 | Rigel   | 2025-10-11 | Patch   | Low    | Install flow hardening (SQLite-first) |
-| 1.4.0 | Rigel   | 2025-10-11 | Minor   | Medium | Unified session store, legacy removal |
-| 1.3.1 | Altair  | 2025-10-10 | Patch   | Low  | Install UX (CI non-interactive) |
-| 1.3.0 | Deneb   | 2025-10-06 | Feature | Low  | HTTP client retries |
-| 1.2.0 | Vega    | 2025-09-23 | Feature+Breaking | Medium | Tasks & Jobs overhaul |
-| 1.1.0 | Polaris | 2025-09-22 | Infra | Low  | Testing infrastructure |
-| 1.0.0 | Aurora  | 2025-09-20 | Major | High | First stable split |
+::u-alert{color="success" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+A backward-compatible release that adds two **generic, chainable database extension seams** — so extensions can enforce scopes, narrow queries, or veto statements without patching core — and folds in **four bug fixes** uncovered while building the upcoming `glueful/tenancy` extension. Both seams are no-ops on a plain install (zero behavior change). No env vars, no migrations, no breaking changes; `composer update glueful/framework` suffices.
+::
+
+### Key Highlights
+
+::card
+#title
+Chainable DB Extension Seams (interceptors + table hooks)
+#description
+`QueryExecutor::addQueryInterceptor()` registers **pre-execution** interceptors that run before every statement and may **throw to veto** it — suitable for enforcement (access/scope guards, read-only modes, SQL allow/deny policies), unlike the existing post-execution query log which only observes. `Connection::addTableHook()` decorates the `QueryBuilder` returned by `Connection::table()`, keyed by table name — for auto-applying scopes/columns/conditions to **raw** query-builder access (raw-level soft-deletes, org/tenant scoping, environment filtering). Both seams are **chainable**: every registration runs in order (no last-writer-wins), and both are inert when nothing is registered.
+::
+
+::card
+#title
+Four Bug Fixes (queue deserialization, write-path, container)
+#description
+**SecureSerializer:** namespace-wildcard allowlist entries (e.g. `Glueful\Queue\Jobs\*`) are now actually honored — worker-side `Job::unserialize()` was broken for those classes — and `C:` (Serializable) tokens are now allowlist-validated. **Query builder:** a table-qualified WHERE column on a write (`->where('t.col', $v)->update([...])` / `->delete()`) no longer throws `InvalidArgumentException` — an incomplete identifier-unwrap left a stray quote the column validator rejected (SELECT was unaffected). **Container:** `Connection::class` now resolves from the DI container (it was bound only as `'database'`), so the documented `db($ctx)` and `app($ctx, Connection::class)` accessors work out of the box instead of throwing "Service not found".
+::
+
+### Migration Notes
+
+- **No action required.** `composer update glueful/framework` picks up 1.53.0. No new env vars, no migrations, no API breaks; the seams are opt-in and inert unless an extension registers a hook.
+- The api-skeleton `^1.52.0` constraint already permits 1.53.0 — no skeleton changes ship in this release.
+
+```bash
+composer update glueful/framework
+```
+
+---
 
 ## v1.52.0 - Mizar
 **Released: June 7, 2026**

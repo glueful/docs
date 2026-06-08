@@ -507,4 +507,3 @@ This page is the practical overview. For the framework's performance internals, 
 - [Performance Deep Dive](/cookbook/performance) - query optimization, query caching, profiling, response caching
 - [Memory Management](/cookbook/memory-management) - MemoryManager, streaming, chunked processing
 - [Testing](/advanced/testing) - Performance testing
-- [Deployment](/deployment/production) - Production deployment

@@ -4276,7 +4276,6 @@ $uploader = $container->get(FileUploader::class);
 
 ### Related Documentation
 - [Installation](/getting-started/installation)
-- [Quickstart](/getting-started/quickstart)
 - [Routing](/essentials/routing)
 - [Dependency Injection](/advanced/dependency-injection)
 - [Events](/features/events)

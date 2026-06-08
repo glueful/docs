@@ -41,9 +41,7 @@ Your API is now running at `http://127.0.0.1:8080` (try `/welcome`, `/v1/status`
 
 From here, follow the dedicated guides:
 
-- **[Installation](/getting-started/installation)** — requirements, skeleton vs. framework-only, first run
-- **[Quickstart](/getting-started/quickstart)** — add your first `v1` route returning `Response::success(...)`
-- **[Build a First API](/getting-started/first-api)** — a full controller + routes + `curl` walkthrough
+- **[Installation](/getting-started/installation)** — requirements, skeleton vs. framework-only, running the dev server, and adding your first route
 
 ## Project Structure
 
@@ -110,10 +108,9 @@ my-api/
 
 Now that you have Glueful running:
 
-1. **[Installation Guide](/getting-started/installation)** - Detailed installation and setup
+1. **[Installation Guide](/getting-started/installation)** - Install, run, and build your first route
 2. **[Configuration](/advanced/configuration)** - Environment setup and config options  
-3. **[Quick Tutorial](/getting-started/quickstart)** - Build your first complete API
-4. **[Core Concepts](/essentials)** - Learn the essentials you’ll use daily
+3. **[Core Concepts](/essentials)** - Learn the essentials you’ll use daily
 
 ### FAQ
 
