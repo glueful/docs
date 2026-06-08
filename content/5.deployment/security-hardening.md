@@ -514,32 +514,23 @@ $apiKey = 'sk_live_...';
 
 ### Encrypt Sensitive Data
 
+Don't hand-roll crypto. Use the framework's `EncryptionService`, which provides AES-256-GCM authenticated encryption with a random nonce per call and key-rotation support. Resolve it from the container:
+
 ```php
-class Encryptor
-{
-    private string $key;
+use Glueful\Encryption\EncryptionService;
 
-    public function __construct()
-    {
-        $this->key = env('APP_KEY');
-    }
+$encryption = app($context, EncryptionService::class);
 
-    public function encrypt(string $data): string
-    {
-        $iv = random_bytes(16);
-        $encrypted = openssl_encrypt($data, 'AES-256-CBC', $this->key, 0, $iv);
-        return base64_encode($iv . $encrypted);
-    }
+// Encrypt / decrypt a string
+$ciphertext = $encryption->encrypt($ssn);
+$plaintext  = $encryption->decrypt($ciphertext);
 
-    public function decrypt(string $data): string
-    {
-        $data = base64_decode($data);
-        $iv = substr($data, 0, 16);
-        $encrypted = substr($data, 16);
-        return openssl_decrypt($encrypted, 'AES-256-CBC', $this->key, 0, $iv);
-    }
-}
+// Bind the ciphertext to a context with AAD (prevents field-swapping attacks)
+$ciphertext = $encryption->encrypt($ssn, aad: 'user.ssn');
+$plaintext  = $encryption->decrypt($ciphertext, aad: 'user.ssn');
 ```
+
+Set `APP_KEY` (32 bytes, base64) in the environment, and list any retired keys in `APP_PREVIOUS_KEYS` for zero-downtime rotation. See **Encryption Service** in the framework guide for file encryption and `encryption:rotate`.
 
 ## Monitoring & Logging
 

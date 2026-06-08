@@ -716,6 +716,14 @@ $stats = $uploader->getDirectoryStats('uploads/');
 // ]
 ```
 
+### Checksums
+
+Compute a SHA-256 checksum to verify integrity or deduplicate uploads:
+
+```php
+$checksum = $uploader->calculateChecksum($filePath); // hex string
+```
+
 ## Best Practices
 
 ### Validate Early

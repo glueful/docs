@@ -31,45 +31,19 @@ Glueful is perfect for:
 
 Get up and running with Glueful in under 5 minutes using the API skeleton:
 
-### Prerequisites
-
-- PHP 8.3 or higher
-- Composer 2+
-- SQLite (default) or your preferred database
-
-### Installation
-
 ```bash
-# Create a new Glueful project from the API skeleton (recommended)
 composer create-project glueful/api-skeleton my-api
 cd my-api
-# Start the development server
+php glueful serve
 ```
 
-### Your First Request
+Your API is now running at `http://127.0.0.1:8080` (try `/welcome`, `/v1/status`, `/health`).
 
-Visit your new API:
+From here, follow the dedicated guides:
 
-- **Welcome endpoint**: `http://127.0.0.1:8080/`
-- **Health check**: `http://127.0.0.1:8080/health`
-
-### Hello World Route
-
-Add a simple route in `routes/api.php`:
-
-```php
-<?php
-
-use Glueful\Http\Response;
-
-// Add to your existing routes
-$router->get('/hello', function() {
-    return new Response([
-        'message' => 'Hello, Glueful!',
-        'timestamp' => date('c')
-    ]);
-});
-```
+- **[Installation](/getting-started/installation)** — requirements, skeleton vs. framework-only, first run
+- **[Quickstart](/getting-started/quickstart)** — add your first `v1` route returning `Response::success(...)`
+- **[Build a First API](/getting-started/first-api)** — a full controller + routes + `curl` walkthrough
 
 ## Project Structure
 

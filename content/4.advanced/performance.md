@@ -441,25 +441,7 @@ Configure your web server to use HTTP/2 for better performance.
 
 ## Configuration Tuning
 
-Fine‑tune performance via config files:
-
-- Cache (config/cache.php)
-  - Stampede protection: `cache.stampede_protection.enabled`, `lock_ttl`, `max_wait_time`, `retry_interval`
-  - Early expiration refresh: `cache.stampede_protection.early_expiration.enabled`, `threshold`
-  - Tags: `cache.enable_tags` (uses Redis by default), `tags_store`
-  - Distributed cache: `cache.distributed.enabled`, `strategy`, `replicas`, `failover`
-  - Driver/timeouts: Redis host/port/password/timeouts; file path via `CACHE_FILE_PATH`
-
-- Database (config/database.php)
-  - Connection pooling: `database.pooling.enabled`, `defaults.*`, per‑engine overrides (mysql/pgsql/sqlite)
-  - Query logging: `database.logging.enabled`, `slow_threshold` (ms), log path
-  - Query cache: `database.query_cache.enabled`, `default_ttl`, `store` (redis), `auto_invalidate`
-
-- App (config/app.php)
-  - Performance monitoring: `app.performance.memory.*` (alert thresholds, sampling)
-  - Environment defaults: `app.debug`, `force_https`, etc. for prod vs dev
-
-Tip: Prefer environment‑aware toggles using `env()` (e.g., stricter limits in production), and validate with load testing after changes.
+The framework exposes performance toggles across `config/cache.php`, `config/database.php`, and `config/app.php` — stampede protection, connection pooling, query cache, memory monitoring, and more. The full key reference lives in the deep-dive: [Performance → Configuration Tuning](/cookbook/performance#configuration-tuning).
 
 ## Load Testing
 
@@ -520,6 +502,9 @@ Look for:
 
 ## Next Steps
 
+This page is the practical overview. For the framework's performance internals, go deeper:
+
+- [Performance Deep Dive](/cookbook/performance) - query optimization, query caching, profiling, response caching
+- [Memory Management](/cookbook/memory-management) - MemoryManager, streaming, chunked processing
 - [Testing](/advanced/testing) - Performance testing
-- [Configuration](/advanced/configuration) - Production config
 - [Deployment](/deployment/production) - Production deployment

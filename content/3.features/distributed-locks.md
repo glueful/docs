@@ -338,6 +338,24 @@ app($context, \Psr\Log\LoggerInterface::class)->info('Lock held for ' . $duratio
 - Expired vs. explicit releases
 - Wait time distribution
 
+## Naming Conventions
+
+Use descriptive, hierarchical lock names that include the relevant identifiers — this keeps keys collision-free and makes monitoring readable:
+
+```php
+// Good — scoped and specific
+"queue:worker:{$queue}:{$workerId}"
+"scheduler:job:{$jobName}"
+"import:users:batch:{$batchId}"
+"user:export:{$userId}:format:{$format}"
+"report:generate:{$reportType}:date:{$date}"
+
+// Avoid — generic names that collide
+"lock"
+"process"
+"task"
+```
+
 ## Best Practices
 
 ### 1. Keep Critical Sections Small

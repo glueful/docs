@@ -7,10 +7,13 @@ Take your Glueful application to the next level with advanced patterns, testing 
 
 ## Topics
 
-- **[Testing](/advanced/testing)** - Unit, integration, and feature testing
-- **[Configuration](/advanced/configuration)** - Environment-aware configuration
-- **[Middleware](/advanced/middleware)** - Custom middleware and pipelines
-- **[Performance](/advanced/performance)** - Optimization and monitoring
+- **[Dependency Injection](/advanced/dependency-injection)** - the container, providers, the `services()` DSL, factories, tags
+- **[Service Providers](/advanced/service-providers)** - the provider model and built-in providers
+- **[Repositories](/advanced/repositories)** - the repository pattern, UnitOfWork, DTOs
+- **[Middleware](/advanced/middleware)** - the pipeline, alias catalog, and PSR-15
+- **[Configuration](/advanced/configuration)** - environment-aware configuration
+- **[Performance](/advanced/performance)** - optimization and monitoring
+- **[Testing](/advanced/testing)** - unit, integration, and feature testing
 
 ## What You'll Learn
 

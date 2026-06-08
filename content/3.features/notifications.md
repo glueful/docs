@@ -8,7 +8,7 @@ Send multi-channel notifications with templates, retries, and delivery tracking.
 ## Installation
 
 ```bash
-composer require glueful/extensions-email-notification
+composer require glueful/email-notification
 ```
 
 Register in `config/extensions.php`:

@@ -341,11 +341,15 @@ To send cookies cross-origin:
 
 ### Server Configuration
 
+Credentialed requests cannot use a wildcard origin — list explicit origins in `config/cors.php` and enable `allow_credentials`:
+
 ```php
-'cors' => [
-    'allowed_origins' => 'https://app.example.com', // NOT *
-    'supports_credentials' => true,
-],
+// config/cors.php
+return [
+    'allow_all_origins' => false,                       // never '*' with credentials
+    'allowed_origins' => ['https://app.example.com'],   // explicit origins (array)
+    'allow_credentials' => true,
+];
 ```
 
 ### Client Request

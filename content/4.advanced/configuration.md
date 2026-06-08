@@ -5,6 +5,10 @@ description: Manage environment-based configuration
 
 Configure your application for different environments with environment variables and configuration files.
 
+::u-alert{color="neutral" variant="subtle" icon="i-lucide-sliders-horizontal"}
+This page covers **application** config (`config/*.php` + env). For validating the options a single service accepts at runtime, see the [Service Options Resolver](/cookbook/configuration).
+::
+
 ## Configuration Files
 
 Configuration lives in `config/` directory:
@@ -84,7 +88,7 @@ JWT_SECRET=your-secret-key
 $debug = env('APP_DEBUG');
 ```
 
-## Configuration Files
+## Configuration File Examples
 
 ### app.php
 
@@ -256,6 +260,7 @@ return [
 
     'cache_enabled' => env('CACHE_ENABLED', env('APP_ENV') === 'production'),
 ];
+```
 
 ## Configuration Loading & Overrides
 
@@ -272,7 +277,6 @@ Glueful merges framework defaults with your application overrides:
 - Caching: see Features → Caching for `config/cache.php`
 - Logging: see Advanced → Logging for `config/logging.php`
 - Security: see Features → CORS & CSRF and Security for `config/security.php`
-```
 
 ## Secrets Management
 

@@ -1,26 +1,42 @@
 ---
 title: Dependency Injection
-description: Manage dependencies with the service container
+description: Manage dependencies with the Glueful PSR-11 container — providers, autowire, factories, aliases, tags, and CLI tools
 ---
 
-Glueful uses a service container for dependency injection, making your code testable and decoupled.
+Glueful ships a lightweight, fast PSR-11 container tailored to the framework. It supports constructor autowiring, explicit factories, aliases, tagging, and a PHP code generator that compiles definitions for production.
 
 For standalone examples on this page, assume `$context` is an available `ApplicationContext`. In controllers, prefer constructor injection and `BaseController` helpers over ad hoc container calls.
 
+Highlights:
+- PSR-11 compatible interface
+- Constructor autowiring with an `#[Inject]` attribute (`Glueful\Container\Autowire\Inject`)
+- Simple array DSL for app/extension providers
+- Aliases and interface bindings
+- Tags and tag-based iterators
+- Lazy warmup groups (background / request-time)
+- Compile-to-PHP container for production (best-effort, with fallback)
+
 ## Quick Start
 
-### Resolving from Container
+### Resolving from the container
 
 ```php
-// Get services from the container
-$db = app($context, 'database'); // Glueful\\Database\\Connection
-$cache = app($context, \\Glueful\\Cache\\CacheStore::class);
+// Using helpers
+$db     = app($context, 'database');                       // Glueful\Database\Connection
+$cache  = app($context, \Glueful\Cache\CacheStore::class);
+$logger = app($context, \Psr\Log\LoggerInterface::class);  // aliased to 'logger'
 
-// Convenience alias
-$logger = app($context, \\Psr\\Log\\LoggerInterface::class); // aliased to 'logger'
+// PSR-11 directly
+$c = container($context);
+$database = $c->get('database'); // some services are string IDs
+
+// Optional access — there is no getOptional(); guard with has_service()
+if (has_service(\Glueful\Auth\AuthenticationService::class)) {
+    $auth = app($context, \Glueful\Auth\AuthenticationService::class);
+}
 ```
 
-### Constructor Injection
+### Constructor injection
 
 ```php
 class UserController
@@ -32,14 +48,12 @@ class UserController
 
     public function index()
     {
-        return $this->cache->remember('users:all', function () {
-            return $this->users->all();
-        });
+        return $this->cache->remember('users:all', fn () => $this->users->all());
     }
 }
 ```
 
-### Method Injection
+### Method injection
 
 ```php
 class TaskController extends \Glueful\Controllers\BaseController
@@ -48,418 +62,311 @@ class TaskController extends \Glueful\Controllers\BaseController
     {
         $data = $this->getRequestData();
 
-        if ($error = $this->validateRequest($data, [
-            'title' => 'required|max:255',
-        ])) {
+        if ($error = $this->validateRequest($data, ['title' => 'required|max:255'])) {
             return $error;
         }
 
-        $task = $tasks->create($data);
-
-        return $this->created($task);
+        return $this->created($tasks->create($data));
     }
 }
 ```
 
-## Container Bindings
+### Resolution semantics
 
-In Glueful, you register services via Service Providers (extending the framework’s BaseServiceProvider). Define your services in the `defs()` method using autowire/alias/factory definitions.
+- **Class name**: `app($context, Foo\Bar::class)` autowires constructor dependencies.
+- **Aliases**: string IDs (e.g. `'cache.store'`, `'database'`) resolve to services.
+- **Interfaces**: bind via alias so `app($context, Interface::class)` returns the implementation.
+- **Parameters**: inject via `#[Glueful\Container\Autowire\Inject(param: 'key')]` when autowiring, or read via `parameter('key')` inside a factory.
+
+## Service Registration
+
+App and extension providers define services in a **static `services()` method** that returns a simple array DSL — this is the path used by the api-skeleton's `AppServiceProvider`. Framework **core** providers instead implement a `defs()` instance method that returns typed definitions (via `BaseServiceProvider`). If both forms exist for a provider, the typed `defs()` is used.
+
+### The `services()` array DSL (app/extension providers)
+
+Supported keys per service entry:
+- `class` string — concrete class (if omitted and the ID is a FQCN, the ID is used)
+- `autowire` bool — constructor autowiring (default false; set true to autowire a class)
+- `factory` callable|string|array — one of `fn(Container $c) => ...`, `'Class::method'`, `[ClassName::class, 'method']`, or `['@service.id', 'method']`
+- `arguments` array — constructor args; strings beginning with `@` are treated as service references
+- `shared` bool — singleton when true (default true). `singleton` / `bind` are shorthands that map to `shared`
+- `alias` string|array — additional IDs that resolve to this service
+- `tags` array — tag names, or maps like `['name' => 'tag.name', 'priority' => 10]`
 
 ```php
-namespace App\Providers;
-
-use Glueful\Container\Providers\BaseServiceProvider;
-use Glueful\Container\Definition\FactoryDefinition;
-use Glueful\Container\Definition\AliasDefinition;
-
-final class AppServiceProvider extends BaseServiceProvider
+final class AppServiceProvider
 {
-    public function defs(): array
+    public static function services(): array
     {
         return [
-            // Autowire concrete classes (shared by default)
-            App\Services\OrderService::class => $this->autowire(App\Services\OrderService::class),
+            // Autowired service (singleton by default)
+            App\Services\UserService::class => [
+                'autowire' => true,
+                'alias' => 'user_service',
+                'tags' => [['name' => 'domain.user', 'priority' => 50]],
+            ],
 
-            // Factory-built services
-            'report.generator' => new FactoryDefinition(
-                'report.generator',
-                fn() => new App\Services\ReportGenerator(config($this->getContext(), 'app'))
-            ),
+            // Interface binding via alias
+            App\Services\RedisCache::class => [
+                'autowire' => true,
+                'alias' => App\Contracts\CacheInterface::class,
+            ],
 
-            // Aliases (map type-hints to existing ids)
-            \Psr\Log\LoggerInterface::class =>
-                new AliasDefinition(\Psr\Log\LoggerInterface::class, 'logger'),
+            // Factory service (prefer class/method factories for production)
+            Psr\Log\LoggerInterface::class => [
+                'factory' => [App\Factories\LoggerFactory::class, 'create'],
+                'shared' => true,
+            ],
+
+            // String ID + concrete class
+            'payment' => [
+                'class' => App\Services\PaymentService::class,
+                'autowire' => true,
+            ],
         ];
     }
 }
 ```
 
-Register your provider in `config/serviceproviders.php` under `'enabled'` to load it. Extensions/providers can also be managed in `config/extensions.php`.
+Enable the provider in `config/serviceproviders.php` (see [Service providers](#service-providers)).
 
-## Auto-Resolution
+#### Shorthands & references
 
-The container resolves type-hinted dependencies for services it knows about (registered or autowireable):
+- `singleton: true|false` and `bind: true|false` both map to `shared`.
+- Use `'@id'` inside `arguments` and in factory target arrays to reference another service. `'@'` alone is invalid.
 
 ```php
-class OrderService
+return [
+    // Class + arguments (singleton via shorthand)
+    'mail.transport' => [
+        'class' => App\Mail\Transport::class,
+        'arguments' => ['smtp', 587, '@'.Psr\Log\LoggerInterface::class],
+        'singleton' => true,
+        'tags' => ['lazy.request_time'],
+    ],
+
+    // Factory using a service method
+    'blog.client' => [
+        'class' => Vendor\Blog\Client::class,
+        'factory' => ['@http.client', 'forBlog'],
+        'alias' => [Vendor\Blog\Client::class, 'blog.http'],
+        'tags' => [['name' => 'lazy.background', 'priority' => 5]],
+    ],
+];
+```
+
+**Production rules** (enforced by the loader/compiler): no Closure factories, and no arbitrary object instances in `arguments` (scalars/arrays/enums only). Prefer class/method factories.
+
+### Typed `defs()` (core / advanced providers)
+
+For maximum performance and explicit control, providers can extend `Glueful\Container\Providers\BaseServiceProvider` and return typed definitions with `autowire()`, `alias()`, factory, and value helpers:
+
+```php
+use Glueful\Container\Providers\BaseServiceProvider;
+use Glueful\Container\Definition\{FactoryDefinition, ValueDefinition, AliasDefinition};
+
+final class CoreProvider extends BaseServiceProvider
+{
+    public function defs(): array
+    {
+        $defs = [];
+
+        // Autowire singleton
+        $defs[App\Services\HealthService::class] = $this->autowire(App\Services\HealthService::class);
+
+        // Factory definition — the closure receives the container; read config via $this->context
+        $defs['db.pool'] = new FactoryDefinition(
+            'db.pool',
+            fn(\Psr\Container\ContainerInterface $c) =>
+                \Vendor\Db\Pool::fromConfig((array) config($this->context, 'database.pool', []))
+        );
+
+        // String alias for convenience
+        $defs['health'] = $this->alias('health', App\Services\HealthService::class);
+
+        // Value/parameter style service
+        $defs['feature.flags'] = new ValueDefinition('feature.flags', [
+            'beta' => (bool) config($this->context, 'app.beta', false),
+        ]);
+
+        // Tag for lazy warmup (higher priority warms earlier)
+        $this->tag('db.pool', 'lazy.background', 10);
+
+        return $defs;
+    }
+}
+```
+
+## Dependency Injection Patterns
+
+### Constructor injection (recommended)
+
+```php
+class UserService
 {
     public function __construct(
-        private Database $db,
-        private EmailService $email,
-        private LoggerInterface $logger
+        private UserRepository $repository,
+        private LoggerInterface $logger,
+        private string $defaultRole = 'user'
     ) {}
 }
 
-// Container resolves dependencies
-$orderService = app($context, OrderService::class);
-```
-
-### Type-Hinted Parameters
-
-```php
-public function processOrder(
-    Request $request,
-    OrderService $orders,
-    PaymentGateway $gateway
-) {
-    // All parameters auto-injected
+// Registration
+public static function services(): array
+{
+    return [ App\Services\UserService::class => ['autowire' => true] ];
 }
 ```
+
+### Interface dependencies
+
+Bind the interface by aliasing to the implementation entry, then type-hint the interface:
+
+```php
+public static function services(): array
+{
+    return [
+        RedisCache::class => [
+            'autowire' => true,
+            'arguments' => ['@redis'],
+            'alias' => CacheInterface::class,
+        ],
+    ];
+}
+```
+
+### Optional dependencies and config
+
+Use `#[Inject]` for configuration values; use constructor defaults for optional services:
+
+```php
+use Glueful\Container\Autowire\Inject;
+
+class ApiClient
+{
+    public function __construct(
+        #[Inject(param: 'api.base_url')] private string $baseUrl,
+        #[Inject(param: 'api.key')] private string $apiKey,
+        ?LoggerInterface $logger = null,
+    ) {}
+}
+
+public static function services(): array
+{
+    return [ ApiClient::class => ['autowire' => true] ];
+}
+```
+
+> **No contextual binding.** Laravel's `when()->needs()->give()` API is **not** supported. Prefer explicit factories, adapters, or separate service IDs registered via providers.
 
 ## Service Providers
 
-Organize container services with providers (defs + autowire/factory/alias):
+Enable providers via config — both files use a single `enabled` list of plain string FQCNs:
+
+- **App providers**: `config/serviceproviders.php` → `enabled` (always loaded, in order).
+- **Composer-discovered extensions**: `config/extensions.php` → `enabled` (an installed `glueful-extension` does nothing until its provider FQCN is listed; manage with `extensions:enable|disable`).
 
 ```php
-use Glueful\\Container\\Providers\\BaseServiceProvider;
-use Glueful\\Container\\Definition\\FactoryDefinition;
-use Glueful\\Container\\Definition\\AliasDefinition;
+// config/serviceproviders.php
+return [
+    'enabled' => [
+        App\Providers\AppServiceProvider::class,
+    ],
+];
+```
 
-final class CacheServiceProvider extends BaseServiceProvider
+Extension providers extend `Glueful\Extensions\ServiceProvider` and may also implement `register()` / `boot()` lifecycle hooks:
+
+```php
+use Glueful\Extensions\ServiceProvider;
+
+final class PaymentServiceProvider extends ServiceProvider
 {
-    public function defs(): array
+    public static function services(): array { return [/* ... */]; }
+
+    public function register(): void
     {
-        return [
-            // Cache store (factory)
-            'cache.store' => new FactoryDefinition(
-                'cache.store',
-                fn() => \\Glueful\\Cache\\CacheFactory::create()
-            ),
-            // Alias for type-hints
-            \\Glueful\\Cache\\CacheStore::class =>
-                new AliasDefinition(\\Glueful\\Cache\\CacheStore::class, 'cache.store'),
-        ];
+        $this->mergeConfig('payment', require base_path('config/payment.php'));
+    }
+
+    public function boot(): void
+    {
+        // optional: runs after all providers are registered
     }
 }
 ```
 
-### Registering Providers
+## Service Factories
 
-Register application providers via `config/serviceproviders.php` (order preserved). Extensions/providers can also be managed in `config/extensions.php`.
-
-## Contextual Binding
-
-Note: The Laravel-style contextual binding API (`when()->needs()->give()`) is not supported in Glueful’s container. Prefer explicit factories, adapters, or separate service ids registered via providers.
-
-## Practical Examples
-
-### Repository Pattern
+Factories provide dynamic service creation. Prefer class/method factories (they compile for production):
 
 ```php
-interface UserRepositoryInterface
-{
-    public function find($id);
-    public function all();
-}
+use Glueful\Bootstrap\ApplicationContext;
+use Psr\Log\LoggerInterface;
 
-class UserRepository implements UserRepositoryInterface
+class EmailServiceFactory
 {
-    public function __construct(private Database $db) {}
-
-    public function find($id)
+    public static function create(\Psr\Container\ContainerInterface $c): EmailServiceInterface
     {
-        return $this->db->table('users')->find($id);
-    }
-
-    public function all()
-    {
-        return $this->db->table('users')->get();
-    }
-}
-
-// Bind interface to implementation in a provider's defs():
-//   UserRepository::class => $this->autowire(UserRepository::class),
-//   UserRepositoryInterface::class =>
-//       $this->alias(UserRepositoryInterface::class, UserRepository::class),
-
-// Use in controller
-class UserController
-{
-    public function __construct(
-        private UserRepositoryInterface $users
-    ) {}
-
-    public function index()
-    {
-        return Response::success($this->users->all());
-    }
-}
-```
-
-### Service Layer
-
-```php
-class OrderService
-{
-    public function __construct(
-        private Database $db,
-        private PaymentGateway $payment,
-        private EmailService $email,
-        private LoggerInterface $logger
-    ) {}
-
-    public function createOrder(array $data): Order
-    {
-        $this->db->beginTransaction();
-
-        try {
-            // Create order
-            $order = $this->db->table('orders')->create($data);
-
-            // Process payment
-            $this->payment->charge($order->total, $data['payment_method']);
-
-            // Send confirmation
-            $this->email->send($order->email, 'order-confirmation', [
-                'order' => $order,
-            ]);
-
-            $this->db->commit();
-
-            $this->logger->info('Order created', ['order_id' => $order->id]);
-
-            return $order;
-        } catch (\Exception $e) {
-            $this->db->rollback();
-            $this->logger->error('Order failed', ['error' => $e->getMessage()]);
-            throw $e;
-        }
-    }
-}
-
-// Register service via provider autowire (see AppServiceProvider above)
-
-// Use in controller
-class OrderController
-{
-    public function store(Request $request, OrderService $orders)
-    {
-        $order = $orders->createOrder($request->toArray());
-        return Response::created($order);
-    }
-}
-```
-
-### Factory Pattern
-
-```php
-interface NotificationChannelInterface
-{
-    public function send($recipient, $message);
-}
-
-use Psr\Container\ContainerInterface;
-
-class NotificationFactory
-{
-    public function __construct(private ContainerInterface $container) {}
-
-    public function make(string $channel): NotificationChannelInterface
-    {
-        return match ($channel) {
-            'email' => $this->container->get(EmailChannel::class),
-            'sms' => $this->container->get(SmsChannel::class),
-            'push' => $this->container->get(PushChannel::class),
-            default => throw new \InvalidArgumentException("Unknown channel: {$channel}"),
+        $context = $c->get(ApplicationContext::class);
+        $config = config($context, 'mail', []);
+        return match ($config['driver'] ?? 'smtp') {
+            'smtp' => new SmtpEmailService(/* ... */),
+            'log'  => new LogEmailService($c->get(LoggerInterface::class)),
+            default => throw new \InvalidArgumentException('Unsupported mail driver'),
         };
     }
 }
 
-// Register the factory in a provider's defs():
-//   NotificationFactory::class => $this->autowire(NotificationFactory::class),
-
-// Use factory
-class NotificationService
+public static function services(): array
 {
-    public function __construct(private NotificationFactory $factory) {}
-
-    public function notify($user, $message, $channels)
-    {
-        foreach ($channels as $channelName) {
-            $channel = $this->factory->make($channelName);
-            $channel->send($user, $message);
-        }
-    }
+    return [
+        EmailServiceInterface::class => [
+            'factory' => [EmailServiceFactory::class, 'create'],
+            'shared' => true,
+        ],
+    ];
 }
 ```
 
-## Testing with DI
+## Tags & Lazy Warmup
 
-Dependency injection makes testing easy:
+Services may be tagged. Each tag is exposed as a container service of the same name that resolves to an array of instances ordered by `priority` descending — `app($context, 'my.tag')` returns the tagged services.
 
-```php
-use PHPUnit\Framework\TestCase;
+Special lazy warmup tags:
+- `lazy.background` — warmed after the first response returns
+- `lazy.request_time` — warmed during first request processing
 
-class OrderServiceTest extends TestCase
-{
-    public function test_creates_order()
-    {
-        // Mock dependencies
-        $db = $this->createMock(Database::class);
-        $payment = $this->createMock(PaymentGateway::class);
-        $email = $this->createMock(EmailService::class);
-        $logger = $this->createMock(LoggerInterface::class);
-
-        // Set expectations
-        $payment->expects($this->once())
-            ->method('charge')
-            ->with(100.00, 'card_123');
-
-        // Create service with mocks
-        $service = new OrderService($db, $payment, $email, $logger);
-
-        // Test
-        $order = $service->createOrder([
-            'total' => 100.00,
-            'payment_method' => 'card_123',
-        ]);
-
-        $this->assertNotNull($order);
-    }
-}
+```bash
+php glueful di:lazy:status --warm-background   # warm the background set
+php glueful di:lazy:status --warm-request      # warm the request-time set
 ```
 
-### Swap Bindings in Tests
+## Container Compilation
 
-```php
-class UserControllerTest extends TestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
+Glueful compiles service definitions to a compact PHP class in production. It prefers a precompiled container at `storage/cache/container/CompiledContainer.php`; otherwise it attempts best-effort compilation at runtime and falls back to the dynamic container if unsupported definitions are present.
 
-        // Replace real repository with mock
-        container($context)->load([
-            UserRepositoryInterface::class => fn() => new FakeUserRepository(),
-        ]);
-    }
-
-    public function test_lists_users()
-    {
-        $response = $this->get('/api/users');
-        $response->assertStatus(200);
-    }
-}
+```bash
+php glueful di:container:debug --services          # list services
+php glueful di:container:debug My\\Service          # inspect a service
+php glueful di:container:debug --aliases           # show aliases
+php glueful di:container:debug --tags              # show tags
+php glueful di:container:map --format=json         # dump the service map
+php glueful di:container:validate --check-circular # check circular deps
+php glueful di:container:compile --optimize        # compile for production
 ```
 
-## Best Practices
-
-### 1. Depend on Interfaces
-
-```php
-// ✅ Good - depend on interface
-class UserService
-{
-    public function __construct(
-        private CacheInterface $cache,
-        private LoggerInterface $logger
-    ) {}
-}
-
-// ❌ Bad - depend on concrete class
-class UserService
-{
-    public function __construct(
-        private RedisCache $cache,
-        private FileLogger $logger
-    ) {}
-}
-```
-
-### 2. Use Constructor Injection
-
-```php
-// ✅ Good - dependencies clear and testable
-class TaskService
-{
-    public function __construct(
-        private Database $db,
-        private EventDispatcher $events
-    ) {}
-
-    public function create(array $data)
-    {
-        $task = $this->db->table('tasks')->create($data);
-        $this->events->dispatch(new TaskCreated($task));
-        return $task;
-    }
-}
-
-// ❌ Bad - hidden dependencies
-class TaskService
-{
-    public function create(array $data)
-    {
-        $task = db($context)->table('tasks')->create($data);
-        event(new TaskCreated($task));
-        return $task;
-    }
-}
-```
-
-### 3. Keep Constructors Simple
-
-```php
-// ✅ Good - only store dependencies
-public function __construct(
-    private Database $db,
-    private CacheInterface $cache
-) {}
-
-// ❌ Bad - logic in constructor
-public function __construct(Database $db)
-{
-    $this->db = $db;
-    $this->users = $db->table('users')->get(); // Don't do this
-}
-```
-
-### 4. Use Shared Services Wisely
-
-Definitions are shared (one instance) by default. Prefer shared, stateless
-services; be careful sharing stateful objects across a request.
-
-```php
-// In a provider's defs():
-
-// ✅ Good - stateless shared services
-Database::class => $this->autowire(Database::class),            // shared by default
-CacheInterface::class => $this->alias(CacheInterface::class, 'cache.store'),
-
-// ⚠️ Careful - stateful shared services may cause cross-request issues
-ShoppingCart::class => $this->autowire(ShoppingCart::class, shared: false),
-```
+**Compiler support matrix:**
+- Compiled: `AutowireDefinition`, `ValueDefinition`, `TaggedIteratorDefinition`, `AliasDefinition`
+- Not compiled (fallback to runtime): `FactoryDefinition` and any definition involving runtime closures or non-serializable objects
 
 ## Container Methods
 
-The container is PSR-11. You declare services in provider `defs()` (see above);
-at runtime you mostly resolve them.
+The container is PSR-11. You declare services in a provider (see above); at runtime you mostly resolve them.
 
-### Registering at Runtime
+### Registering at runtime
 
-`load()` adds definitions to the active container; values may be a
-`DefinitionInterface`, a `callable` factory, or a plain value. This is handy in
-tests for overriding bindings.
+`load()` adds definitions to the active container; values may be a `DefinitionInterface`, a `callable` factory, or a plain value. This is handy in tests for overriding bindings:
 
 ```php
 container($context)->load([
@@ -473,155 +380,80 @@ $scoped = container($context)->with([
 ]);
 ```
 
-### Resolving
+### Resolving & helpers
 
 ```php
-// Resolve service
-$service = $container->get('service');
+$service = container($context)->get('service');
+if (container($context)->has('service')) { /* ... */ }
 
-// Check if defined/resolvable
-if ($container->has('service')) {
-    //...
-}
-```
-
-### Helper Functions
-
-```php
-// Get container instance
-$container = container($context);
-
-// Resolve service by id or class
-$db = app($context, 'database');
+$db    = app($context, 'database');
 $cache = app($context, \Glueful\Cache\CacheStore::class);
-
-// Convenience helper
 $queue = service($context, \Glueful\Queue\QueueManager::class);
 ```
 
-## Built-in Aliases
+## Built-in Aliases & Core Services
 
-Common container ids and class aliases registered by core providers:
+Common IDs and class aliases registered by core providers (exact registrations vary with environment and enabled extensions — inspect `config/serviceproviders.php`, `config/extensions.php`, and the provider classes for the definitive set):
 
-- 'logger' → \Psr\Log\LoggerInterface
-  - Resolve with: app($context, 'logger') or app($context, \Psr\Log\LoggerInterface::class)
-- 'database' → \Glueful\Database\Connection
-  - Resolve with: app($context, 'database')
-  - Also available: \Glueful\Database\QueryBuilder::class, \Glueful\Database\Schema\Interfaces\SchemaBuilderInterface::class
-- 'cache.store' → \Glueful\Cache\CacheStore
-  - Resolve with: app($context, 'cache.store') or app($context, \Glueful\Cache\CacheStore::class)
-- 'request' → \Symfony\Component\HttpFoundation\Request (from globals)
-- Queue manager (class-based): `\Glueful\Queue\QueueManager` via `service($context, \Glueful\Queue\QueueManager::class)` or `app($context, \Glueful\Queue\QueueManager::class)`
+- `'logger'` → `\Psr\Log\LoggerInterface`
+- `'database'` → `\Glueful\Database\Connection`; also `\Glueful\Database\QueryBuilder::class` and `\Glueful\Database\Schema\Interfaces\SchemaBuilderInterface::class` (factories via the connection)
+- `'cache.store'` → `\Glueful\Cache\CacheStore`
+- `'request'` → `\Symfony\Component\HttpFoundation\Request` (from globals)
+- Auth: `\Glueful\Auth\AuthenticationManager`, `\Glueful\Auth\AuthenticationGuard`, `\Glueful\Auth\TokenManager`
+- Permissions: `\Glueful\Permissions\Gate` (configured from `config/permissions.php`)
+- Queue & scheduling: `\Glueful\Queue\QueueManager`, `\Glueful\Queue\Failed\FailedJobProvider`, `\Glueful\Scheduler\JobScheduler`
+- Middleware aliases: `'auth'`, `'rate_limit'`, `'csrf'`, `'metrics'`, `'tracing'`, etc. (see [Middleware](/advanced/middleware))
 
-Note: Exact registrations can vary with environment and extensions. Check config/serviceproviders.php, config/extensions.php, and the provider classes for full lists.
+Explore `\Glueful\Container\Providers\CoreProvider`, `QueueProvider`, `SecurityProvider`, `HttpClientProvider`, and friends for the full list.
 
-### More Core Services and Aliases
+## Testing with DI
 
-These are commonly available from CoreProvider and related providers:
-
-- Logging
-  - 'logger' (Factory) and alias to \Psr\Log\LoggerInterface
-
-- Database
-  - 'database' → \Glueful\Database\Connection
-  - \Glueful\Database\QueryBuilder::class (factory via connection)
-  - \Glueful\Database\Schema\Interfaces\SchemaBuilderInterface::class (factory via connection)
-
-- Cache
-  - 'cache.store' (Factory) and alias to \Glueful\Cache\CacheStore
-
-- HTTP/Request
-  - 'request' → \Symfony\Component\HttpFoundation\Request
-
-- Auth (selected examples)
-  - \Glueful\Auth\AuthenticationManager (autowire)
-  - \Glueful\Auth\AuthenticationGuard (factory using AuthenticationService)
-  - \Glueful\Auth\TokenManager (factory + initializer)
-
-- Permissions
-  - \Glueful\Permissions\Gate (factory configured from config/permissions.php)
-
-- Queue & Scheduling
-  - \Glueful\Queue\QueueManager (autowire)
-  - \Glueful\Queue\Failed\FailedJobProvider (autowire)
-  - \Glueful\Scheduler\JobScheduler (autowire)
-
-This list focuses on stable, commonly used services. Explore \Glueful\Container\Providers\CoreProvider, QueueProvider, SecurityProvider, SerializerProvider, HttpClientProvider, TasksProvider, etc., for the definitive set.
-
-## Custom AppServiceProvider (Quick Start)
-
-1) Create a provider (e.g., `app/Providers/AppServiceProvider.php`):
+**Unit tests** — construct services directly with mock dependencies:
 
 ```php
-namespace App\Providers;
+$payment = $this->createMock(PaymentGateway::class);
+$payment->expects($this->once())->method('charge')->with(100.00, 'card_123');
 
-use Glueful\Container\Providers\BaseServiceProvider;
-use Glueful\Container\Definition\FactoryDefinition;
-use Glueful\Container\Definition\AliasDefinition;
-
-final class AppServiceProvider extends BaseServiceProvider
-{
-    public function defs(): array
-    {
-        return [
-            // Autowired service
-            App\Services\ReportService::class => $this->autowire(App\Services\ReportService::class),
-
-            // Factory-built service with config
-            'reports.exporter' => new FactoryDefinition(
-                'reports.exporter',
-                fn() => new App\Services\Exporter(config($this->getContext(), 'app.urls'))
-            ),
-
-            // Alias a type-hint to an id
-            App\Contracts\ExporterInterface::class =>
-                new AliasDefinition(App\Contracts\ExporterInterface::class, 'reports.exporter'),
-        ];
-    }
-}
+$service = new OrderService($db, $payment, $email, $logger);
+$order = $service->createOrder(['total' => 100.00, 'payment_method' => 'card_123']);
 ```
 
-2) Enable it in `config/serviceproviders.php`:
+**Integration tests** — boot the framework to build the real container, then resolve services and override bindings:
 
 ```php
-return [
-    'enabled' => [
-        App\Providers\AppServiceProvider::class,
-    ],
-];
+// Override a binding for the test
+container($context)->load([
+    UserRepositoryInterface::class => fn() => new FakeUserRepository(),
+]);
 ```
 
-3) Resolve anywhere:
+See [Testing](/advanced/testing) for the full test harness.
 
-```php
-$reports = app($context, App\Services\ReportService::class);
-$exporter = app($context, App\Contracts\ExporterInterface::class); // resolves to 'reports.exporter'
-```
+## Best Practices
+
+- **Depend on interfaces**, not concrete classes — bind the interface via an alias and type-hint it.
+- **Use constructor injection**; avoid pulling from the container inside services (hidden dependencies).
+- **Keep constructors simple** — only store dependencies, no work.
+- **Inject config with `#[Inject(param: 'key')]`** instead of reading config in method bodies.
+- Definitions are **shared (one instance) by default** — prefer shared, stateless services; pass `shared: false` (or `'shared' => false`) for stateful ones.
+- Use **tags** for batch operations and to defer heavy warmups to lazy groups.
 
 ## Troubleshooting
 
-**Class not found?**
-- Check namespace is correct
-- Ensure class is autoloaded
-- Verify binding is registered
+**Missing service** — guard with `has_service(App\Services\UserService::class)` and confirm the provider is in `config/serviceproviders.php`.
 
-**Circular dependency?**
-- Review constructor dependencies
-- Use setter injection if needed
-- Refactor to remove circular reference
+**Circular dependency** — `Glueful\Container\Exception\ContainerException: Circular dependency detected: A -> B -> A`. Break the cycle: extract an interface, use a factory, or invert one dependency.
 
-**Cannot instantiate interface?**
-- Bind interface to implementation
-- Check binding is registered before use
+**Cannot instantiate interface** — bind the interface to an implementation via an alias before use.
 
-**Wrong instance injected?**
-- Check binding order (last binding wins)
-- Verify contextual binding if used
-- Clear container cache if applicable
+**Debugging tools:**
+- `php glueful di:container:debug` — inspect services, aliases, tags, parameters
+- `php glueful di:container:validate` — validate graphs and circular refs
+- `php glueful di:container:compile` — precompile for production
 
 ## Next Steps
 
-- [Service Providers](/advanced/service-providers) - Organize bindings
-- [Repositories](/advanced/repositories) - Repository pattern
-- [Testing](/advanced/testing) - Test with DI
-- [Middleware](/advanced/middleware) - DI in middleware
+- [Service Providers](/advanced/service-providers) — organize bindings
+- [Repositories](/advanced/repositories) — repository pattern
+- [Testing](/advanced/testing) — test with DI
+- [Middleware](/advanced/middleware) — DI in middleware

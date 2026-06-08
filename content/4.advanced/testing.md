@@ -30,13 +30,21 @@ tests/
 └── bootstrap.php   # Test bootstrap
 ```
 
-## Testing Helpers
+## The Base TestCase
 
-- `app($context, Service::class)` and `service($context, Service::class)` resolve services from the DI container in tests.
-- `container($context)` returns the PSR‑11 container (useful for constructing Router).
-- Extend `Glueful\Testing\TestCase` to bootstrap a minimal application per test class.
+Extend `Glueful\Testing\TestCase` to bootstrap a real application + container per test class. It boots the framework in the `testing` environment (in-memory SQLite, a mock logger, no file/DB writes — configured by `tests/bootstrap.php` and `phpunit.xml`) and clears global framework state after each test. It exposes:
 
-Example using the base test case:
+| Method | Purpose |
+| ------ | ------- |
+| `$this->get(Service::class)` | Resolve a service from the bootstrapped container |
+| `$this->getContainer()` | The PSR-11 container (e.g. to construct a `Router`) |
+| `$this->has(id)` | Whether a service is registered |
+| `$this->app()` | The `Glueful\Application` instance |
+| `$this->actingWithPermissions([...], $uuid)` | Run as a user granted the given permissions; returns a token |
+| `$this->actingWithRoles([...], $uuid)` | Run as a user with the given roles; returns a token |
+| `$this->refreshApplication()` | Rebuild a fresh application instance |
+
+> Inside a `TestCase`, resolve services with `$this->get(...)` — there is no `$context` variable in a test method. The `app($context, ...)` / `container($context)` helpers are for application code, where a context is in scope.
 
 ```php
 use Glueful\Testing\TestCase;
@@ -48,15 +56,14 @@ final class ArticlesRepositoryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->repoFactory = app($context, \Glueful\Repository\RepositoryFactory::class);
-        // Optional: start transaction
-        app($context, 'database')->getPDO()->beginTransaction();
+        $this->repoFactory = $this->get(\Glueful\Repository\RepositoryFactory::class);
+        // Optional: wrap each test in a transaction
+        $this->get('database')->getPDO()->beginTransaction();
     }
 
     protected function tearDown(): void
     {
-        // Optional: rollback
-        app($context, 'database')->getPDO()->rollBack();
+        $this->get('database')->getPDO()->rollBack();
         parent::tearDown();
     }
 
@@ -117,7 +124,7 @@ Test multiple components working together:
 ```php
 namespace Tests\Integration;
 
-use PHPUnit\Framework\TestCase;
+use Glueful\Testing\TestCase;
 
 class UserRepositoryTest extends TestCase
 {
@@ -126,8 +133,9 @@ class UserRepositoryTest extends TestCase
 
     protected function setUp(): void
     {
-        // Setup test database
-        $this->db = app($context, 'database');
+        parent::setUp();
+        // Resolve the bootstrapped test database
+        $this->db = $this->get('database');
         $this->userRepo = new UserRepository($this->db);
 
         // Start transaction
@@ -181,7 +189,7 @@ Test routes end‑to‑end using the Router and Symfony Request/Response:
 ```php
 namespace Tests\Feature;
 
-use PHPUnit\Framework\TestCase;
+use Glueful\Testing\TestCase;
 use Glueful\Routing\Router;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -189,7 +197,7 @@ final class AuthenticationTest extends TestCase
 {
     public function test_user_can_register(): void
     {
-        $router = new Router(container($context)); // or construct with a minimal PSR‑11 container
+        $router = new Router($this->getContainer()); // or construct with a minimal PSR‑11 container
         // register routes here or load your app routes
 
         $request = Request::create('/auth/register', 'POST', [
@@ -216,7 +224,7 @@ use Symfony\Component\HttpFoundation\Request;
 
 public function test_returns_json_payload(): void
 {
-    $router = new Router(container($context));
+    $router = new Router($this->getContainer());
 
     // Minimal route for test
     $router->get('/ping', fn() => \Glueful\Http\Response::success(['pong' => true]));
@@ -282,7 +290,7 @@ public function test_send_welcome_email_job(): void
 public function test_user_registered_event_is_dispatched(): void
 {
     // Dispatch a framework event via the EventService
-    app($context, \Glueful\Events\EventService::class)
+    $this->get(\Glueful\Events\EventService::class)
         ->dispatch(new \App\Events\UserRegisteredEvent($userData));
 
     // Assert side effects triggered by your listener(s)

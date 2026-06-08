@@ -398,31 +398,7 @@ Add to crontab:
 
 ## Security
 
-### Firewall
-
-```bash
-sudo ufw allow 22/tcp
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
-```
-
-### Disable Unnecessary Services
-
-```bash
-sudo systemctl disable apache2
-sudo systemctl stop apache2
-```
-
-### Secure PHP
-
-```ini
-; Disable dangerous functions
-disable_functions = exec,passthru,shell_exec,system,proc_open,popen
-
-; Hide PHP version
-expose_php = Off
-```
+Host hardening — firewall (`ufw`) rules, disabling unnecessary services, `disable_functions`, `expose_php`, and the rest of the production security surface — is covered in one place: **[Security Hardening](/deployment/security-hardening)**. Apply that checklist before exposing the server.
 
 ## Performance Optimization
 
