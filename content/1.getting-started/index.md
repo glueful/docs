@@ -43,7 +43,6 @@ From here, follow the dedicated guides:
 
 - **[Installation](/getting-started/installation)** — requirements, skeleton vs. framework-only, first run
 - **[Quickstart](/getting-started/quickstart)** — add your first `v1` route returning `Response::success(...)`
-- **[Build a First API](/getting-started/first-api)** — a full controller + routes + `curl` walkthrough
 
 ## Project Structure
 
