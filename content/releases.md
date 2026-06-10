@@ -5,6 +5,49 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.54.0 - Okab
+**Released: June 10, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+A coordinated release in three movements: a **container-precedence fix** that makes every "core default + extension override" seam genuinely overridable; the new **`Glueful\Entitlements` core seam** (contract-only — commercial capability gates for the forthcoming `glueful/subscriptions`); and a **storage driver registry** with the `s3`/`gcs`/`azure` factories **extracted to first-party provider packs** (breaking — lean core, same playbook as 1.52). `glueful/storage-s3` ships alongside (covers R2/MinIO/Spaces/Wasabi via presets); gcs/azure packs follow shortly.
+::
+
+### Key Highlights
+
+::card
+#title
+Extension definitions now override core defaults (container precedence fix)
+#description
+`ContainerFactory` previously merged extension service definitions with `+=`, silently dropping any extension binding that collided with a core id — meaning `UserProviderInterface -> NullUserProvider` and every other "core default + extension override" seam was un-overridable through the normal provider path. Extension definitions now merge **over** core (`array_replace`), with `ApplicationContext` re-pinned so a framework-managed key can never be clobbered. This is the fix that makes the entitlement seam and storage registry below actually pluggable. **Deploy note:** regenerate the precompiled container (`php glueful di:container:compile --force`) — an artifact compiled before 1.54.0 still encodes the old precedence.
+::
+
+::card
+#title
+Entitlement seam (`Glueful\Entitlements`) — contract only
+#description
+A new core extension point for **commercial capability gates**: `EntitlementCheckerInterface` (`allows()` / `limit()`, explicit tenant uuid) with an absent-allow `NullEntitlementChecker` default bound in `CoreProvider`. Entitlements are paywall gates, not security boundaries — absent must never lock an app out (the opposite of authorization, which fails closed). Core ships the contract only: no consumer, no tenant/plan awareness. The forthcoming `glueful/subscriptions` binds the real checker over the default and provides the first consumer (entitlement-driven rate-limit tiers).
+::
+
+::card
+#title
+Storage driver registry + provider packs (breaking)
+#description
+Disk drivers now resolve through a registry: `StorageDriverFactoryInterface` (identity, construction, `available()`, `features()`) with optional `NativeSignedUrlProviderInterface` / `StorageHealthCheckInterface` capability contracts, registered via the `storage.driver_factory` container tag. **Core keeps only `local`/`memory`** — `s3`/`gcs`/`azure` are extracted to first-party packs; a missing driver fails fast with an exception naming the package to install. Also new: `storage:test [disk]` diagnostics (read-only by default, `--write` opt-in, never prints secrets) and an optional, default-off, visibility-scoped `native_url` field in the blob API for direct provider URLs.
+::
+
+### Migration Notes
+
+- **Cloud storage disks need their provider pack**: `composer require glueful/storage-s3` for `s3` disks (its presets cover R2, MinIO, Spaces, Wasabi). `gcs`/`azure` users should hold the upgrade until those packs publish (following shortly). `local`/`memory`-only apps need nothing.
+- **On deploy:** `php glueful commands:cache` (new `storage:test` command) and `php glueful di:container:compile --force` (the precedence fix only takes effect in a freshly compiled container).
+- **Extension authors:** your `services()` definitions now genuinely override core defaults for the same id (previously dropped silently). Audit for unintentional core-id collisions.
+- Optional env: `UPLOADS_NATIVE_MAX_PRIVATE_TTL` (default 900). No core migrations; no required env changes.
+
+```bash
+composer update glueful/framework
+composer require glueful/storage-s3   # only if a disk uses driver: s3 / R2 / MinIO / Spaces / Wasabi
+```
+
 ## v1.53.0 - Nunki
 **Released: June 8, 2026**
 
