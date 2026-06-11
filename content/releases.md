@@ -5,6 +5,99 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.55.0 - Peacock
+**Released: June 11, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+A **security & correctness hardening** release: a focused pass over routing/permissions, auth, storage paths, the database write-path, deserialization, and the container/extension boundary, from a five-part framework review. Mostly bug fixes, but several change behavior or defaults (permission attributes now enforce; API-key query param off by default; signed URLs fail closed without a secret; extensions fail loud at boot) and one adds a feature (range UPDATE/DELETE predicates) -- so it ships as a minor. **Read the Migration Notes before upgrading.**
+::
+
+### Key Highlights
+
+::card
+#title
+Route permission attributes now actually enforce
+#description
+`#[RequiresPermission]` / `#[RequiresRole]` were silently unenforced -- the Router never populated the `handler_meta` the gate middleware reads, and the `gate_permissions` middleware was never auto-attached. Both are fixed: the Router derives `handler_meta` after route match, and `AttributeRouteLoader` auto-attaches the gate for attributes on the **method or the handler class**. **Behavioral:** a route annotated with a permission attribute but running without a permission provider bound now returns **403** instead of allowing the request.
+::
+
+::card
+#title
+Auth & storage hardening
+#description
+`#[RequireScope]` no longer passes for non-API-key (JWT) requests; the unverified-JWT claims fallback is removed (claims come only from signature-verified tokens); the `?api_key=` query string is **off by default** (set `security.api_keys.allow_query_param` to re-enable). Signed URLs **fail closed** when no signing secret is configured. All `FlysystemStorage` writes/reads/deletes route through PathGuard, so a traversal/absolute path can no longer reach the disk unvalidated.
+::
+
+::card
+#title
+Database integrity + injection hardening
+#description
+Soft-delete column cache is namespaced per connection (no cross-database poisoning of the soft-vs-hard delete decision); pooled connections roll back open transactions and reset session state before reuse; duplicate-column WHERE predicates on UPDATE/DELETE now **both apply** (range support) instead of silently collapsing to one (over-deletion). JOIN/HAVING/ORM-`has()` operators are allow-listed, JSON paths grammar-validated, and `wrapIdentifier()` doubles embedded quotes.
+::
+
+::card
+#title
+Container/extension boundary fails loud
+#description
+An extension whose `services()`/`defs()`/`tags()` throws is no longer silently dropped: it rethrows at boot outside production (recorded + WARNING-logged in production via `ContainerFactory::failedProviders()`), and a service bound to a bare interface/abstract is rejected at **load time** instead of fataling at first resolution. Closes the recurring extension-wiring bug class.
+::
+
+### Migration Notes
+
+- **Permission attributes now enforce.** Routes using `#[RequiresPermission]`/`#[RequiresRole]` without a permission provider bound will now 403. Bind a provider (e.g. `glueful/aegis`), grant the permissions, or remove the attribute from open routes.
+- **API key query string is off by default.** Move clients to the `X-API-Key` header, or set `security.api_keys.allow_query_param = true`.
+- **Signed URLs require a secret.** Configure `uploads.signed_urls.secret` / `SIGNED_URL_SECRET` (or `app.key` / `APP_KEY`) -- a distinct value per environment. Generation/validation throws otherwise.
+- **Extensions fail loud at boot (non-prod).** A previously-silent extension wiring failure will now surface; fix the binding (a bare interface id needs `['class' => Concrete::class]` or a factory).
+- New optional config keys `security.api_keys.allow_query_param` / `security.csrf.rate_limit_fail_closed` (both default `false`). No new env vars, no migrations.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.54.0 - Okab
+**Released: June 10, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+A coordinated release in three movements: a **container-precedence fix** that makes every "core default + extension override" seam genuinely overridable; the new **`Glueful\Entitlements` core seam** (contract-only — commercial capability gates for the forthcoming `glueful/subscriptions`); and a **storage driver registry** with the `s3`/`gcs`/`azure` factories **extracted to first-party provider packs** (breaking — lean core, same playbook as 1.52). `glueful/storage-s3` ships alongside (covers R2/MinIO/Spaces/Wasabi via presets); gcs/azure packs follow shortly.
+::
+
+### Key Highlights
+
+::card
+#title
+Extension definitions now override core defaults (container precedence fix)
+#description
+`ContainerFactory` previously merged extension service definitions with `+=`, silently dropping any extension binding that collided with a core id — meaning `UserProviderInterface -> NullUserProvider` and every other "core default + extension override" seam was un-overridable through the normal provider path. Extension definitions now merge **over** core (`array_replace`), with `ApplicationContext` re-pinned so a framework-managed key can never be clobbered. This is the fix that makes the entitlement seam and storage registry below actually pluggable. **Deploy note:** regenerate the precompiled container (`php glueful di:container:compile --force`) — an artifact compiled before 1.54.0 still encodes the old precedence.
+::
+
+::card
+#title
+Entitlement seam (`Glueful\Entitlements`) — contract only
+#description
+A new core extension point for **commercial capability gates**: `EntitlementCheckerInterface` (`allows()` / `limit()`, explicit tenant uuid) with an absent-allow `NullEntitlementChecker` default bound in `CoreProvider`. Entitlements are paywall gates, not security boundaries — absent must never lock an app out (the opposite of authorization, which fails closed). Core ships the contract only: no consumer, no tenant/plan awareness. The forthcoming `glueful/subscriptions` binds the real checker over the default and provides the first consumer (entitlement-driven rate-limit tiers).
+::
+
+::card
+#title
+Storage driver registry + provider packs (breaking)
+#description
+Disk drivers now resolve through a registry: `StorageDriverFactoryInterface` (identity, construction, `available()`, `features()`) with optional `NativeSignedUrlProviderInterface` / `StorageHealthCheckInterface` capability contracts, registered via the `storage.driver_factory` container tag. **Core keeps only `local`/`memory`** — `s3`/`gcs`/`azure` are extracted to first-party packs; a missing driver fails fast with an exception naming the package to install. Also new: `storage:test [disk]` diagnostics (read-only by default, `--write` opt-in, never prints secrets) and an optional, default-off, visibility-scoped `native_url` field in the blob API for direct provider URLs.
+::
+
+### Migration Notes
+
+- **Cloud storage disks need their provider pack**: `composer require glueful/storage-s3` for `s3` disks (its presets cover R2, MinIO, Spaces, Wasabi). `gcs`/`azure` users should hold the upgrade until those packs publish (following shortly). `local`/`memory`-only apps need nothing.
+- **On deploy:** `php glueful commands:cache` (new `storage:test` command) and `php glueful di:container:compile --force` (the precedence fix only takes effect in a freshly compiled container).
+- **Extension authors:** your `services()` definitions now genuinely override core defaults for the same id (previously dropped silently). Audit for unintentional core-id collisions.
+- Optional env: `UPLOADS_NATIVE_MAX_PRIVATE_TTL` (default 900). No core migrations; no required env changes.
+
+```bash
+composer update glueful/framework
+composer require glueful/storage-s3   # only if a disk uses driver: s3 / R2 / MinIO / Spaces / Wasabi
+```
+
 ## v1.53.0 - Nunki
 **Released: June 8, 2026**
 
