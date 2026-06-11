@@ -5,6 +5,56 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.55.0 - Peacock
+**Released: June 11, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+A **security & correctness hardening** release: a focused pass over routing/permissions, auth, storage paths, the database write-path, deserialization, and the container/extension boundary, from a five-part framework review. Mostly bug fixes, but several change behavior or defaults (permission attributes now enforce; API-key query param off by default; signed URLs fail closed without a secret; extensions fail loud at boot) and one adds a feature (range UPDATE/DELETE predicates) -- so it ships as a minor. **Read the Migration Notes before upgrading.**
+::
+
+### Key Highlights
+
+::card
+#title
+Route permission attributes now actually enforce
+#description
+`#[RequiresPermission]` / `#[RequiresRole]` were silently unenforced -- the Router never populated the `handler_meta` the gate middleware reads, and the `gate_permissions` middleware was never auto-attached. Both are fixed: the Router derives `handler_meta` after route match, and `AttributeRouteLoader` auto-attaches the gate for attributes on the **method or the handler class**. **Behavioral:** a route annotated with a permission attribute but running without a permission provider bound now returns **403** instead of allowing the request.
+::
+
+::card
+#title
+Auth & storage hardening
+#description
+`#[RequireScope]` no longer passes for non-API-key (JWT) requests; the unverified-JWT claims fallback is removed (claims come only from signature-verified tokens); the `?api_key=` query string is **off by default** (set `security.api_keys.allow_query_param` to re-enable). Signed URLs **fail closed** when no signing secret is configured. All `FlysystemStorage` writes/reads/deletes route through PathGuard, so a traversal/absolute path can no longer reach the disk unvalidated.
+::
+
+::card
+#title
+Database integrity + injection hardening
+#description
+Soft-delete column cache is namespaced per connection (no cross-database poisoning of the soft-vs-hard delete decision); pooled connections roll back open transactions and reset session state before reuse; duplicate-column WHERE predicates on UPDATE/DELETE now **both apply** (range support) instead of silently collapsing to one (over-deletion). JOIN/HAVING/ORM-`has()` operators are allow-listed, JSON paths grammar-validated, and `wrapIdentifier()` doubles embedded quotes.
+::
+
+::card
+#title
+Container/extension boundary fails loud
+#description
+An extension whose `services()`/`defs()`/`tags()` throws is no longer silently dropped: it rethrows at boot outside production (recorded + WARNING-logged in production via `ContainerFactory::failedProviders()`), and a service bound to a bare interface/abstract is rejected at **load time** instead of fataling at first resolution. Closes the recurring extension-wiring bug class.
+::
+
+### Migration Notes
+
+- **Permission attributes now enforce.** Routes using `#[RequiresPermission]`/`#[RequiresRole]` without a permission provider bound will now 403. Bind a provider (e.g. `glueful/aegis`), grant the permissions, or remove the attribute from open routes.
+- **API key query string is off by default.** Move clients to the `X-API-Key` header, or set `security.api_keys.allow_query_param = true`.
+- **Signed URLs require a secret.** Configure `uploads.signed_urls.secret` / `SIGNED_URL_SECRET` (or `app.key` / `APP_KEY`) -- a distinct value per environment. Generation/validation throws otherwise.
+- **Extensions fail loud at boot (non-prod).** A previously-silent extension wiring failure will now surface; fix the binding (a bare interface id needs `['class' => Concrete::class]` or a factory).
+- New optional config keys `security.api_keys.allow_query_param` / `security.csrf.rate_limit_fail_closed` (both default `false`). No new env vars, no migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.54.0 - Okab
 **Released: June 10, 2026**
 
