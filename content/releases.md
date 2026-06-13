@@ -5,6 +5,50 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.56.0 - Rastaban
+**Released: June 13, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+The **second wave** of the June 2026 security & correctness hardening pass: queue/scheduler payload signing, SSRF-safe HTTP with validated-DNS pinning, unified sensitive-parameter redaction, fail-closed CORS/image defaults, and JWT temporal-claim enforcement. Almost entirely fixes, but several change defaults or add config/env vars (CORS credentials off by default; remote image fetch opt-in; queue/scheduler payloads signed by default; JWT requires `exp`) -- so it ships as a minor. **Read the Migration Notes before upgrading.**
+::
+
+### Key Highlights
+
+::card
+#title
+Queue & scheduler payloads are signed and gated
+#description
+Persisted database/Redis queue payloads and scheduled-job envelopes are HMAC-signed (handler class + parameters, plus the row's name and cron schedule) and verified before a handler is resolved or run. Stored handler classes must now implement `JobInterface` to be instantiated -- writing a class name into a queue/scheduler backend can no longer trigger an arbitrary constructor. Signing is on by default (`QUEUE_PAYLOAD_SIGNING` / `QUEUE_REQUIRE_SIGNED_PAYLOADS`) and inert without an `APP_KEY`.
+::
+
+::card
+#title
+SSRF-safe HTTP + unified redaction
+#description
+`Client::safeRequest()` / `safeFetch()` / `safeRequestAsync()` validate the scheme, resolve, and public-IP-pin **every** redirect hop, and pin the validated DNS result to reduce rebinding exposure; webhook delivery and external health checks use the safe path. Sensitive-parameter redaction is unified in one `SensitiveParamRedactor` across request/response logging, exception reporting, auth access logs, and the security-violation listener, and rate-limit cache keys now hash IP/identifier material.
+::
+
+::card
+#title
+Fail-closed defaults + JWT temporal claims
+#description
+The standalone `Glueful\Http\Cors` handler no longer defaults open, and `CORS_SUPPORTS_CREDENTIALS` now defaults to `false` (wildcard origin + credentials is refused at emit time). `ImageSecurityValidator` defaults to an empty allow-list with external URLs disabled. `JWTService::decode()` now requires bounded `exp` / `nbf` / `iat`, so a token minted without an expiry no longer validates. File encryption moves to chunked authenticated streaming and rejects all-zero keys.
+::
+
+### Migration Notes
+
+- **CORS fails closed.** The standalone handler no longer allows all origins by default, and `CORS_SUPPORTS_CREDENTIALS` now defaults to `false`. Set `CORS_ALLOWED_ORIGINS` (and `CORS_SUPPORTS_CREDENTIALS=true` only if you genuinely need credentialed cross-origin requests).
+- **Remote image fetching is opt-in.** With no `image.security` config, external image URLs are disabled and the allow-list is empty. Configure `image.security.allowed_domains` or install/configure `glueful/media`.
+- **Queue & scheduler payloads are signed by default.** `QUEUE_PAYLOAD_SIGNING` / `QUEUE_REQUIRE_SIGNED_PAYLOADS` default on (inert without `APP_KEY`). To drain legacy unsigned rows, temporarily set `QUEUE_REQUIRE_SIGNED_PAYLOADS=false`. Custom queue/scheduler handlers must implement `JobInterface`.
+- **JWT requires `exp`.** Tokens without `exp` (or with expired/non-numeric `exp`, future `nbf`/`iat`) are rejected.
+- **Memcached cache format changed.** Flush the cache when upgrading a Memcached-backed deployment -- raw legacy string values that aren't valid serialized data now throw on read.
+- **Set `TRUSTED_PROXIES`** behind a load balancer so client IPs resolve correctly. New optional `http.safe_fetch.max_redirects` (default `3`). No migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.55.0 - Peacock
 **Released: June 11, 2026**
 
