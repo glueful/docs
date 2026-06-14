@@ -5,6 +5,49 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.57.0 - Sargas
+**Released: June 14, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-api"}
+#description
+A **types-first I/O** convention and a **single code-first OpenAPI generator**. Controllers can now express request/response shapes as typed DTOs that drive *both* the runtime envelope and the generated spec; the OpenAPI generator is consolidated to the code-first `reflect` engine and the legacy docblock-parsing `comments` generator is removed. Mostly additive, but it ships as a minor for one breaking change. **If you used the `comments` OpenAPI generator or documented routes with `@route`/`@response` docblocks, read the Migration Notes.**
+::
+
+### Key Highlights
+
+::card
+#title
+Types-first request & response DTOs
+#description
+A controller parameter implementing `RequestData` is hydrated + validated from the JSON body (`#[Rule]` constraints, auto-`422`); a method returning a `ResponseData` is auto-enveloped into `{success, message, data}` (`#[ResponseStatus]` sets the status, `HasResponseMessage` supplies a custom message). `CollectionResponse`/`PaginatedResponse` cover list endpoints, and a returned `JsonResource`/`ResourceCollection`/`PaginatedResourceResponse` is auto-normalized through its own `toResponse()`. One typed class drives both the runtime payload and the OpenAPI schema. A new `php glueful scaffold:dto` command scaffolds request/response DTOs.
+::
+
+::card
+#title
+One code-first OpenAPI generator
+#description
+The legacy docblock-parsing `comments` generator is removed; the code-first `reflect` generator — which derives paths, params, per-route security, and request/response schemas from the live route table + types — is now the only generator. A minimal typed attribute surface fills the gaps types can't express: `#[ApiOperation]` (summary/description/tags), `#[QueryParam]` (arbitrary query params), `#[ApiRequestBody]` (multipart + doc-only JSON DTO-class bodies), and `#[ApiResponse]` with a `body:` mode for binary/text responses. `reflect ⊇ comment` was proven over the live route table before the comment parser was deleted.
+::
+
+::card
+#title
+Reference adoption across core controllers
+#description
+The framework's own auth, upload, resource, and health controllers adopt the convention as worked examples (each behavior-preserving, characterization-tested) — and document the convention's boundaries: where typed DTOs apply, and where manual responses remain (polymorphic bodies, multipart input, binary/stream serving, response-level headers/caching).
+::
+
+### Migration Notes
+
+- The comment-based OpenAPI generator has been **removed**; `reflect` is now the only OpenAPI generator.
+- `documentation.generator` and `API_DOCS_GENERATOR` are no longer supported — remove them from config/env (the value is ignored).
+- Route `@route`, `@summary`, `@requestBody`, `@response`, and related docblock annotations are **no longer read**.
+- Document endpoints with typed DTOs plus `#[ApiOperation]`, `#[QueryParam]`, `#[ApiRequestBody]`, and `#[ApiResponse]`. See the OpenAPI reflect guide.
+- No migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.56.0 - Rastaban
 **Released: June 13, 2026**
 
