@@ -5,6 +5,45 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.58.1 - Thuban
+**Released: June 15, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-api"}
+#description
+**OpenAPI response-schema fidelity.** Three additive reflect-generator fixes so typed `ResponseData` DTOs document response bodies accurately — the success envelope marks its keys `required`, and `#[ArrayOf]` now resolves array `items` in response mode. **Fully additive:** no behavior change for request DTOs, no config/env changes, nothing to migrate.
+::
+
+### Key Highlights
+
+::card
+#title
+#[ArrayOf] now works on response DTOs
+#description
+`ClassSchemaReflector` resolves array `items` from `#[ArrayOf]` for `ResponseData` DTOs too — previously response mode read only the `@var Foo[]` docblock. `#[ArrayOf]` is now the consistent array element-type source for both request and response DTOs. To support response-DTO item types, the `#[ArrayOf]` attribute is relaxed to target any class (it no longer requires the target to implement `RequestData`).
+::
+
+::card
+#title
+Success envelope marks its keys required
+#description
+The reflected single-object success envelope now emits `required: [success, message, data]`, matching the flat-pagination envelope which already did. SDK generators and validators get an accurate contract for the always-present envelope keys.
+::
+
+::card
+#title
+Request-DTO safety preserved
+#description
+Relaxing `#[ArrayOf]` would have dropped the guarantee that a **request** DTO's array elements implement `RequestData`. That constraint moves into `RequestDataHydrator`, where it now fails loud (`LogicException`) alongside the other v2 structural-misuse guards (dual-source, nested-source). Request-DTO behavior is unchanged.
+::
+
+### Migration Notes
+
+- Nothing to migrate. Fully additive — no behavior change for request DTOs, no config or env changes.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.58.0 - Thuban
 **Released: June 15, 2026**
 
