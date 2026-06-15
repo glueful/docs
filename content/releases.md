@@ -5,6 +5,45 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.58.0 - Thuban
+**Released: June 15, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-forms"}
+#description
+**Typed request-DTO hydration v2.** `RequestData` DTOs now handle arrays, nested DTOs, and path/query inputs — closing the v1 "flat-scalars, JSON-body-only" boundaries from 1.57.0. **Fully additive:** flat scalar v1 DTOs are byte-identical, there are no config or env changes, and nothing to migrate.
+::
+
+### Key Highlights
+
+::card
+#title
+Arrays & nested DTOs — no more TypeError sharp edge
+#description
+A `RequestData` field typed `array` can declare its element type with `#[ArrayOf('int')]` (scalars) or `#[ArrayOf(FieldData::class)]` (nested DTOs). Nested DTOs hydrate recursively and validate per element, and **every failure is a clean `422`** with dot-path error keys (`schema.0.name`) — never a `TypeError`/500. Recursion is depth-capped, and `#[ArrayOf]` is the sole element-type source for request DTOs (`@var` is not read).
+::
+
+::card
+#title
+Path & query sources via #[FromRoute] / #[FromQuery]
+#description
+A DTO field can be sourced from the route path or the query string — not only the JSON body — with explicit `#[FromRoute]`/`#[FromQuery]` attributes (body is the default; one source per field, no precedence guesswork). The OpenAPI reflect generator emits them as `path`/`query` parameters and excludes them from the request-body schema. Misuse — both attributes on one field, a source attribute on a nested DTO, or a `#[FromRoute]` with no matching `{placeholder}` — fails loud, including at spec generation.
+::
+
+::card
+#title
+Cross-field validation & custom rules
+#description
+Implement `ValidatesSelf` for a post-hydration `validate()` hook covering cross-field invariants (e.g. "publishedAt required when status=published"), merged into the same `422`. Register reusable custom rules through a container-bound `RuleRegistry` and use them by name in `#[Rule('required|reserved_username')]`; built-in rule names are always reserved.
+::
+
+### Migration Notes
+
+- Nothing to migrate. Fully additive — existing flat-scalar `RequestData` DTOs behave identically, and there are no config or env changes.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.57.0 - Sargas
 **Released: June 14, 2026**
 
