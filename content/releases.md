@@ -5,6 +5,46 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.60.0 - Vega
+**Released: June 19, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-database-cog"}
+#description
+**Engine-agnostic installer + first-run setup seams.** `php glueful install` now configures and migrates **any** database engine (MySQL/PostgreSQL/SQLite) — not just SQLite — and a new `Glueful\Installer\` toolkit lets an app drive first-run setup from CLI **or** a UI without shelling out. **Additive** (no breaking API changes, no new env, no migrations) — but `install` is now interactive, so non-interactive callers should pass `--quiet`.
+::
+
+### Key Highlights
+
+::card
+#title
+install works with any database engine
+#description
+The old install command set up SQLite only — any other engine was silently skipped. It now tests the connection and runs migrations against the **configured** engine, with the previously-orphaned interactive credential prompts (engine, host, port, db, user, password) reconnected. The command itself shrank from 710 to 238 lines, delegating to a reusable orchestrator.
+::
+
+::card
+#title
+Glueful\Installer\ seams (CLI or UI, no shelling out)
+#description
+`EnvWriter` (atomic, quoted `.env` writes — now the single writer, replacing two unsafe copies), `ConnectionTester` (transient probe of explicit credentials with a short connect timeout + a typed result that never leaks the password), `Installer` (a preflight-first pipeline returning a step-based result a UI can render), plus `DatabaseConfig` and `InstallState`. Two hard invariants hold by construction: a failed connection test mutates nothing (`.env` untouched), and the tested credentials are exactly the connection migrations run on.
+::
+
+::card
+#title
+Safer .env + correct PostgreSQL DSN
+#description
+`.env` writes are now quoted/escaped and atomic, so a password containing spaces, `#`, `=`, or quotes no longer corrupts the file. `MigrationManager` accepts an optional injected `Connection` (additive). PostgreSQL `sslmode` and `connect_timeout` now reach the DSN, so an SSL-required server connects correctly and an unreachable host fails fast instead of hanging.
+::
+
+### Migration Notes
+
+- **`php glueful install` is now interactive.** It prompts for the database engine + credentials by default. **Non-interactive callers** (CI, `post-create-project-cmd`, scripts) should pass **`--quiet`** to use the existing `.env` without prompts, or **`--skip-database`** to skip DB setup/migrations. The api-skeleton's `post-create-project-cmd` is updated accordingly.
+- No env, config, or migration changes.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.59.0 - Unukalhai
 **Released: June 19, 2026**
 
