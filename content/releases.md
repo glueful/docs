@@ -5,6 +5,46 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.59.0 - Unukalhai
+**Released: June 19, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-layout-dashboard"}
+#description
+**First-party frontend serving.** A new `ServiceProvider::serveFrontend()` seam serves a built SPA or static bundle at any **literal** path (e.g. `/admin`) — with secure asset serving, an `index.html` deep-link fallback, and a content-hash-aware cache split. It **replaces and removes** `mountStatic()` (which only mounted at `/extensions/{mount}` and had no SPA fallback). **One small migration** if you used `mountStatic()`; everything else is additive.
+::
+
+### Key Highlights
+
+::card
+#title
+serveFrontend() — serve a SPA at any literal path
+#description
+`$this->serveFrontend('/admin', $dir)` mounts a built bundle at a literal path: real files stream with mime + `SecurityHeaders` + ETag/304, content-hashed assets get `immutable` caching while `index.html` and unhashed files get `no-cache` (so a new deploy is always seen), and any non-asset path falls back to `index.html` for client-side routing. Pass `['spaFallback' => false]` for a plain static bundle that 404s on a miss. Path traversal, dotfiles, and `.php` are denied; the mount path is a strict literal (request trailing slashes are normalized by the router).
+::
+
+::card
+#title
+OpenAPI: less boilerplate per endpoint
+#description
+The reflect generator's auto-inferred `401`/`403`/`429` responses now carry a default `{success, message}` JSON body (configurable via `documentation.errors`, including always-emitted statuses like `500`), and `#[FromQuery]`/`#[FromRoute]` accept optional `description`/`example`. Together these let you move query/path params into a typed DTO and delete the repeated `#[QueryParam]`/`#[ApiResponse]` walls — without losing any documentation.
+::
+
+::card
+#title
+HEAD requests to file responses no longer 500
+#description
+`Router::dispatch()` stripped the `HEAD` body with `setContent('')`, which `BinaryFileResponse` rejects — so a `HEAD` to any file/download route (including the docs UI and the new `serveFrontend()` routes) could 500. It now swaps in a body-less `Response` that preserves status and headers. Affects every file response, not just the new seam.
+::
+
+### Migration Notes
+
+- **`mountStatic()` is removed.** Replace `$this->mountStatic('foo', $dir)` (served at `/extensions/foo`) with `$this->serveFrontend('/foo', $dir)` (any literal path + `index.html` fallback). For a plain bundle that 404s on a miss, use `$this->serveFrontend('/foo', $dir, ['spaFallback' => false])`. `serveFrontend()` no-ops with a warning if the bundle has no `index.html` (when `spaFallback` is on).
+- The unused `SpaManager` / `StaticFileDetector` / `SpaProvider` are removed (dead code, no callers). No config, env, or migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.58.1 - Thuban
 **Released: June 15, 2026**
 
