@@ -5,6 +5,284 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.61.0 - Wezen
+**Released: June 20, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-tags"}
+#description
+**OpenAPI tag filtering.** The doc generator can now drop operations from the generated spec by **tag** (`documentation.options.tags.include` / `.exclude`, env-driven), so a consumer-facing spec can hide infrastructure groups (`Health`, `Documentation`, `Security`) without turning off whole route sources. **Additive and off by default** (empty lists = no filtering) — no breaking changes, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+Tag allow/deny for the OpenAPI spec
+#description
+New `documentation.options.tags.include` (allow-list; empty = keep all) and `.exclude` (deny-list; wins over include), set via `API_DOCS_INCLUDE_TAGS` / `API_DOCS_EXCLUDE_TAGS`. Operations are filtered *before* the spec is written, so dropped operations take their now-unreferenced tags **and** schemas with them. This lets you expose the framework/extension routes a consumer needs while hiding infra groups — finer-grained than the all-or-nothing `include_framework_routes` / `include_extensions` switches. The core is a pure, unit-tested static `DocGenerator::filterPathsByTags()`.
+::
+
+::card
+#title
+Doc-config cleanup
+#description
+Removed the dead `documentation.paths.route_definitions` and `extension_definitions` keys. They pointed at the (removed) comment generator's `json-definitions/{routes,extensions}/` output dirs and were never read by the reflect generator, which merges only top-level `docs/json-definitions/*.json` fragments.
+::
+
+### Migration Notes
+
+- **Nothing required.** Filtering is off by default (both lists empty). To use it, set e.g. `API_DOCS_EXCLUDE_TAGS="Health,Documentation,Security"` and regenerate the spec.
+- The removed `route_definitions` / `extension_definitions` config keys were already inert — safe to delete if you copied them into your app's config.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.60.0 - Vega
+**Released: June 19, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-database-cog"}
+#description
+**Engine-agnostic installer + first-run setup seams.** `php glueful install` now configures and migrates **any** database engine (MySQL/PostgreSQL/SQLite) — not just SQLite — and a new `Glueful\Installer\` toolkit lets an app drive first-run setup from CLI **or** a UI without shelling out. **Additive** (no breaking API changes, no new env, no migrations) — but `install` is now interactive, so non-interactive callers should pass `--quiet`.
+::
+
+### Key Highlights
+
+::card
+#title
+install works with any database engine
+#description
+The old install command set up SQLite only — any other engine was silently skipped. It now tests the connection and runs migrations against the **configured** engine, with the previously-orphaned interactive credential prompts (engine, host, port, db, user, password) reconnected. The command itself shrank from 710 to 238 lines, delegating to a reusable orchestrator.
+::
+
+::card
+#title
+Glueful\Installer\ seams (CLI or UI, no shelling out)
+#description
+`EnvWriter` (atomic, quoted `.env` writes — now the single writer, replacing two unsafe copies), `ConnectionTester` (transient probe of explicit credentials with a short connect timeout + a typed result that never leaks the password), `Installer` (a preflight-first pipeline returning a step-based result a UI can render), plus `DatabaseConfig` and `InstallState`. Two hard invariants hold by construction: a failed connection test mutates nothing (`.env` untouched), and the tested credentials are exactly the connection migrations run on.
+::
+
+::card
+#title
+Safer .env + correct PostgreSQL DSN
+#description
+`.env` writes are now quoted/escaped and atomic, so a password containing spaces, `#`, `=`, or quotes no longer corrupts the file. `MigrationManager` accepts an optional injected `Connection` (additive). PostgreSQL `sslmode` and `connect_timeout` now reach the DSN, so an SSL-required server connects correctly and an unreachable host fails fast instead of hanging.
+::
+
+### Migration Notes
+
+- **`php glueful install` is now interactive.** It prompts for the database engine + credentials by default. **Non-interactive callers** (CI, `post-create-project-cmd`, scripts) should pass **`--quiet`** to use the existing `.env` without prompts, or **`--skip-database`** to skip DB setup/migrations. The api-skeleton's `post-create-project-cmd` is updated accordingly.
+- No env, config, or migration changes.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.59.0 - Unukalhai
+**Released: June 19, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-layout-dashboard"}
+#description
+**First-party frontend serving.** A new `ServiceProvider::serveFrontend()` seam serves a built SPA or static bundle at any **literal** path (e.g. `/admin`) — with secure asset serving, an `index.html` deep-link fallback, and a content-hash-aware cache split. It **replaces and removes** `mountStatic()` (which only mounted at `/extensions/{mount}` and had no SPA fallback). **One small migration** if you used `mountStatic()`; everything else is additive.
+::
+
+### Key Highlights
+
+::card
+#title
+serveFrontend() — serve a SPA at any literal path
+#description
+`$this->serveFrontend('/admin', $dir)` mounts a built bundle at a literal path: real files stream with mime + `SecurityHeaders` + ETag/304, content-hashed assets get `immutable` caching while `index.html` and unhashed files get `no-cache` (so a new deploy is always seen), and any non-asset path falls back to `index.html` for client-side routing. Pass `['spaFallback' => false]` for a plain static bundle that 404s on a miss. Path traversal, dotfiles, and `.php` are denied; the mount path is a strict literal (request trailing slashes are normalized by the router).
+::
+
+::card
+#title
+OpenAPI: less boilerplate per endpoint
+#description
+The reflect generator's auto-inferred `401`/`403`/`429` responses now carry a default `{success, message}` JSON body (configurable via `documentation.errors`, including always-emitted statuses like `500`), and `#[FromQuery]`/`#[FromRoute]` accept optional `description`/`example`. Together these let you move query/path params into a typed DTO and delete the repeated `#[QueryParam]`/`#[ApiResponse]` walls — without losing any documentation.
+::
+
+::card
+#title
+HEAD requests to file responses no longer 500
+#description
+`Router::dispatch()` stripped the `HEAD` body with `setContent('')`, which `BinaryFileResponse` rejects — so a `HEAD` to any file/download route (including the docs UI and the new `serveFrontend()` routes) could 500. It now swaps in a body-less `Response` that preserves status and headers. Affects every file response, not just the new seam.
+::
+
+### Migration Notes
+
+- **`mountStatic()` is removed.** Replace `$this->mountStatic('foo', $dir)` (served at `/extensions/foo`) with `$this->serveFrontend('/foo', $dir)` (any literal path + `index.html` fallback). For a plain bundle that 404s on a miss, use `$this->serveFrontend('/foo', $dir, ['spaFallback' => false])`. `serveFrontend()` no-ops with a warning if the bundle has no `index.html` (when `spaFallback` is on).
+- The unused `SpaManager` / `StaticFileDetector` / `SpaProvider` are removed (dead code, no callers). No config, env, or migrations.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.58.1 - Thuban
+**Released: June 15, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-api"}
+#description
+**OpenAPI response-schema fidelity.** Three additive reflect-generator fixes so typed `ResponseData` DTOs document response bodies accurately — the success envelope marks its keys `required`, and `#[ArrayOf]` now resolves array `items` in response mode. **Fully additive:** no behavior change for request DTOs, no config/env changes, nothing to migrate.
+::
+
+### Key Highlights
+
+::card
+#title
+#[ArrayOf] now works on response DTOs
+#description
+`ClassSchemaReflector` resolves array `items` from `#[ArrayOf]` for `ResponseData` DTOs too — previously response mode read only the `@var Foo[]` docblock. `#[ArrayOf]` is now the consistent array element-type source for both request and response DTOs. To support response-DTO item types, the `#[ArrayOf]` attribute is relaxed to target any class (it no longer requires the target to implement `RequestData`).
+::
+
+::card
+#title
+Success envelope marks its keys required
+#description
+The reflected single-object success envelope now emits `required: [success, message, data]`, matching the flat-pagination envelope which already did. SDK generators and validators get an accurate contract for the always-present envelope keys.
+::
+
+::card
+#title
+Request-DTO safety preserved
+#description
+Relaxing `#[ArrayOf]` would have dropped the guarantee that a **request** DTO's array elements implement `RequestData`. That constraint moves into `RequestDataHydrator`, where it now fails loud (`LogicException`) alongside the other v2 structural-misuse guards (dual-source, nested-source). Request-DTO behavior is unchanged.
+::
+
+### Migration Notes
+
+- Nothing to migrate. Fully additive — no behavior change for request DTOs, no config or env changes.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.58.0 - Thuban
+**Released: June 15, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-forms"}
+#description
+**Typed request-DTO hydration v2.** `RequestData` DTOs now handle arrays, nested DTOs, and path/query inputs — closing the v1 "flat-scalars, JSON-body-only" boundaries from 1.57.0. **Fully additive:** flat scalar v1 DTOs are byte-identical, there are no config or env changes, and nothing to migrate.
+::
+
+### Key Highlights
+
+::card
+#title
+Arrays & nested DTOs — no more TypeError sharp edge
+#description
+A `RequestData` field typed `array` can declare its element type with `#[ArrayOf('int')]` (scalars) or `#[ArrayOf(FieldData::class)]` (nested DTOs). Nested DTOs hydrate recursively and validate per element, and **every failure is a clean `422`** with dot-path error keys (`schema.0.name`) — never a `TypeError`/500. Recursion is depth-capped, and `#[ArrayOf]` is the sole element-type source for request DTOs (`@var` is not read).
+::
+
+::card
+#title
+Path & query sources via #[FromRoute] / #[FromQuery]
+#description
+A DTO field can be sourced from the route path or the query string — not only the JSON body — with explicit `#[FromRoute]`/`#[FromQuery]` attributes (body is the default; one source per field, no precedence guesswork). The OpenAPI reflect generator emits them as `path`/`query` parameters and excludes them from the request-body schema. Misuse — both attributes on one field, a source attribute on a nested DTO, or a `#[FromRoute]` with no matching `{placeholder}` — fails loud, including at spec generation.
+::
+
+::card
+#title
+Cross-field validation & custom rules
+#description
+Implement `ValidatesSelf` for a post-hydration `validate()` hook covering cross-field invariants (e.g. "publishedAt required when status=published"), merged into the same `422`. Register reusable custom rules through a container-bound `RuleRegistry` and use them by name in `#[Rule('required|reserved_username')]`; built-in rule names are always reserved.
+::
+
+### Migration Notes
+
+- Nothing to migrate. Fully additive — existing flat-scalar `RequestData` DTOs behave identically, and there are no config or env changes.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.57.0 - Sargas
+**Released: June 14, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-api"}
+#description
+A **types-first I/O** convention and a **single code-first OpenAPI generator**. Controllers can now express request/response shapes as typed DTOs that drive *both* the runtime envelope and the generated spec; the OpenAPI generator is consolidated to the code-first `reflect` engine and the legacy docblock-parsing `comments` generator is removed. Mostly additive, but it ships as a minor for one breaking change. **If you used the `comments` OpenAPI generator or documented routes with `@route`/`@response` docblocks, read the Migration Notes.**
+::
+
+### Key Highlights
+
+::card
+#title
+Types-first request & response DTOs
+#description
+A controller parameter implementing `RequestData` is hydrated + validated from the JSON body (`#[Rule]` constraints, auto-`422`); a method returning a `ResponseData` is auto-enveloped into `{success, message, data}` (`#[ResponseStatus]` sets the status, `HasResponseMessage` supplies a custom message). `CollectionResponse`/`PaginatedResponse` cover list endpoints, and a returned `JsonResource`/`ResourceCollection`/`PaginatedResourceResponse` is auto-normalized through its own `toResponse()`. One typed class drives both the runtime payload and the OpenAPI schema. A new `php glueful scaffold:dto` command scaffolds request/response DTOs.
+::
+
+::card
+#title
+One code-first OpenAPI generator
+#description
+The legacy docblock-parsing `comments` generator is removed; the code-first `reflect` generator — which derives paths, params, per-route security, and request/response schemas from the live route table + types — is now the only generator. A minimal typed attribute surface fills the gaps types can't express: `#[ApiOperation]` (summary/description/tags), `#[QueryParam]` (arbitrary query params), `#[ApiRequestBody]` (multipart + doc-only JSON DTO-class bodies), and `#[ApiResponse]` with a `body:` mode for binary/text responses. `reflect ⊇ comment` was proven over the live route table before the comment parser was deleted.
+::
+
+::card
+#title
+Reference adoption across core controllers
+#description
+The framework's own auth, upload, resource, and health controllers adopt the convention as worked examples (each behavior-preserving, characterization-tested) — and document the convention's boundaries: where typed DTOs apply, and where manual responses remain (polymorphic bodies, multipart input, binary/stream serving, response-level headers/caching).
+::
+
+### Migration Notes
+
+- The comment-based OpenAPI generator has been **removed**; `reflect` is now the only OpenAPI generator.
+- `documentation.generator` and `API_DOCS_GENERATOR` are no longer supported — remove them from config/env (the value is ignored).
+- Route `@route`, `@summary`, `@requestBody`, `@response`, and related docblock annotations are **no longer read**.
+- Document endpoints with typed DTOs plus `#[ApiOperation]`, `#[QueryParam]`, `#[ApiRequestBody]`, and `#[ApiResponse]`. See the OpenAPI reflect guide.
+- No migrations.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.56.0 - Rastaban
+**Released: June 13, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+The **second wave** of the June 2026 security & correctness hardening pass: queue/scheduler payload signing, SSRF-safe HTTP with validated-DNS pinning, unified sensitive-parameter redaction, fail-closed CORS/image defaults, and JWT temporal-claim enforcement. Almost entirely fixes, but several change defaults or add config/env vars (CORS credentials off by default; remote image fetch opt-in; queue/scheduler payloads signed by default; JWT requires `exp`) -- so it ships as a minor. **Read the Migration Notes before upgrading.**
+::
+
+### Key Highlights
+
+::card
+#title
+Queue & scheduler payloads are signed and gated
+#description
+Persisted database/Redis queue payloads and scheduled-job envelopes are HMAC-signed (handler class + parameters, plus the row's name and cron schedule) and verified before a handler is resolved or run. Stored handler classes must now implement `JobInterface` to be instantiated -- writing a class name into a queue/scheduler backend can no longer trigger an arbitrary constructor. Signing is on by default (`QUEUE_PAYLOAD_SIGNING` / `QUEUE_REQUIRE_SIGNED_PAYLOADS`) and inert without an `APP_KEY`.
+::
+
+::card
+#title
+SSRF-safe HTTP + unified redaction
+#description
+`Client::safeRequest()` / `safeFetch()` / `safeRequestAsync()` validate the scheme, resolve, and public-IP-pin **every** redirect hop, and pin the validated DNS result to reduce rebinding exposure; webhook delivery and external health checks use the safe path. Sensitive-parameter redaction is unified in one `SensitiveParamRedactor` across request/response logging, exception reporting, auth access logs, and the security-violation listener, and rate-limit cache keys now hash IP/identifier material.
+::
+
+::card
+#title
+Fail-closed defaults + JWT temporal claims
+#description
+The standalone `Glueful\Http\Cors` handler no longer defaults open, and `CORS_SUPPORTS_CREDENTIALS` now defaults to `false` (wildcard origin + credentials is refused at emit time). `ImageSecurityValidator` defaults to an empty allow-list with external URLs disabled. `JWTService::decode()` now requires bounded `exp` / `nbf` / `iat`, so a token minted without an expiry no longer validates. File encryption moves to chunked authenticated streaming and rejects all-zero keys.
+::
+
+### Migration Notes
+
+- **CORS fails closed.** The standalone handler no longer allows all origins by default, and `CORS_SUPPORTS_CREDENTIALS` now defaults to `false`. Set `CORS_ALLOWED_ORIGINS` (and `CORS_SUPPORTS_CREDENTIALS=true` only if you genuinely need credentialed cross-origin requests).
+- **Remote image fetching is opt-in.** With no `image.security` config, external image URLs are disabled and the allow-list is empty. Configure `image.security.allowed_domains` or install/configure `glueful/media`.
+- **Queue & scheduler payloads are signed by default.** `QUEUE_PAYLOAD_SIGNING` / `QUEUE_REQUIRE_SIGNED_PAYLOADS` default on (inert without `APP_KEY`). To drain legacy unsigned rows, temporarily set `QUEUE_REQUIRE_SIGNED_PAYLOADS=false`. Custom queue/scheduler handlers must implement `JobInterface`.
+- **JWT requires `exp`.** Tokens without `exp` (or with expired/non-numeric `exp`, future `nbf`/`iat`) are rejected.
+- **Memcached cache format changed.** Flush the cache when upgrading a Memcached-backed deployment -- raw legacy string values that aren't valid serialized data now throw on read.
+- **Set `TRUSTED_PROXIES`** behind a load balancer so client IPs resolve correctly. New optional `http.safe_fetch.max_redirects` (default `3`). No migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.55.0 - Peacock
 **Released: June 11, 2026**
 
