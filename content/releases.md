@@ -5,6 +5,39 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.61.0 - Wezen
+**Released: June 20, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-tags"}
+#description
+**OpenAPI tag filtering.** The doc generator can now drop operations from the generated spec by **tag** (`documentation.options.tags.include` / `.exclude`, env-driven), so a consumer-facing spec can hide infrastructure groups (`Health`, `Documentation`, `Security`) without turning off whole route sources. **Additive and off by default** (empty lists = no filtering) — no breaking changes, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+Tag allow/deny for the OpenAPI spec
+#description
+New `documentation.options.tags.include` (allow-list; empty = keep all) and `.exclude` (deny-list; wins over include), set via `API_DOCS_INCLUDE_TAGS` / `API_DOCS_EXCLUDE_TAGS`. Operations are filtered *before* the spec is written, so dropped operations take their now-unreferenced tags **and** schemas with them. This lets you expose the framework/extension routes a consumer needs while hiding infra groups — finer-grained than the all-or-nothing `include_framework_routes` / `include_extensions` switches. The core is a pure, unit-tested static `DocGenerator::filterPathsByTags()`.
+::
+
+::card
+#title
+Doc-config cleanup
+#description
+Removed the dead `documentation.paths.route_definitions` and `extension_definitions` keys. They pointed at the (removed) comment generator's `json-definitions/{routes,extensions}/` output dirs and were never read by the reflect generator, which merges only top-level `docs/json-definitions/*.json` fragments.
+::
+
+### Migration Notes
+
+- **Nothing required.** Filtering is off by default (both lists empty). To use it, set e.g. `API_DOCS_EXCLUDE_TAGS="Health,Documentation,Security"` and regenerate the spec.
+- The removed `route_definitions` / `extension_definitions` config keys were already inert — safe to delete if you copied them into your app's config.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.60.0 - Vega
 **Released: June 19, 2026**
 
