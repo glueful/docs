@@ -5,6 +5,31 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.61.1 - Wezen
+**Released: June 22, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-world-www"}
+#description
+**CORS on every response.** Cross-origin **error** and regular responses (422, 401, …) now carry `Access-Control-Allow-Origin`, so a separately-served frontend (e.g. a Vite dev SPA on another origin) can finally read their bodies. Previously only the OPTIONS preflight got CORS headers, leaving regular and error bodies blocked by the browser. **Bugfix patch** — no new env, no migrations, no action required.
+::
+
+### Key Highlights
+
+::card
+#title
+CORS headers on regular and error responses
+#description
+`Application::handle()` now applies CORS to the **final** response in both the dispatch and exception-handler branches — the single chokepoint that sees success **and** error paths. A new public `Cors::applyToResponse(Request, Response)` decorates an already-built response with the regular-request CORS headers (`Access-Control-Allow-Origin`, `Vary: Origin`, and per-config `Expose-Headers` / `Allow-Credentials`). It is a no-op when there is no `Origin`, the origin is not allowed, or the header is already set — so it never clobbers the router's preflight responder.
+::
+
+### Migration Notes
+
+- **Nothing required.** Same-origin requests and disallowed origins are unchanged; allowed cross-origin requests now receive the CORS headers they should always have had on regular and error responses.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.61.0 - Wezen
 **Released: June 20, 2026**
 
