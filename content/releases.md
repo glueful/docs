@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.61.2 - Wezen
+**Released: June 23, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-lock-exclamation"}
+#description
+**Permission gate fail-closed fix.** Every `#[RequiresPermission]` / `gate_permissions` route returned **403 for fully authorized users** — the `auth.user` principal the gate reads was never populated because `AuthMiddleware`'s enricher lookup used a container id that never matched, so the enricher silently never ran. Routes guarded by attribute permissions (admin/RBAC/i18n endpoints) were unreachable. **Bugfix patch** — no new env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+`#[RequiresPermission]` routes no longer 403 authorized users
+#description
+`AuthMiddleware::autoEnrichRequest()` looked up the `auth.user` enricher by a **leading-backslash** string id (`'\Glueful\Permissions\Middleware\AuthToRequestAttributesMiddleware'`), but the container registers it under the `::class` form (no leading backslash) and does not normalize the two — so `Container::has()` returned false, the enricher never ran, and the `auth.user` `UserIdentity` was never set. `GateAttributeMiddleware` then saw a null principal and denied. The lookup now uses `AuthToRequestAttributesMiddleware::class`, matching the container key, so the gate sees the authenticated principal and authorizes correctly.
+::
+
+::card
+#title
+File / Memcached cache drivers accept colon-namespaced keys
+#description
+`FileCacheDriver` and `MemcachedCacheDriver` rejected `:` as a PSR-16 reserved character, but the framework namespaces every cache key with a colon (`session:`, `provider:`, `user_permissions:`). Login on a file or Memcached backend failed the moment `SessionCacheManager` stored the session. Both drivers now allow `:`, matching Redis (the file driver md5-hashes keys into filenames; colons are valid Memcached keys).
+::
+
+### Migration Notes
+
+- **Nothing required.** Bugfix only.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.61.1 - Wezen
 **Released: June 22, 2026**
 
