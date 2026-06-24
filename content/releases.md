@@ -5,6 +5,31 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.62.0 - Xuange
+**Released: June 24, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-puzzle"}
+#description
+**User-record enrichment seam.** A new core contract lets an authorization extension attach fields — like a user's `roles` — to the records an identity store returns (`/users`, `/users/{uuid}`, `/me`), without the two extensions depending on each other. The read-side symmetric of the existing login-time `identity.claims_provider` seam. **Additive** — nothing changes unless an extension registers an enricher; no env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+`UserRecordEnricherInterface` + the `users.record_enricher` tag
+#description
+An enricher receives a **batch** of user UUIDs and returns additive fields to merge per record (e.g. `{ roles: [...] }`). A consumer — the identity store's read endpoints — collects every service tagged `users.record_enricher` and folds their output into each user record. Implementations must resolve the whole batch in one query (no N+1) and may only **add** fields (they can't change identity facts). It mirrors `IdentityClaimsProviderInterface`, which enriches the authenticated principal at login; this enriches arbitrary read payloads. The upshot: `glueful/users` can show each user's roles inline (no extra round-trip, no click) while staying fully decoupled from `glueful/aegis`.
+::
+
+### Migration Notes
+
+- **Nothing required.** The contract is additive; behavior is unchanged until an extension registers an enricher.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.61.2 - Wezen
 **Released: June 23, 2026**
 
