@@ -5,6 +5,63 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.62.0 - Xuange
+**Released: June 24, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-puzzle"}
+#description
+**User-record enrichment seam.** A new core contract lets an authorization extension attach fields — like a user's `roles` — to the records an identity store returns (`/users`, `/users/{uuid}`, `/me`), without the two extensions depending on each other. The read-side symmetric of the existing login-time `identity.claims_provider` seam. **Additive** — nothing changes unless an extension registers an enricher; no env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+`UserRecordEnricherInterface` + the `users.record_enricher` tag
+#description
+An enricher receives a **batch** of user UUIDs and returns additive fields to merge per record (e.g. `{ roles: [...] }`). A consumer — the identity store's read endpoints — collects every service tagged `users.record_enricher` and folds their output into each user record. Implementations must resolve the whole batch in one query (no N+1) and may only **add** fields (they can't change identity facts). It mirrors `IdentityClaimsProviderInterface`, which enriches the authenticated principal at login; this enriches arbitrary read payloads. The upshot: `glueful/users` can show each user's roles inline (no extra round-trip, no click) while staying fully decoupled from `glueful/aegis`.
+::
+
+### Migration Notes
+
+- **Nothing required.** The contract is additive; behavior is unchanged until an extension registers an enricher.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.61.2 - Wezen
+**Released: June 23, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-lock-exclamation"}
+#description
+**Permission gate fail-closed fix.** Every `#[RequiresPermission]` / `gate_permissions` route returned **403 for fully authorized users** — the `auth.user` principal the gate reads was never populated because `AuthMiddleware`'s enricher lookup used a container id that never matched, so the enricher silently never ran. Routes guarded by attribute permissions (admin/RBAC/i18n endpoints) were unreachable. **Bugfix patch** — no new env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+`#[RequiresPermission]` routes no longer 403 authorized users
+#description
+`AuthMiddleware::autoEnrichRequest()` looked up the `auth.user` enricher by a **leading-backslash** string id (`'\Glueful\Permissions\Middleware\AuthToRequestAttributesMiddleware'`), but the container registers it under the `::class` form (no leading backslash) and does not normalize the two — so `Container::has()` returned false, the enricher never ran, and the `auth.user` `UserIdentity` was never set. `GateAttributeMiddleware` then saw a null principal and denied. The lookup now uses `AuthToRequestAttributesMiddleware::class`, matching the container key, so the gate sees the authenticated principal and authorizes correctly.
+::
+
+::card
+#title
+File / Memcached cache drivers accept colon-namespaced keys
+#description
+`FileCacheDriver` and `MemcachedCacheDriver` rejected `:` as a PSR-16 reserved character, but the framework namespaces every cache key with a colon (`session:`, `provider:`, `user_permissions:`). Login on a file or Memcached backend failed the moment `SessionCacheManager` stored the session. Both drivers now allow `:`, matching Redis (the file driver md5-hashes keys into filenames; colons are valid Memcached keys).
+::
+
+### Migration Notes
+
+- **Nothing required.** Bugfix only.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.61.1 - Wezen
 **Released: June 22, 2026**
 
