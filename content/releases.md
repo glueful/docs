@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.63.0 - Yildun
+**Released: June 25, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-broadcast"}
+#description
+**Entity-deletion event + subclass domain-event dispatch.** `BaseRepository` now emits an `EntityDeletedEvent` on a successful delete — completing the create/update/delete triplet so audit, cache-invalidation and notification consumers can react to deletes, not just writes. And the repository's event-dispatch helper is now `protected`, so repository subclasses (including those in extensions) can emit their own domain events through the same best-effort path. **Additive** — a new event (fires only if subscribed) plus a visibility widening; no env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+`EntityDeletedEvent` completes the entity CRUD event triplet
+#description
+`BaseRepository::delete()` now dispatches `Glueful\Events\Database\EntityDeletedEvent` after a successful delete (`affected_rows > 0`). It carries the **pre-delete** record — read before the row is removed — so consumers can derive the deleted entity's identity and labels, plus metadata matching the create/update events (`entity_id`, `primary_key`, `affected_rows`, `operation: 'delete'`). It mirrors `EntityCreatedEvent`'s surface (`getEntity()` / `getEntityId()` / `getTable()` / `getCacheTags()` / `isUserRelated()`, with a `getOriginalData()` alias). No-op deletes (missing row, zero affected) emit nothing. Audit trails, cache invalidation, and notifications can finally react to deletes as first-class events.
+::
+
+::card
+#title
+Repository subclasses can emit their own domain events
+#description
+`BaseRepository::dispatchEvent()` is now `protected` (was `private`), so repository subclasses — including those in extensions — can emit their own semantic domain events through the framework's best-effort, context-guarded dispatch helper (it no-ops when the repository was constructed without an `ApplicationContext`). This is the seam an RBAC or audit extension uses to publish meaningful events (e.g. "role assigned") instead of raw table writes. No behavior change for existing repositories.
+::
+
+### Migration Notes
+
+- **Nothing required.** Both changes are additive; behavior is unchanged unless you subscribe to the new event or emit one from a subclass.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.62.0 - Xuange
 **Released: June 24, 2026**
 
