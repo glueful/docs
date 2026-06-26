@@ -5,6 +5,45 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.63.1 - Yildun
+**Released: June 25, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bug"}
+#description
+**Resilient event dispatch + dead auth events.** Auth/security events (logins, logouts, failed logins, security violations) were silently not reaching their listeners: `ActivityLoggingSubscriber` — the first listener on every auth/security event — was unresolvable (it required a `LogManager` the container never registers), so it threw; and the dispatcher didn't isolate listener failures, so that one throw aborted the whole dispatch before any later listener ran. The session dispatcher swallowed the error, so logins succeeded with nothing logged. **Bugfix patch** — no new env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+A throwing listener no longer starves the rest of the chain
+#description
+`EventDispatcher::dispatch()` now catches each listener's `Throwable`, logs it, and continues to the next listener (hot and traced paths). Previously the first listener to throw — a resolution failure or a runtime error — ended dispatch for that event entirely, silently starving every listener after it (cache invalidation, an audit/notification subscriber, …). One broken or misconfigured listener can no longer take the whole event down with it.
+::
+
+::card
+#title
+`ActivityLoggingSubscriber` is resolvable again
+#description
+It required a non-nullable `LogManager`, which is not a container-registered service, so the autowiring resolver couldn't construct it — making the subscriber throw on every auth/security event. Its constructor now takes `?LogManager $logger = null` and falls back to `LogManager::getInstance()`. Combined with the dispatcher fix, login/logout/security events are delivered to all listeners again — the framework's own activity logging plus any app or extension subscriber (e.g. `glueful/audit`).
+::
+
+::card
+#title
+Failed logins now emit `AuthenticationFailedEvent`
+#description
+The event was declared and listeners subscribed to it, but nothing ever dispatched it — so failed login attempts were invisible to activity logging and audit consumers. `AuthenticationService::verifyCredentials()` now dispatches it (best-effort and context-guarded — it never breaks the login flow) when credentials are rejected (`invalid_credentials`) or the resolved account is disabled (`user_disabled`), carrying the attempted username plus the request's client IP and user-agent when available.
+::
+
+### Migration Notes
+
+- **Nothing required.** Both are bugfixes; no env or config changes, no migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.63.0 - Yildun
 **Released: June 25, 2026**
 
