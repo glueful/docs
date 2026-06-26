@@ -5,6 +5,22 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.63.3 - Yildun
+**Released: June 26, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bug"}
+#description
+**Blob writes are now auditable.** `BlobRepository` was constructed without an `ApplicationContext`, so its create/update/delete never dispatched entity events — blob **uploads emitted no `EntityCreatedEvent`** and silently couldn't be audited. It's now built with the context, so uploads emit events an audit/activity consumer can record. **Bugfix patch** — no new env, no migrations.
+::
+
+### Migration Notes
+
+- **Nothing required.** Bugfix only.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.63.2 - Yildun
 **Released: June 26, 2026**
 
