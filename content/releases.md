@@ -5,6 +5,31 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.63.2 - Yildun
+**Released: June 26, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-bug"}
+#description
+**Image-variant caching fix.** Serving a resized blob variant (`GET /blobs/{uuid}?width=…`) with the variant cache enabled returned a 500: `UploadController` cached the rendered image as **raw bytes**, which a JSON-based cache serializer (e.g. the Redis driver's `SecureSerializer`) can't encode — raw bytes aren't valid UTF-8 — so every cached resize threw `Malformed UTF-8`. The un-resized original was unaffected. **Bugfix patch** — no new env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+Resized image variants are cached correctly
+#description
+The rendered variant is now stored **base64-encoded** and decoded on read, so the binary survives any cache serializer (JSON or otherwise). A legacy/corrupt cache entry that fails to decode simply falls through to a re-render. Lets you keep `UPLOADS_CACHE_ENABLED=true` for on-the-fly thumbnails/resizes without the serializer choking on image bytes.
+::
+
+### Migration Notes
+
+- **Nothing required.** Bugfix only; no env or config changes, no migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.63.1 - Yildun
 **Released: June 25, 2026**
 
