@@ -5,6 +5,31 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.63.4 - Yildun
+**Released: June 27, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-api"}
+#description
+**The webhook management API is now self-documenting.** The framework ships a complete `WebhookController` (subscription + delivery management), but its methods carried no OpenAPI attributes — so an application that mounts these routes got working endpoints that were invisible to `generate:openapi` and the typed client. All 11 endpoints now carry `#[ApiOperation]`/`#[ApiResponse]`. **Patch** — documentation metadata only, no behavioral change, no new env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+`WebhookController` endpoints appear in generated docs
+#description
+The 11 webhook-management methods — subscription list/create/get/update/delete, rotate-secret, test, stats, plus delivery list/get/retry — now carry `#[ApiOperation]` + `#[ApiResponse]` attributes. Applications that mount the controller (the core does not auto-register these routes) pick them up in `openapi.json` and the typed client, exactly like any other annotated controller. Nothing about the routes, behavior, or signatures changed.
+::
+
+### Migration Notes
+
+- **Nothing required.** Documentation metadata only. After `composer update`, re-run `generate:openapi` (and your client codegen) to surface the webhook endpoints in your spec.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.63.3 - Yildun
 **Released: June 26, 2026**
 
