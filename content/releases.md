@@ -5,6 +5,63 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.64.0 - Zosma
+**Released: June 28, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-key"}
+#description
+**Configurable, auditable API keys — plus webhook and blob-visibility fixes.** `ApiKeyService` now reads its brand prefix from config (`API_KEY_PREFIX`, default `gf`) so apps can rebrand generated keys, and its create/rotate/revoke paths emit framework entity events so key lifecycle is auditable (identity only, never the secret). Also fixes three latent webhook-management bugs and a blob-visibility bug where "public" uploads were stored private and 401'd on retrieval. **Minor** — one new optional env (`API_KEY_PREFIX`), backward compatible, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+Rebrandable, auditable API keys
+#description
+The generated key prefix is no longer hard-coded: `ApiKeyService` reads `auth.api_keys.prefix` (env `API_KEY_PREFIX`, default `gf`), so `gf_live_…` can become `lm_live_…` per app (only the first 16 chars are the indexed lookup prefix, so keep it short). And `create` / `rotate` / `revoke` now emit `EntityCreatedEvent` / `EntityUpdatedEvent` for the `api_keys` table — an audit consumer can record who minted, rotated, or revoked a key. The payload is identity only (uuid, name, key_prefix, scopes) and never carries the plaintext or hash; dispatch is best-effort, so a failed audit never breaks the key operation.
+::
+
+::card
+#title
+Webhook management + blob visibility fixes
+#description
+Three latent webhook bugs are fixed (the core ships `WebhookController` but doesn't register its routes, so they surfaced only once an app mounted them against PostgreSQL): list endpoints 500'd on the strict query validator (`OFFSET` before `LIMIT`), `WebhookSubscription` inserts failed on PostgreSQL (timestamps bound through the string path), and the auto-created UUID columns were too narrow for the generated ids. Separately, `FileUploader` now persists the requested blob `visibility` — previously every upload fell back to `private`, so a "public" image 401'd on `GET /blobs/{uuid}`.
+::
+
+### Migration Notes
+
+- **Nothing required.** Backward compatible: `API_KEY_PREFIX` defaults to `gf` (reproduces existing keys), and no migrations ship. Set `API_KEY_PREFIX` only if you want to rebrand keys. To audit key lifecycle, ensure an audit consumer is listening for the `api_keys` entity events.
+
+```bash
+composer update glueful/framework
+```
+
+## v1.63.5 - Yildun
+**Released: June 27, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-api"}
+#description
+**The webhook management API is now fully typed in OpenAPI.** 1.63.4 added operation summaries to `WebhookController`; this fills in the schemas — query parameters, request bodies, and response shapes — so an application that mounts the controller gets a precise spec (and a typed client) for subscriptions and deliveries, not just path stubs. **Patch** — documentation metadata only (new doc-only DTOs + attributes), no behavioral change, no new env, no migrations.
+::
+
+### Key Highlights
+
+::card
+#title
+Typed query params, bodies, and responses for webhooks
+#description
+Added `#[QueryParam]` for the list/stats query parameters (active / status / subscription / page / per_page / days), `#[ApiRequestBody]` for create/update, and `#[ApiResponse(schema: …)]` for the subscription, delivery, list, and stats responses — backed by new documentation-only DTOs under `Glueful\Api\Webhooks\DTOs`. The controller's runtime behavior is unchanged; the DTOs are reflected for docs only (never hydrated), the same approach the auth controller uses for `login`.
+::
+
+### Migration Notes
+
+- **Nothing required.** Documentation metadata only. After `composer update`, re-run `generate:openapi` (and your client codegen) to pick up the fully-typed webhook endpoints.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.63.4 - Yildun
 **Released: June 27, 2026**
 
