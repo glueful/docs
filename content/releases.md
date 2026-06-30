@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.65.0 - Acrux
+**Released: June 30, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-database"}
+#description
+**Database, validation, and routing improvements.** New `QueryBuilder::forceDelete()` (hard-delete on a soft-deletable table without dropping to raw SQL), validator coercion rules (`CastToInt` / `CastToBoolean` / `CastToDate`), a `DbUnique` exclude-by-column argument, an `api_key_uuid` request attribute for per-key attribution, and `ServiceProvider::resetLoadedRoutes()` for clean re-boots. Plus three routing/schema fixes — `auth.user` is always populated after auth, file-defined `require_scope:` params are now enforced, and `alterTable()->dropColumn()` actually drops. **Minor** — no new env, no migrations; scope enforcement is tightened (see Migration Notes).
+::
+
+### Key Highlights
+
+::card
+#title
+Database & validation toolbelt
+#description
+`QueryBuilder::forceDelete()` permanently deletes matching rows, bypassing soft-delete even on a table with a `deleted_at` column — previously the only way to hard-delete such a row (e.g. to re-insert a unique key during an upsert) was raw SQL. New `MutatingRule`s — `CastToInt`, `CastToBoolean`, `CastToDate` — let a validator pipeline both coerce and validate (`filtered()` used to return uncoerced input). And `DbUnique` gains a fifth `$exceptColumn` argument (default `'id'`) so a record keyed by a non-`id` column like `uuid` can exclude the current row on update.
+::
+
+::card
+#title
+Routing & schema correctness
+#description
+`AuthMiddleware` now always populates `auth.user` — it synthesises a basic `UserIdentity` (uuid, roles, scopes) when the optional enricher hasn't run, so permission gates and audit attribution never silently see a null principal. `RequireScopeMiddleware` now enforces scopes declared as a middleware param (`->middleware('require_scope:read:content')`) fail-closed; it previously fell open when no `#[RequireScope]` attribute was present. And `TableBuilder::alterTable()` now forwards `dropColumn()` to the SQL generator (it was a silent no-op). Also new: `ApiKeyAuthenticationProvider` exposes the acting key's `api_key_uuid`, and `ServiceProvider::resetLoadedRoutes()` lets a fresh `Framework::boot()` re-register extension routes.
+::
+
+### Migration Notes
+
+- **Scope enforcement tightened.** If you declared a route's scope as a middleware param — `->middleware('require_scope:read:content')` — it was previously **not** enforced (it fell open) and now enforces **fail-closed**. Requests lacking the scope will correctly receive `403`. Routes using the `#[RequireScope]` attribute are unaffected. Everything else is additive — no new env, no migrations.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.64.0 - Zosma
 **Released: June 28, 2026**
 
