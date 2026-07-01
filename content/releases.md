@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.65.1 - Acrux
+**Released: July 1, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug"}
+#description
+**Extension-toggle and CLI hygiene fixes.** `php glueful extensions:enable`/`disable` no longer leave a stray trailing-whitespace line in `config/extensions.php` (which tripped phpcs/CI on the very next lint), and four console commands that were unrunnable due to option-shortcut clashes with Symfony's globals now start cleanly. **Patch** — bugfixes only, no new env, no migrations, no behavioral changes.
+::
+
+### Key Highlights
+
+::card
+#title
+`extensions:enable`/`disable` write clean config
+#description
+`ExtensionStateWriter::writeList()` captured the whitespace before the closing bracket and re-emitted a literal indent in front of it, producing a dangling 4-space line above `]` on every toggle — which then failed `Squiz.WhiteSpace.SuperfluousWhitespace` in phpcs/CI. The writer now folds that whitespace into the match and writes the closing indent and bracket cleanly, so toggling an extension no longer dirties the file with a lint violation.
+::
+
+::card
+#title
+Console commands no longer clash with global shortcuts
+#description
+Four commands declared option shortcuts that collided with Symfony's reserved globals, so the definition merge threw `An option with shortcut "…" already exists` on both run and `help` — making the command unrunnable. `serve --queue` dropped its `-q` (clashed with `-q/--quiet`), `cache:expire --verify` and `di:container:compile --validate` dropped their `-v` (clashed with `-v/--verbose`), and `install --quiet` (meaning "non-interactive", not "suppress output") was renamed `--unattended`. All long options are preserved; only the colliding shortcuts changed.
+::
+
+### Migration Notes
+
+- **Nothing required.** Pure bugfix patch — no new env, no migrations, no behavioral changes. If you scripted `php glueful install --quiet` for unattended installs, switch it to `--unattended` (the global `-q/--quiet` now resolves normally on that command).
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.65.0 - Acrux
 **Released: June 30, 2026**
 
