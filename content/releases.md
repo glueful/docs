@@ -5,6 +5,31 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.65.2 - Acrux
+**Released: July 2, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug"}
+#description
+**Array-valued field-selection params no longer 500.** A public read/delivery endpoint that builds its `FieldSelector` from the request would return an unhandled 500 when a client sent `fields`/`expand` as an array (`?fields[]=a`), because Symfony's `InputBag` rejects non-scalar values. Field selection is a scalar syntax, so those params are now read tolerantly and an array value is treated as "no selection". **Patch** — bugfix only, no new env, no migrations, no behavioral changes.
+::
+
+### Key Highlights
+
+::card
+#title
+`FieldSelector` tolerates malformed array params
+#description
+`FieldSelector::fromRequest()` and `fromRequestAdvanced()` read `fields`/`expand` via `Request::query->get()`, which throws a `BadRequestException` when the parameter arrives as an array — surfacing as a 500 on any public endpoint that derives its selector from the request. Both factories now read via `query->all()` and treat any non-string value as absent, landing on the existing "no field selection" fast path. Scalar `fields`/`expand` parse exactly as before, so nothing changes for well-formed requests.
+::
+
+### Migration Notes
+
+- **Nothing required.** Pure bugfix patch — no new env, no migrations, no behavioral changes.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.65.1 - Acrux
 **Released: July 1, 2026**
 
