@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.65.3 - Acrux
+**Released: July 3, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug"}
+#description
+**Random-string buffer overrun and static-asset MIME fixes.** `RandomStringGenerator::generate()` could read past its random-byte buffer under unlucky rejection sampling — an intermittent "Uninitialized string offset" in anything generating passwords or tokens, and a quiet output-bias risk. Separately, static assets served through `serveFrontend()` were content-sniffed to `text/plain`, which the accompanying `nosniff` header turns into browsers refusing CSS and module scripts outright. **Patch** — bugfixes only, no new env, no migrations, no behavioral changes.
+::
+
+### Key Highlights
+
+::card
+#title
+`RandomStringGenerator` rejection sampling stays inside its buffer
+#description
+The generator's rejection-sampling inner loop (`while ($idx >= $charsetLength)`) consumes random bytes but had no refill guard — only the outer loop refills — so rejections clustering at the buffer's end walked past it. With a 79-character charset (the secure-password default) that's roughly a 1% failure per 16-character generate: rare enough to pass locally, frequent enough to flake CI in consumers that import users or mint credentials. There was also a subtler correctness angle: outside strict error handling, reading past the buffer yields `''` and `ord('')` returns 0, silently biasing generated secrets toward the charset's first character. The inner loop now refills before every read, and a regression test hammers the worst-case charset (65 characters, ~49% rejection per draw) with warnings escalated to failures.
+::
+
+::card
+#title
+`serveFrontend()` assets get extension-mapped MIME types
+#description
+`frontendAssetServer()` asked Symfony's `MimeTypes::guessMimeType()` first, which content-sniffs via finfo — and CSS/JS carry no magic bytes, so finfo answers `text/plain`. Because these responses also send `X-Content-Type-Options: nosniff`, browsers are *required* to refuse such stylesheets and module scripts, breaking theme CSS and SPA bundles on any `serveFrontend()` mount. The extension map now wins for known extensions (`css` → `text/css`, `js` → `text/javascript`); content sniffing remains the fallback for extensionless files only.
+::
+
+### Migration Notes
+
+- **Nothing required.** Pure bugfix patch — no new env, no migrations, no behavioral changes.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.65.2 - Acrux
 **Released: July 2, 2026**
 
