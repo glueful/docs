@@ -5,6 +5,111 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.66.2 - Adhara
+**Released: July 6, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bolt"}
+#description
+**Mounting an admin/SPA no longer disables route caching.** `serveFrontend()` registered the SPA mount root and `/{rest}` catch-all as closures, and `RouteCache` refuses to cache a route table containing any closure — so every SPA-mounting app ran uncached and logged a `[RouteCache] Skipping cache … Convert to [Controller::class, "method"] syntax` warning on each boot. The seam now uses controller handlers backed by a mount registry; asset/index serving is byte-for-byte identical. **No signature or config change, no new env vars** — affected apps regain route caching automatically after upgrading.
+::
+
+### Key Highlights
+
+::card
+#title
+Route caching restored for SPA-mounting apps
+#description
+`ServiceProvider::serveFrontend()` mounted a compiled admin/SPA bundle by registering two routes — the mount root and a `/{rest}` catch-all — as **closures** that captured the bundle directory and asset-serving helpers. `RouteCache` cannot serialize closures, so on encountering one it rejects the **entire** compiled route table, disables route caching for the whole application, and logs `[RouteCache] Skipping cache: N route(s) use closure handlers`. The seam now registers controller handlers — `[SpaMountController::class, 'root'|'asset']` — backed by a new `FrontendMountRegistry` that resolves the owning mount from the request path by longest-prefix match, so one mount-agnostic controller serves any number of mounts (`/admin`, `/portal`, …). The asset/index behaviour is unchanged to the byte: mime typing, static-asset security headers, the immutable-vs-revalidate cache split, ETag/`304`, path-traversal + dotfile + `.php` denial, and the SPA deep-link fallback. New public classes `Glueful\Routing\FrontendMountRegistry` and `Glueful\Routing\SpaMountController` are registered as shared services in `CoreProvider`.
+::
+
+### Migration Notes
+
+- No action required. The `serveFrontend()` signature and behaviour are unchanged; there are no new env vars and no config changes. After upgrading, apps that mount an SPA will build the route cache normally and the `[RouteCache]` boot warning disappears.
+
+```bash
+composer update glueful/framework
+php glueful cache:clear
+```
+
+## v1.66.1 - Adhara
+**Released: July 6, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-package"}
+#description
+**The extension installer is now synchronous.** The 1.66.0 installer spawned `composer require` as a detached background job and made the client poll — but forking a long-lived PHP CLI from a web server (Apache/php-cgi/nginx+FPM) proved unreliable, and installs simply hung in `queued`. `POST /extensions/install` now runs composer **inline** and returns the result in one response; the extension installs disabled and is activated with the enable toggle (WordPress-style). Also fixes the catalog `422` that hid any extension with release history. **The install API changed shape** (single response, no job polling); run `php glueful cache:clear` after upgrading.
+::
+
+### Key Highlights
+
+::card
+#title
+Synchronous install — no queue, no polling
+#description
+The 1.66.0 installer ran `composer require` in a **detached** background process and exposed a `GET /extensions/install/{jobId}` endpoint the browser polled. But `PHP_BINARY` under a web SAPI (Apache mod_php, php-cgi, nginx+FPM) is not a CLI interpreter — forking it dropped the command's arguments, so the job never started and installs sat in `queued` forever. The installer is now **synchronous**: `POST /extensions/install` runs `composer require` inline and returns `{ status: 'installed' | 'failed', … }` in a single response (the request blocks for the duration of the composer run). composer is invoked as `<cli-php> <composer> require …` with an explicit child environment — including `COMPOSER_HOME` — so it doesn't depend on the web process's `PATH`, on `putenv()`, or on a writable `HOME`. On success the extension is installed **disabled**; activate it with the normal enable toggle. The job-poll endpoint, the `queued|running|…` states, and the internal `DetachedRunner` / `InstallJobStore` / `extensions:install-run` / `extensions:enable-installed` machinery are gone.
+::
+
+::card
+#title
+Type re-verification judges the latest release, not every one
+#description
+`ExtensionCatalog::hydrateVersion()` hydrates a package's version from Packagist's p2 metadata and re-verifies it is genuinely a `glueful-extension` before admitting it to the installable catalog. It did that by iterating **all** releases and dropping the package the moment one wasn't typed `glueful-extension`. But Packagist omits the `type` field for releases where it defaults to `library`, so any extension that adopted the type partway through its history — for example `glueful/entrada`, whose latest release is typed but whose older tags are not — was excluded from the catalog, and the install allowlist rejected it with a `422`. Re-verification now inspects the latest release only, which is exactly what Packagist's `type=glueful-extension` search already keys on.
+::
+
+### Migration Notes
+
+- **The install API changed shape.** `POST /extensions/install` returns the final result directly instead of a job id, and `GET /extensions/install/{jobId}` has been removed — await the single request. The 1.66.0 detached installer never worked under a web SAPI, so no functioning integration is affected.
+- **Env** (all optional): `EXTENSIONS_INSTALL_PHP_BINARY` — absolute path to a CLI php used to run composer (leave blank to auto-detect; set it when the web SAPI's php isn't a usable CLI interpreter, e.g. `/usr/bin/php` behind nginx+FPM). `COMPOSER_BINARY` — absolute composer path if it isn't on the web `PATH`. `EXTENSIONS_INSTALL_AUTO_ENABLE` has been removed.
+- After upgrading, run `php glueful cache:clear` so the corrected installable-extension catalog is rebuilt (the 1.66.0 catalog cache can hide affected packages until its TTL lapses).
+
+```bash
+composer update glueful/framework
+php glueful cache:clear
+```
+
+## v1.66.0 - Adhara
+**Released: July 5, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-package"}
+#description
+**Install extensions from the admin UI — no SSH required.** A new install pipeline runs `composer require` for a catalog extension from the browser instead of the server terminal: the package is validated against the Packagist catalog, installed in a detached process that survives an FPM recycle, then auto-enabled in a fresh subprocess (to dodge the running worker's stale autoloader). Guarded by the `system.config` permission tier and a kill-switch that is **off in production by default**. Also fixes SVG uploads 400ing on the content check. **Minor** — three new optional `EXTENSIONS_INSTALL_*` env vars with safe defaults; no migrations, no breaking changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Browser-driven extension install (`composer require`, detached)
+#description
+`ExtensionInstaller::start()` validates the requested package against the resolved Packagist catalog (membership allowlist plus a `glueful/` vendor prefix — a substring match is not enough) and runs no shell. It then spawns `composer require` in a **detached** process via `extensions:install-run` (`proc_open` with array argv and `setsid`, so the install survives a PHP-FPM recycle mid-run). On success the extension is auto-enabled in a **fresh PHP subprocess** (`extensions:enable-installed`) — the running worker's autoloader can't see a package that didn't exist when it booted, so enabling in-process would fail — and the extension cache is rewritten. The client polls a `CacheStore`-backed job store whose status walks `queued → running → succeeded | failed | installed_not_enabled`. New building blocks ship under `src/Extensions/Install/` and `src/Support/Process/`, alongside an `ExtensionCatalog` (two-stage Packagist fetch filtered to `type=glueful-extension`) and a batteries-included `ExtensionsController` at `/api/v1/extensions`.
+::
+
+::card
+#title
+Guardrails on the install path
+#description
+The installer is gated by the `system.config` permission tier and the `EXTENSIONS_INSTALL_ENABLED` kill-switch, which defaults **on outside production and off in production**. A host-writability preflight returns `409` on a read-only deploy before any process is spawned, the package must be a member of the resolved catalog, and every install is written to the audit log. To expose the installer in production you must explicitly set `EXTENSIONS_INSTALL_ENABLED=true` and ensure the vendor tree is writable by the web user.
+::
+
+::card
+#title
+SVG uploads no longer 400 on the content check
+#description
+`FileUploader::validateFileContent()` re-checked the detected MIME against the hard-coded `DEFAULT_ALLOWED_MIME_TYPES` constant, overruling the configured `uploads.allowed_types` that the claimed-MIME gate had already honored — so an `image/svg+xml` upload permitted under `image/*` passed the first gate and then failed content validation with "Invalid file type". The content check now uses the same configured allowlist (wildcards included; unconfigured installs still fall back to the default constant). Safety posture is unchanged: SVG stays out of `isSafeInlineMime` (served as an attachment, never inline) and the hazard scan still rejects `<script>`-bearing payloads.
+::
+
+### Migration Notes
+
+- **Nothing required to upgrade.** The new `install` block in `config/extensions.php` ships with working defaults.
+- **New optional env vars** for the extension installer:
+  - `EXTENSIONS_INSTALL_ENABLED` — master kill-switch; defaults on outside production, off in production.
+  - `EXTENSIONS_INSTALL_AUTO_ENABLE` (default `true`) — auto-enable right after a successful install.
+  - `EXTENSIONS_INSTALL_TIMEOUT` (default `600`) — seconds before a `composer require` run is timed out.
+- **To use the installer in production**, set `EXTENSIONS_INSTALL_ENABLED=true` and make the deploy's `vendor/` tree writable by the web user.
+
+```bash
+composer update glueful/framework
+```
+
 ## v1.65.3 - Acrux
 **Released: July 3, 2026**
 
