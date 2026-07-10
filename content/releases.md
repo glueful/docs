@@ -5,6 +5,82 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.67.0 - Adhil
+**Released: July 10, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-plug"}
+#description
+**Four opt-in extension seams — independent DB sessions, around-execution wrappers, write-side row hooks, and blob lifecycle/authorization hooks.** Every seam is an exact pass-through until your application binds it: no new env vars, no migrations, no default changes, and unbound behavior is byte-for-byte identical to 1.66.x. **No action required** — upgrade and adopt seams as needed.
+::
+
+### Key Highlights
+
+::card
+#title
+Independent database sessions — `Connection::newPdo()`
+#description
+Opens a fresh, **non-pooled** PDO from the connection's resolved configuration, fully independent of the shared statement session. Built for session-scoped infrastructure like PostgreSQL advisory locks, where a failed application transaction on the shared PDO must not be able to poison or leak the lock session. Sessions minted here are not pool-managed — they live until released or garbage-collected, which is exactly the property a dedicated lock session needs.
+::
+
+::card
+#title
+Around-execution wrappers — `QueryExecutor::addExecutionWrapper()`
+#description
+The existing query-interceptor seam is before-only: it returns before the statement executes, so nothing registered there can hold a resource *across* execution. `ExecutionWrapperInterface::around(string $sql, array $bindings, callable $proceed): PDOStatement` composes around the actual prepare/execute, so an extension can acquire a lock, call `$proceed()`, and release in `finally` — spanning the full statement boundary. The registry is process-level and resettable via `clearExecutionWrappers()`.
+::
+
+::card
+#title
+Write-side row hooks — `Connection::addInsertHook()`
+#description
+The write-side counterpart to the existing `table()` read hooks. A registered `fn(string $table, array $data): array` runs over the row of every `QueryBuilder` `insert()`, `insertBatch()`, and `upsert()`, letting one extension stamp or transform columns (a tenant key, `created_by`, an encrypted field) in one place instead of every repository. Batch inserts are hardened around hook output: non-uniform column sets and list-shaped rows are rejected before SQL generation, and key order is normalized so a reordered-but-equal column set cannot misalign positional binding.
+::
+
+::card
+#title
+Blob lifecycle + authorization hooks
+#description
+`BlobCreatedHook::onBlobCreated()` runs after a blob row is persisted; **throwing rejects the upload**, and the controller compensates deterministically — checked storage-object delete, hard row delete via the new `BlobRepository::forceDelete()`, and a verified `status='deleted'` quarantine fallback, so a rejected upload can never leave a servable blob. `BlobAccessPolicy::authorizeAccess()` runs after the framework's own visibility/auth/signature checks on `show`/`info`/`delete`/`signedUrl`, receiving a `BlobAccessContext {action, authenticatedUserUuid, signatureValid}`; returning `false` yields a 404. Thumbnail generation now defers until the hook accepts (`FileUploader::generateThumbnailFor()`), so a rejected upload never leaves an orphaned public thumbnail — and a thumbnail failure after acceptance degrades to `thumb_url: null` instead of failing a committed upload. Both hooks resolve softly from the container with null-object defaults; the framework binds neither.
+::
+
+### Migration Notes
+
+- No action required. All four seams are unbound by default and exact pass-throughs; existing applications behave identically.
+- To adopt a seam, bind your implementation in a service provider (e.g. bind `BlobCreatedHook`/`BlobAccessPolicy` to your classes) — the framework's `UploadController` factory soft-resolves them.
+- `BlobRepository::forceDelete()` permanently removes a blob row (bypasses soft-delete). Reach for it only in compensation paths; normal deletion remains the soft `status='deleted'` flow.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.66.3 - Adhara
+**Released: July 6, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug"}
+#description
+**Route caching no longer crashes routes whose `where()` constraint contains parentheses.** After 1.66.2 re-enabled route caching for apps that mount an SPA, any dynamic route with a parenthesized constraint — e.g. a non-capturing `(?:twig|css|js)` group — raised `ValueError: array_combine(): … must have the same number of elements` on its first request. The compiled cache now stores each route's original path and constraints and rebuilds from them, instead of reverse-engineering the path from the regex. **No action required** — the cache format is bumped, so stale route caches regenerate automatically on upgrade.
+::
+
+### Key Highlights
+
+::card
+#title
+Lossless dynamic-route reconstruction from the compiled cache
+#description
+When the router serves its table from the compiled cache, it rebuilds each dynamic `Route` from cached metadata. It previously reverse-engineered the route path from the compiled regex via `Router::patternToPath()`, whose group-matching regex mistook a constraint's inner non-capturing `(?:…)` group for the parameter's own capture group. The rebuilt route then compiled to a pattern with more capture groups than parameter names, so `Route::match()` called `array_combine()` with mismatched key/value counts and threw a `ValueError` on the first request to match it. The `RouteCompiler` now serializes each dynamic route's **authoritative original path and `where` constraints**, and `Router::reconstructDynamicRoutes()` rebuilds from those and recompiles the pattern identically to registration — so a cached route matches exactly like a freshly-registered one. The `RouteCache` format version is bumped, so any route cache written by an earlier build is invalidated and regenerated on upgrade.
+::
+
+### Migration Notes
+
+- No action required. The fix is transparent; the bumped cache-format version invalidates any pre-existing route cache so it rebuilds on the next boot. Running `php glueful route:cache:clear` (or `cache:clear`) forces it immediately.
+
+```bash
+composer update glueful/framework
+php glueful route:cache:clear
+```
+
 ## v1.66.2 - Adhara
 **Released: July 6, 2026**
 
