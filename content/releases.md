@@ -5,6 +5,55 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.68.0 - Ain
+**Released: July 10, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-plug"}
+#description
+**Blob route extensibility: two generic, unbound-by-default seams over the blob endpoints, a reusable `auth:optional` mode, and a signed-URL fix for private uploads.** No new env vars, no migrations, no default changes. The blob VIEW route's auth posture changes — but the controller remains the authoritative gate, so response shapes are identical. **No action required.**
+::
+
+### Key Highlights
+
+::card
+#title
+Per-action blob middleware — `BlobRouteMiddlewareProvider`
+#description
+Applications can contribute middleware to the framework's blob endpoints without replacing them. The provider is soft-resolved at route registration (extension providers boot before framework routes load, so this is race-free) and asked once per `BlobRouteAction` (`upload`, `view`, `info`, `delete`, `sign`); contributed aliases are inserted after authentication and before rate limiting. Unbound, the routes are byte-for-byte unchanged — the framework binds nothing and never inspects what contributed middleware does.
+::
+
+::card
+#title
+Application-chosen blob origins — `BlobPublicUrlProvider`
+#description
+Signed and public blob URLs previously always used the request host — wrong whenever URLs are generated from one host (say, a central admin API) but served from another. The provider lets the application supply the base origin per blob; returning `null` keeps the request host. Because URL signatures cover path + query only, overriding the host never invalidates a grant.
+::
+
+::card
+#title
+Optional route authentication — `auth:optional`
+#description
+A general `AuthMiddleware` mode: authenticate when credentials are supplied, pass anonymous requests through untouched, and still reject malformed or invalid credentials. Built for routes whose authoritative access decision lives in the controller (like blob VIEW's visibility/signature checks) but useful anywhere authenticated-if-present semantics are wanted.
+::
+
+::card
+#title
+Fixed: signed URLs under globally private uploads
+#description
+With `uploads.access=private`, the blob VIEW route carried route-level `auth` — so an anonymous request presenting a **valid signed URL** was rejected with 401 before the controller could ever validate the signature. VIEW now uses `auth:optional` plus the controller's authoritative visibility/auth/signature checks: anonymous signed access works, authenticated direct reads keep working, unsigned anonymous private access still gets its 401 (re-derived controller-side), and all private access aliases (`private`, `true`, `'true'`, `1`) share one retrieval rule.
+::
+
+### Migration Notes
+
+- No action required. Both seams are unbound pass-throughs; the VIEW behavior change only *adds* a previously-broken capability (anonymous signed access in private mode) while preserving all existing responses.
+- To adopt the seams, bind `BlobRouteMiddlewareProvider` and/or `BlobPublicUrlProvider` in a service provider — the blob route registration and `signedUrl()` soft-resolve them.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.67.0 - Adhil
 **Released: July 10, 2026**
 
