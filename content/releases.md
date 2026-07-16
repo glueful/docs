@@ -5,6 +5,76 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.70.0 - Albireo
+**Released: July 16, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-layers-intersect"}
+#description
+**A blob-policy composition seam plus two long-standing database fixes.** Extensions can now contribute blob access policies simultaneously through `BlobAccessPolicyRegistry`; `whereIn()` works on `update()`/`delete()`; and `createTable()` plain indexes are no longer silently discarded on SQLite/PostgreSQL. Additive API, no new env vars, no migrations. **One operational note** for pre-existing SQLite/PostgreSQL dev databases (see Migration Notes).
+::
+
+### Key Highlights
+
+::card
+#title
+Blob access policy composition — `BlobAccessPolicyRegistry` + `CompositeBlobAccessPolicy`
+#description
+Applications and extensions register named `BlobAccessPolicy` contributors into a shared `BlobAccessPolicyRegistry` (a normal DI service bound by `StorageProvider` — no static accessor, no process-global fallback). `UploadController` always receives a `CompositeBlobAccessPolicy` wrapping the primary policy (bound `BlobAccessPolicy`, or the `Null` fallback) AND-composed with every registry contributor: veto semantics — any denial denies, short-circuiting in primary-then-insertion order. The composite holds the live registry, not a snapshot, so a contributor registered during a later extension's `boot()` is enforced immediately. With zero contributors, behavior is byte-identical to the previous unwrapped policy.
+::
+
+::card
+#title
+`whereIn()` / `whereNotIn()` on write operations
+#description
+The UPDATE/DELETE condition reparser only recognized single-placeholder raw conditions, so `whereIn()`'s multi-placeholder `col IN (?, ?, …)` was rejected with "Complex WHERE conditions … not yet supported". The reparser now recovers the column, operator, and bound values — with binding offsets preserved when composed with other predicates. `whereIn(col, [])` on a write still throws, as before.
+::
+
+::card
+#title
+`createTable()` plain indexes on SQLite/PostgreSQL
+#description
+Inline `->index(...)` definitions in a create-table callback were only emitted by the MySQL generator; on SQLite and PostgreSQL they vanished without error. `TableBuilder::create()` now emits every plain index as a follow-up `CREATE INDEX` statement uniformly across drivers (the same artifact kind `alterTable()` produces — real and droppable), and MySQL stops inlining plain indexes so nothing is created twice.
+::
+
+### Migration Notes
+
+- **SQLite/PostgreSQL databases migrated before 1.70.0 are missing every plain index declared inline in a `createTable()` callback** — they were silently discarded. Fresh migrations are correct automatically; for existing databases, re-run the relevant `CREATE INDEX` statements or re-migrate dev databases. Performance-only: data and query results were never affected.
+- No other action required — the registry seam is additive, and the `whereIn()` write fix turns a previously throwing call into the behavior its builders already advertised.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.69.0 - Albali
+**Released: July 14, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-adjustments"}
+#description
+**A boot-time config override seam: `ApplicationContext::overrideConfig()`, frozen once boot completes.** One additive method that lets applications and extensions override configuration during boot. No new env vars, no migrations, no default changes; unbound behavior is byte-for-byte identical to 1.68.x. **No action required.**
+::
+
+### Key Highlights
+
+::card
+#title
+Process-local config overrides — `ApplicationContext::overrideConfig()`
+#description
+`overrideConfig(string $key, mixed $value)` applies a config override that wins over file/env/default config (precedence: extension defaults < file/env < override). Overrides take dot-path keys, deep-merge into nested config, and survive `clearConfigCache()` (which only clears the loaded/cached layers). The window is **boot-only**: `Framework::boot()` calls `ApplicationContext::markBooted()` once every boot phase — including extension/provider boot — has run, after which `overrideConfig()` throws. Mid-request config mutation would otherwise create split-brain services that read config at different times. Built for (and consumed by) the Thallo tenancy public-origin surface, which persists a base domain + default hosts and applies them over config at boot; the seam itself is application-agnostic.
+::
+
+### Migration Notes
+
+- No action required — the method is purely additive and nothing in the framework calls it. Existing apps behave identically.
+- To adopt it, call `ApplicationContext::overrideConfig()` from a service provider's `register()` (or any boot-phase code), before boot completes.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.68.0 - Ain
 **Released: July 10, 2026**
 
