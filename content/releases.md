@@ -5,6 +5,48 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.71.0 - Alcor
+**Released: July 20, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-lock"}
+#description
+**Outbound-webhook security & reliability seams: strict event dispatch, an SSRF-safe outbound-target resolver, and hardened API-key rotation.** Three additive, application-agnostic building blocks extracted while hardening the commerce marketplace's seller webhooks. No new env vars, no migrations, no default changes. **One behavioral note:** API-key rotation no longer extends a predecessor's expiry (see Migration Notes).
+::
+
+### Key Highlights
+
+::card
+#title
+`EventService::dispatchOrFail()` — strict, at-least-once event dispatch
+#description
+Alongside the existing fault-isolating `dispatch()` (which logs and continues past a throwing listener), `dispatchOrFail()` stops at the first failing listener, logs, and rethrows the original exception so the caller's transaction can roll back. `dispatch()` is byte-unchanged — a pure insertion guarded by regression tests; the strict path is opt-in per call site, for events whose delivery is a correctness invariant (a financial webhook that must not be silently lost). The PSR `EventDispatcherInterface` alias resolves to the concrete `EventDispatcher`, so the strict path is reachable through the container.
+::
+
+::card
+#title
+`SafeOutboundTargetResolver` — one SSRF-safe URL → validated, IP-pinned target
+#description
+A single place (`src/Http/Security/`) that turns a URL into a validated outbound target, with two profiles. `resolveSafeFetch()` preserves the exact behavior of the existing `Client::safeRequest*()` SSRF checks — byte-for-byte, so existing callers are unaffected. `resolveWebhook()` applies a stricter third-party-delivery profile: HTTPS only; rejects embedded credentials, fragments, non-default ports, IP-literal hosts, and malformed/ambiguous IDNA; resolves every A/AAAA record and refuses if any resolves into a blocked range (loopback, private, link-local, CGNAT `100.64/10`, and reserved/embedded-v4 IPv6). `Client::safeWebhookRequestAsync()` builds on it: resolve once, pin the checked IP into the request's resolve map (no TOCTOU/DNS-rebinding window), never follow redirects.
+::
+
+::card
+#title
+Hardened `ApiKeyService::rotate()`
+#description
+Rotation now returns the successor key's `new_uuid` (an additive field — consumers that ignore it are unaffected) and clamps the predecessor's expiry to `min(existing, now + grace)`, so rotation can only ever shorten a superseded key's life, never extend it. The successor's own expiry is captured before the clamp and is unaffected.
+::
+
+### Migration Notes
+
+- **API-key rotation no longer extends a predecessor's expiry.** Before 1.71.0, rotating a key with a grace window could push a superseded key's `expires_at` later than its original value; it now takes the earlier of the two. If you relied on rotation to lengthen an old key's lifetime, issue a fresh key instead. Otherwise no action is required — the new `new_uuid` field is purely additive.
+- No new env vars, no migrations, no default changes. The event and HTTP additions are opt-in seams; `dispatch()` and the existing `safeRequest*()` SSRF behavior are byte-identical to 1.70.x.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.70.0 - Albireo
 **Released: July 16, 2026**
 
