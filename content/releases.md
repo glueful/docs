@@ -5,6 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.71.1 - Alcor
+**Released: July 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+**Two runtime bugfixes: non-pooled connection reuse and OPcache-off route-cache warmup.** Without pooling, `Connection` leaked a database backend per instance — enough short-lived containers exhausted the server's connection ceiling ("too many clients"). And route-cache warmup threw on every boot when OPcache was loaded but disabled. Pure fixes: no new env vars, no migrations, no default changes, no API changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Non-pooled `Connection` no longer leaks a backend per instance
+#description
+With connection pooling disabled, `new Connection(...)` opened a fresh PDO in its constructor and never reused it, so each additional container (a test harness that boots the framework repeatedly, or any process constructing several `Connection`s) opened another server connection that was only released on GC — which cyclic container graphs and cached contexts prevent. Enough of them exhausted the server's `max_connections` (`FATAL: sorry, too many clients already`) and slowed runs to a crawl. Server engines now reuse a process-global PDO keyed by the **full connection identity** (DSN + user + schema), so equivalent connections share one backend while a connection opened for a *different* schema/host/db/user still gets its own — preserving intentional isolation (e.g. a caller that opens a private-schema connection). **SQLite is excluded** (a `:memory:` database is private to its connection; file databases are cheap), so its pooling-off behavior is byte-unchanged. Pooled mode is untouched.
+::
+
+::card
+#title
+Route-cache warmup no longer throws when OPcache is loaded but disabled
+#description
+`RouteCache::save()` guarded `opcache_compile_file()` with `function_exists()` alone; when the extension is present but off (e.g. `opcache.enable_cli=0`, the default in CI) the call throws "Zend OPcache has not been properly started, can't compile file". The throw was caught upstream but spammed logs and aborted HTTP-layer warmup on every boot. Warmup now runs only when OPcache reports itself enabled for the current SAPI.
+::
+
+### Migration Notes
+
+- No new env vars, no migrations, no default changes, no API changes. Both are internal runtime fixes; upgrade and run.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.71.0 - Alcor
 **Released: July 20, 2026**
 
