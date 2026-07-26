@@ -5,6 +5,128 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.72.1 - Alderamin
+**Released: July 26, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-refresh"}
+#description
+**Activation writes now recompile the extension cache from what was just written.** Every activation surface runs a read→write→recompile sequence in one process: reading the enabled list primes the context config cache, `ExtensionStateWriter` mutates `config/extensions.php`, and the recompile previously resolved through the stale cache — persisting the PRE-write activation state. A just-enabled provider could be missing from the compiled cache; a just-disabled one could remain. Pure fix — upgrade and run.
+::
+
+### Key Highlights
+
+::card
+#title
+No-arg writeCacheNow() resolves from current file state
+#description
+`ExtensionManager::writeCacheNow()` with no explicit list now clears the context config cache before resolving, so `extensions:enable`, `extensions:disable`, and the extensions admin toggle recompile from the `config/extensions.php` that was just written instead of the enabled list cached earlier in the same process. Config defaults registered by extensions and boot-time overrides survive the clear (only the file-read layer drops), and explicit-list `writeCacheNow([...])` calls are unchanged. A regression test pins the full read→write→recompile sequence.
+::
+
+### Migration Notes
+
+- No new env vars, no migrations, no default changes, no API changes.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.72.0 - Alderamin
+**Released: July 26, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-stack-3"}
+#description
+**Three additive extension seams: one provider order, one provider owner, one activation gatekeeper.** A declarative cross-phase load-order contract shared by container compilation, discovery, cache generation, and cached boot; type-agnostic provider-to-package attribution so app-integrated provider packages keep honest `managed_by`; and a `extensions.protected` guard that makes generic enable/disable refuse providers owned by domain lifecycle flows. Hosts adopting none of the new contracts see byte-identical behavior — upgrade and run.
+::
+
+### Key Highlights
+
+::card
+#title
+One declarative provider order for every phase
+#description
+Implement the new `DeclaresLoadOrder` interface (static `loadAfter()` / `loadPriority()`, readable from class strings without constructing providers) and the pure `ProviderOrderer` — applied inside `ProviderClassResolver`, the single resolution path — guarantees the same relative order in service-definition compilation, live development discovery, `extensions:cache` and implicit or explicit `writeCacheNow()` cache generation, and cached production boot. Previously these phases could disagree: the boot-time sorter ran only on the uncached development path, so an instance-level `bootAfter()` order seen in development silently differed from production. Cycles — including self-dependencies — now throw `ProviderOrderCycleException` naming every blocked provider, failing cache generation and production boot loudly instead of logging a fallback. The legacy instance-level `OrderedProvider` keeps its exact semantics for third-party boot-only ordering, but can no longer move declarative participants relative to each other — including through its logged cycle fallback, which now re-applies the declarative contract.
+::
+
+::card
+#title
+Provider ownership survives any package type
+#description
+`PackageManifest::providerOwnership()` maps `extra.glueful.provider` to its owning composer package across ALL installed packages regardless of `type`, with FQCN normalization and a fatal error when two packages claim one provider. Permission catalog `managed_by` attribution now uses it — so a host that ships app-integrated provider packages as ordinary `library`-typed path repositories (keeping them out of the extension catalog on purpose) still gets stable per-package permission attribution instead of everything degrading to `app`.
+::
+
+::card
+#title
+Protected providers refuse generic toggles
+#description
+A new `extensions.protected` config map (`provider FQCN → {reason, managed_by}`) is consulted by `extensions:enable`, `extensions:disable`, and the extensions admin toggle BEFORE any already-enabled/not-enabled short-circuit or writability check — a protected provider always answers with its ownership story ("Managed by the tenancy enablement flow — use the workspaces admin") as a CLI failure or HTTP 409, and never a misleading state message. Built for providers owned by domain lifecycle state machines (glueful/tenancy's enablement flow is the canonical case) and for create-project templates that ship bundled-required extensions. `ExtensionStateWriter` stays policy-free, so owning flows keep using it directly.
+::
+
+### Migration Notes
+
+- No action needed: the new config key defaults to `[]` and all three seams are inert until adopted. If you ship a lifecycle-managed extension (e.g. glueful/tenancy runtime enablement), declare it in `extensions.protected` so generic toggles can no longer corrupt its state machine.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.71.3 - Alcor
+**Released: July 25, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-terminal-2"}
+#description
+**Console fix: extension-discovered commands no longer run in a parallel, never-booted world.** Commands discovered from extensions (rather than registered as container services) were instantiated bare, which sent `BaseCommand` down its no-args path — a fresh `ApplicationContext` plus a fresh container in which extension `boot()` never ran. Those commands silently operated without capabilities, boot-registered contributors, or event listeners, so a CLI run could see (and write) different state than the running application. Pure fix — upgrade and run.
+::
+
+### Key Highlights
+
+::card
+#title
+Discovered commands receive the real booted container and context
+#description
+`Console\Application::registerDeferredExtensionCommands()` falls back to direct instantiation when a discovered command class is not registered in the container. That fallback now passes the console's own container and its `ApplicationContext` to any `BaseCommand` subclass — exactly what container-resolved commands already received — instead of `new $class()` with no arguments. The no-args path built a second world: `BaseCommand` constructed a fresh context from `getcwd()` and a fresh container via `ContainerFactory`, where extension `boot()` had never run. Anything boot-registered — capability registrations, starter/content contributors, event listeners — was invisible to the command, and state written from that world could diverge from what the application maintains. A concrete instance: a host app's sync command could not see an extension's registered contributors and mis-marked their bookkeeping rows as orphaned.
+::
+
+### Migration Notes
+
+- No new env vars, no migrations, no default changes, no API changes. If you ship extension commands, they now observe the same booted state as HTTP requests — remove any workarounds that re-registered boot-time state inside command constructors.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.71.2 - Alcor
+**Released: July 22, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-plug-connected"}
+#description
+**Follow-up fix: non-pooled connection reuse is now scoped to framework-managed connections.** 1.71.1's identity-keyed PDO reuse could collapse an intentionally independent, hand-built `new Connection([...])` into the framework's shared session when their configs resolved identically (typical in CI) — turning session-level semantics (advisory locks, open transactions) into self-interactions and deadlocking race-style code. Reuse now requires the constructor's `ApplicationContext`; context-less constructions always get a fresh backend. The 1.71.1 leak fix is fully preserved. Pure fix — upgrade and run.
+::
+
+### Key Highlights
+
+::card
+#title
+Ad-hoc `new Connection([...])` always gets its own backend again
+#description
+A caller hand-building a Connection is usually asking for an independent session — a second session that holds a lock or transaction open while another session (or a child process) contends with it. 1.71.1 keyed reuse purely by connection identity (DSN + user + schema), so when an ad-hoc construction's config resolved identically to the managed connection (typical in CI, where DB settings come from real environment variables and every construction path sees the same values), the two silently became one PG session — and a lock held on the "second connection" was a lock the same session's contender could never acquire. Reuse is now gated on the constructor's `$context` parameter: the DI container's `database` factory passes it, so framework-managed connections still share one identity-keyed backend (the "too many clients" leak fix stands); `new Connection([...])` without a context restores 1.71.0 semantics — a fresh, independent backend every time. SQLite is unchanged (never reused).
+::
+
+### Migration Notes
+
+- No new env vars, no migrations, no default changes, no API changes. If you construct `Connection` directly and *want* the shared framework backend, pass the `ApplicationContext` as the second constructor argument; without it you get an independent session.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.71.1 - Alcor
 **Released: July 22, 2026**
 
