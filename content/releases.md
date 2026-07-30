@@ -5,6 +5,34 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.74.0 - Algenib
+**Released: July 30, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-user-check"}
+#description
+**Username validation now matches the column, not a product rule.** `UsernameDTO` and `UserDTO` accepted 3–30 characters, which quietly ruled out a whole category of application: one that uses a normalized email address as the username. Plenty of valid addresses exceed 30 characters. The framework now enforces only storage-safe invariants — required, trimmed, at least 3 characters, within the `varchar(255)` column, unique — and leaves narrower policies to the applications that actually know what their usernames are for. Strictly more permissive, no schema change, nothing previously valid becomes invalid.
+::
+
+### Key Highlights
+
+::card
+#title
+Storage-safe invariants in the framework, product rules in the app
+#description
+Both validators now bound usernames by a shared `MAX_LENGTH` constant set to 255 — the width of the `users.username` column — rather than an arbitrary 30. The distinction is deliberate: the framework can enforce what the database requires, but it cannot know whether a host wants slug-safe handles, reserved-name checks, a shorter display limit, or an email. Applications impose those at their own input boundary. It is not unbounded either; accepting more than the column holds would only move the rejection from validation to the database, where the error is worse.
+::
+
+### Migration Notes
+
+- Strictly more permissive: every username that validated before still validates. No migration — the column has always been `varchar(255)`.
+- If your application relied on the framework rejecting usernames longer than 30 characters, add that rule at your own input boundary; it is no longer enforced centrally.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.73.0 - Algedi
 **Released: July 29, 2026**
 
