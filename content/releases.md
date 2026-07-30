@@ -5,6 +5,33 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.74.1 - Algenib
+**Released: July 30, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-refresh-alert"}
+#description
+**Session enumeration no longer recurses into itself.** Listing, counting, or bulk-managing a user's sessions through the container-resolved session store triggered an unbounded mutual recursion between `SessionStore::listByUser()` and the cache manager's `findUserSessions()` — each deferred to the other with no base case — and exhausted memory. The common login, logout, and refresh flows operate on a single session by token and were never affected, which is why it stayed latent. A pure bugfix, low risk.
+::
+
+### Key Highlights
+
+::card
+#title
+Cache-index enumeration is the manager's sole authority
+#description
+`SessionCacheManager::findUserSessions()` no longer delegates back to `SessionStore::listByUser()`; it reads the cache user-index directly, which was always its source of truth. That breaks the cycle for every enumeration path — `getUserSessions`, `getUserSessionCount`, `terminateAllUserSessions`, `refreshPermissionsForAllUserSessions`, and `SessionStore::listByUser`. `revokeAllForUser()` was already a direct database operation and is untouched. Making database enumeration authoritative — which means mapping rows to the token-bearing payload shape those callers depend on — is a deliberate later redesign, kept out of this fix on purpose.
+::
+
+### Migration Notes
+
+- Nothing to do: a pure bugfix with no API, config, or schema change. Any feature that lists or bulk-manages a user's sessions simply stops exhausting memory.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.74.0 - Algenib
 **Released: July 30, 2026**
 
