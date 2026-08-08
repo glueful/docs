@@ -5,6 +5,59 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.75.0 - Algieba
+**Released: August 7, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-shield-check"}
+#description
+**The whole framework now type-checks at PHPStan level 8 with zero suppressed errors.** A 31-area campaign cleaned 914 errors of typing debt, raised the CI gate from level 6 to level 8 over `src/` and `config/`, upgraded the engine to PHPStan 2.x, and finished by fixing all 111 baseline entries and deleting the baseline file. Along the way the sweep surfaced and fixed genuinely latent bugs — a reachable `orHas()` fatal, auth request attributes that were always `null`, an unreachable soft-delete branch. Moderate risk: the diff surface is wide, but every area landed behind the full test suite and the few contract-visible changes are listed in the migration notes.
+::
+
+### Key Highlights
+
+::card
+#title
+Level 8 everywhere, with no baseline
+#description
+All 31 areas of `src/` were cleaned area-by-area — each behind the full test suite — and the gate in `phpstan.neon` was raised from level 6 to `level: 8`. The frozen PHPStan-2 upgrade baseline was then burned down entirely and deleted, so the gate runs with zero suppressed errors. New findings are fixed at the source; the one permanent, documented ignore is `trait.unused`, because the framework ships traits as public API for applications and extensions.
+::
+
+::card
+#title
+The sweep fixed real bugs, not just annotations
+#description
+`orHas()` / `orDoesntHave()` / `orWhereHas()` / `orWhereDoesntHave()` crashed with an undefined-method fatal — `QueryBuilder::orWhereRaw()` now exists and is public API. The post-auth request attributes `email` and `username` were always `null` (the middleware read private properties instead of accessors). Soft-delete restore/delete on joined queries never qualified the `deleted_at` column — an unreachable branch since day one, now served by the new `QueryBuilder::hasJoins()`. Also fixed: `QueryCacheService`'s default key prefix never applied, failed-job retry name mangling, JWT and webhook signing of `"false"` payloads, and `RedisCacheDriver::zadd()` erroring on an empty map.
+::
+
+::card
+#title
+Honest contracts and hardened edges
+#description
+The ORM relation machinery is typed against `Model` instead of `object`, with `class-string<Model>` relation definitions. `Model::toJson()` / `Collection::toJson()` throw named errors instead of returning `false` typed as `string`, as does `FileUploader::calculateChecksum()` on an unreadable file. `WhereClauseInterface` now declares `orWhereRaw()`. Dozens of `preg_match` conditions were pinned with the correct operator, and false-returning calls (`glob`, `file_get_contents`, `json_encode`, `preg_replace`) are guarded throughout — fail-closed where the value feeds redaction, hashing, or signing.
+::
+
+::card
+#title
+PHPStan 2.x engine and advisory Rector
+#description
+Static analysis runs on PHPStan 2.2 with the phpunit, strict-rules, and deprecation-rules extensions on their 2.x majors, using identifier-tagged errors. Rector joins as dev-only tooling with a conservative wave-0 config (PHP 8.3 + PHPUnit sets; readonly-class rectors permanently skipped as BC hazards) — `composer rector` dry-runs it on demand; it does not run in CI.
+::
+
+### Migration Notes
+
+- **Applications:** `composer update glueful/framework` is enough — no new env vars, config keys, migrations, or default changes.
+- **If you implement `WhereClauseInterface`** (rare): add the `orWhereRaw()` method.
+- **If you subclass ORM relation classes:** parents/related instances are typed `Model`, not `object`.
+- **If you catch around `toJson()`:** unencodable payloads now throw a named error instead of returning `false`.
+- Installs with an empty query-cache `keyPrefix` get the intended default prefix — the query cache re-keys once after upgrade (one round of cache misses, not an error).
+- **Contributors / CI forks:** the analysis gate is now level 8 with no baseline file.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.74.1 - Algenib
 **Released: July 30, 2026**
 
