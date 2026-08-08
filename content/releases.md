@@ -5,6 +5,52 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.76.0 - Algol
+**Released: August 8, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-database-heart"}
+#description
+**The complete database-layer roadmap in one release — the native alternative to Doctrine DBAL.** Database failures are now typed (`\PDOException`-rooted hierarchy, so every existing catch keeps working), retries run on one honest, configurable budget shared between deadlocks and connection losses, SQLite alterations are fail-closed (six paths that silently did nothing now really execute via audited atomic rebuilds, or throw before mutation), and connections recover — provably-uncommitted transactions replay after reconnection, while commit-ambiguous losses are never replayed. Moderate risk: new env keys, three interface additions for external implementors, and SQLite migrations that previously "passed" by doing nothing now take effect or fail loudly.
+::
+
+### Key Highlights
+
+::card
+#title
+Typed database exceptions
+#description
+`Glueful\Database\Exceptions`: `UniqueConstraintViolationException`, `ForeignKeyConstraintViolationException`, `NotNullConstraintViolationException` (under a `ConstraintViolationException` parent), `DeadlockException`, `SerializationFailureException`, `LockContentionException`, `ConnectionLostException` — classified from SQLSTATE plus vendor codes (vendor-first, because MySQL reports deadlocks under SQLSTATE 40001) with full state preservation and `sqlState()`/`driverCode()`/`driver()` accessors. `TransactionManager` recognizes retryable failures by marker interface instead of a mixed code list — PostgreSQL `40P01` deadlocks finally retry. Unique violations render HTTP 409 with a fixed, leak-proof message.
+::
+
+::card
+#title
+SQLite alterations are fail-closed
+#description
+Modify column, drop column, add/drop foreign key, rename column, and inline-unique drops previously generated comment SQL that executed as successful no-ops. They now run through an audited, atomic create-copy-swap rebuild: a preservation audit fails closed before any DDL (generated columns, COLLATE, composite FKs, indexes/triggers/views touching changed columns, `journal_mode=OFF`), global `foreign_key_check` runs before mutation and before commit, rowids and the `sqlite_sequence` high-water mark survive, and the rebuilt table is re-introspected and canonically verified against the planned target. Anything unsupported throws `UnsupportedSchemaOperationException` before mutation.
+::
+
+::card
+#title
+Reconnect resilience
+#description
+One shared retry budget (`DB_RETRY_MAX_ATTEMPTS` / `DB_RETRY_BACKOFF_MS`, default 3 attempts with 500 ms linear backoff — distinct from the pool's acquisition retries) spans deadlock retries and connection-loss replays. Outermost `Connection::transaction()` calls reconnect and replay work the framework can prove uncommitted; `Connection::idempotentRead()` re-runs caller-declared idempotent reads; `Connection::reconnect()` re-establishes outside transactions. A loss while COMMIT is in flight is never replayed — it surfaces as the non-retryable `CommitOutcomeUnknownException` with the connection invalidated for lazy reconnection.
+::
+
+### Migration Notes
+
+- **Applications:** `composer update glueful/framework`; optionally tune `DB_RETRY_MAX_ATTEMPTS`/`DB_RETRY_BACKOFF_MS`.
+- **Audit SQLite-targeting migrations** that modify/drop columns or foreign keys: their intent now actually applies (or fails loudly) instead of silently passing.
+- **External implementors of framework interfaces:** `TransactionManagerInterface::transaction()` gained an optional `?RetryBudget` param; `SchemaBuilderInterface` gained `executeSqliteRebuild()` and `executeSqliteNativeAlteration()`; `TableBuilderInterface` gained `rename()`.
+- **`Connection::transaction()` retry tuning moved to config** — `setMaxRetries()` still governs direct `TransactionManager` use only.
+- Replay callbacks must build query chains inside the callback from the supplied connection; prebuilt builders retain the stale PDO.
+- Code that retried on commit-phase `ConnectionLostException` was risking duplicate commits — it now sees `CommitOutcomeUnknownException` (still a `PDOException` subclass); audit any such handler.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.75.0 - Algieba
 **Released: August 7, 2026**
 
