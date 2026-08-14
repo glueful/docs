@@ -5,6 +5,24 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.78.1 - Alioth
+**Released: August 14, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: API documentation now generates with the route cache in place.** A leftover `storage/cache/routes_dev.php` made `generate:openapi` abort with `Route name '…' already exists` — the generator's cache-detected reset replayed every route registration onto a router whose named-route registry boot had already populated. The reset is gone; generation relies on the manifest's idempotent load, and a cache-populated run now produces a byte-identical document to a cache-free one. Low risk: generation-only, runtime routing untouched.
+::
+
+### Migration Notes
+
+- `composer update glueful/framework` — no config or code changes; the old "delete the route cache before generating" workaround is no longer needed.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.78.0 - Alioth
 **Released: August 12, 2026**
 
