@@ -5,6 +5,61 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.78.1 - Alioth
+**Released: August 14, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: API documentation now generates with the route cache in place.** A leftover `storage/cache/routes_dev.php` made `generate:openapi` abort with `Route name '…' already exists` — the generator's cache-detected reset replayed every route registration onto a router whose named-route registry boot had already populated. The reset is gone; generation relies on the manifest's idempotent load, and a cache-populated run now produces a byte-identical document to a cache-free one. Low risk: generation-only, runtime routing untouched.
+::
+
+### Migration Notes
+
+- `composer update glueful/framework` — no config or code changes; the old "delete the route cache before generating" workaround is no longer needed.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.78.0 - Alioth
+**Released: August 12, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-eye-off"}
+#description
+**Credentials in URL paths stop reaching the logs.** Redaction has always been keyed on parameter *names* — query strings and body fields — but a secret carried in the path itself (signed payment links, magic links, one-time download URLs) was logged verbatim by the request logger at info level and by the exception handler at error level in every profile. Applications can now register credential-bearing route templates and have the secret segment masked in every framework log sink. Moderate risk: one new config key (`logging.sensitive_paths`) and env var (`LOG_SENSITIVE_PATHS`); with the default empty list, every path is logged byte-identically to 1.77.0.
+::
+
+### Key Highlights
+
+::card
+#title
+Configurable sensitive path redaction
+#description
+`SensitiveParamRedactor::configureSensitivePaths()` + `sanitizePath()` mask credential segments per registered route template — `'sensitive_paths' => ['/checkout/pay/{token}']` in `config/logging.php` (or `LOG_SENSITIVE_PATHS` as a comma list). `{name}` segments become `[REDACTED]`, `*` matches-and-keeps any single segment, trailing segments are preserved. Matching mirrors `Router::match()`'s own normalization — percent-decoding, repeated-slash collapse, `%2F` as a segment boundary — so every spelling that reaches a live route is redacted, while a `%2F` *inside* a credential cannot split the secret and half-redact it. Templates are written without the deployment's base URL; `Request::getBaseUrl()` is stripped before matching so one template covers root- and base-URL-mounted apps.
+::
+
+::card
+#title
+Every framework path sink swept
+#description
+Beyond the two primary leaks (`Application::handle()`'s request log, `Handler::report()`'s error log), all remaining request-path log sinks now route through the redactor: the request/response logging middleware's raw `path` field, `CSRFMiddleware` (including its `SecurityException` details), `AuthMiddleware`, `SecurityHeadersMiddleware`, `AdminPermissionMiddleware`, `VersionManager`, `FieldSelectionMiddleware`, `TracingMiddleware` span attributes, and `MetricsMiddleware`'s *persisted* `endpoint`. `sanitizeUrl()` also no longer mis-parses a schemeless `//…` request URI (its first segment was read as a host, carrying the path past redaction). Rate-limit bucket keys stay raw by design — they are hashed, not logged.
+::
+
+### Migration Notes
+
+- **No action required** for apps without credential-bearing paths: the default pattern list is empty and log output is byte-identical.
+- **Apps issuing tokened URLs:** register the templates — `'sensitive_paths' => ['/checkout/pay/{token}']` — without any base-URL prefix.
+- **Redaction covers framework log sinks only:** reverse-proxy, web-server and CDN access logs still record the raw request line and remain the operator's responsibility.
+- **Exception *messages* that interpolate a URI are still logged verbatim** — put the URI in the exception context (redacted), not the message (see `docs/SECURITY_NOTES.md`).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.76.0 - Algol
 **Released: August 8, 2026**
 
