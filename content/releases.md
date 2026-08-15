@@ -5,6 +5,25 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.78.2 - Alioth
+**Released: August 15, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-broom"}
+#description
+**Patch: the Rector experiment concludes — value harvested, tool retired.** Every parent-class method override in the framework now carries `#[\Override]`, so signature drift against a parent fails at parse time, and the long-dead `setAccessible(true)` reflection calls (no-ops since PHP 8.1) are removed. Rector itself — the dev dependency, its config, and the composer scripts — is retired: its dry-run surface held zero bugs on an already-modern PHP 8.3 codebase whose correctness is enforced by PHPStan level 8 with no baseline and a 2,100+ test suite. Internal-only: no API, env, config, or behavioral changes for applications. Low risk.
+::
+
+### Migration Notes
+
+- Nothing to do: `composer update glueful/framework` picks up the patch; no application-facing changes.
+- Framework contributors: `composer rector`/`rector:fix` no longer exist. For future PHP-version or PHPUnit major migrations, install Rector ad hoc — that episodic use is its sweet spot.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.78.1 - Alioth
 **Released: August 14, 2026**
 
