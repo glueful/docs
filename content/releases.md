@@ -5,6 +5,29 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.78.3 - Alioth
+**Released: August 16, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-terminal-2"}
+#description
+**Patch: the console works before the database does.** `migrate:run`/`rollback`/`status`
+resolved their migration manager — which connects and runs version-table DDL — at console
+*registration*, so every `glueful` command required a reachable database just to list
+commands: exactly the state a first-run provisioning flow exists to repair. Resolution now
+happens on first use, pinned by a refusing-container regression test. Console-internal;
+no API, env, or config changes.
+::
+
+### Migration Notes
+
+- `composer update glueful/framework` — nothing else.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.78.2 - Alioth
 **Released: August 15, 2026**
 
