@@ -5,6 +5,287 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.80.2 - Almach
+**Released: August 19, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: untouched migration sources classify `pending`, never `divergent`.** A source with
+zero receipts whose effects are absent or unverifiable is simply not migrated yet — the
+healthy state of every disabled extension's schema on a fresh install. Previously it
+classified Divergent, making `migrate:verify` exit non-zero on perfectly healthy installs
+and breaking the documented `migrate:run && migrate:verify` upgrade chain for hosts
+shipping disabled engines. Low risk: classification-only.
+::
+
+### Key Highlights
+
+::card
+#title
+`AdoptionState::Pending`
+#description
+`migrate:verify` now reports untouched sources as `pending` and still exits non-zero only
+on genuine divergence — a partially receipted source whose remaining effects are absent or
+unverifiable. The lost-ledger adoption path is unchanged: zero receipts with effects
+present (the verifier passes every missing basename) stays `adoptable`.
+::
+
+### Migration Notes
+
+- **No action required.** If your monitoring keyed on `migrate:verify` output, disabled
+  engines now read `pending` instead of `divergent`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.80.1 - Almach
+**Released: August 18, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the protected migration lane can record its own operation on PostgreSQL.**
+`extension_operations.operation` was created as `string(16)`, but 1.80.0's
+`migrateProtected()` writes `protected_migrate` (17 chars) — a hard 22001 truncation error
+on PostgreSQL that SQLite-based tests never saw. The column is now 32 wide, with a width
+tripwire test pinning every operation and status value against the declared DDL.
+::
+
+### Migration Notes
+
+- **A database provisioned on exactly 1.80.0** reports the create migration Divergent (its
+  checksum changed) — re-provision, or widen the column and update the recorded checksum by
+  hand.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.80.0 - Almach
+**Released: August 18, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-shield-check"}
+#description
+**Minor: schema custody closure — provision, protected providers, and host-enforced
+manifests complete the schema-on-enable program.** Installer provision now applies the app
+path and every manifest core descriptor in one locked custody sequence; protected providers
+get their own migration lane on the shared executor; and hosts can opt into refusing
+undeclared package schema. Breaking for any host still leaning on 1.79's legacy seams
+(none are known to exist): manifest declaration is unconditional, and the beta-era
+legacy-alias receipt machinery (including `migrate:normalize-receipts`) is gone — no
+supported installs carry pre-manifest ledgers.
+::
+
+### Key Highlights
+
+::card
+#title
+Provision is a complete locked pass
+#description
+With a context, the installer builds its migration manager through
+`MigrationManagerFactory`, so install applies the app path AND every manifest core
+descriptor under one custody sequence — global-source snapshot, all-source lock, fresh
+pending read inside the lock, run-report-driven outcome. A failed migration is a FAILED
+install step naming the basename and error (with manual-repair wording when the driver
+could not roll back atomically), never a quiet success; later files stay pending.
+::
+
+::card
+#title
+A migration lane for protected providers
+#description
+`ExtensionSchemaExecutor::migrateProtected($package, $actor)` serves providers whose
+activation is owned elsewhere (`ProtectedProviders` — e.g. a tenancy control plane's
+enablement state machine). Same custody as `enable()` — bootstrap asserted, core plus
+package sources locked and migrated in order, readiness verified, outcome recorded as a
+`protected_migrate` operation — but it refuses non-protected packages, never writes
+extension state, and never recompiles the provider cache: those belong to the owning flow.
+::
+
+::card
+#title
+Manifest declaration is unconditional
+#description
+A provider owned by an installed Glueful package that declares no
+`extra.glueful.migrations` manifest can no longer register migration paths at all —
+`loadMigrationsFrom()` throws `UndeclaredSchemaException` instead of falling back to the
+1.79 append. Every installed Glueful package must declare descriptors or
+`"migrations": "none"`. Ownerless app-local providers keep their append lane — that lane
+is permanent.
+::
+
+### Migration Notes
+
+- **Declare every installed Glueful package's schema** (descriptors or
+  `"migrations": "none"`) before upgrading — an undeclared package's provider now throws at
+  migration-path registration. First-party packages all declare as of this release.
+- **If you used beta-era pre-manifest ledgers:** `migrate:normalize-receipts` and the
+  `legacyAliases` descriptor field are removed. Re-provision, or rewrite ledger `source`
+  values by hand before upgrading.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.79.1 - Alkaid
+**Released: August 18, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: tolerant index drops no longer poison the per-migration transaction.**
+`SchemaBuilder::dropIndex()` has always swallowed a failed drop, but under v1.79.0's
+per-migration transaction the errored statement aborted the whole transaction on
+PostgreSQL (25P02) and failed every later statement — surfaced by fresh-chain migrations
+that defensively drop-then-recreate an index. `dropIndex` now emits `DROP INDEX IF EXISTS`
+on PostgreSQL and SQLite, so a missing index is a no-op instead of a transaction abort.
+Schema-internal; no API, env, or config changes.
+::
+
+### Migration Notes
+
+- `composer update glueful/framework` — nothing else.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.79.0 - Alkaid
+**Released: August 17, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-database-cog"}
+#description
+**Minor: schema-on-enable — extension enablement becomes a migrate-first, lock-serialized
+operation with a truthful record.** Manifest migration descriptors
+(`extra.glueful.migrations`) are now the sole schema inventory, and
+`extensions:enable`/`disable` (CLI and HTTP alike) drive one bootstrap-ordered executor:
+dependency dry-resolve, source-scoped locks, migrations first, checksum-verified readiness,
+enabled state written last, terminal state persisted in a core-owned `extension_operations`
+ledger. Moderate risk with **one required upgrade step**: run `php glueful migrate:run`
+once after updating, before any extension enable — the executor refuses until the new core
+operation ledger exists. Undeclared legacy packages keep booting and migrating globally,
+but the new enable/readiness/adoption operations fail closed on them.
+::
+
+### Key Highlights
+
+::card
+#title
+Manifest migration descriptors as the single schema inventory
+#description
+Every Glueful package declares its migrations in `extra.glueful.migrations` — stable id,
+relative path, closed priority enum (including the new `platform` (-50) tier), mode
+`core|on_enable`, legacy source aliases, optional structural-verifier FQCN — or the
+explicit string `"none"`. `DescriptorInventory` validates the global set with framework
+built-ins included: duplicate sources, contested aliases, ancestor/descendant paths, and
+malformed declarations all fail closed. `loadMigrationsFrom()` now validates a declared
+package's call against its manifest instead of appending; only undeclared/app-local
+providers keep the legacy append.
+::
+
+::card
+#title
+The enable executor and the operation ledger
+#description
+`ExtensionSchemaExecutor` owns enable/disable end to end under bootstrap-safe migration
+locks (PostgreSQL advisory locks, MySQL named locks, flock for SQLite — sorted
+acquisition, partial-custody rollback, no TTL). Migrations run first, readiness is
+re-verified, and the enabled state is written LAST; terminal states
+(`succeeded | failed | manual_repair | enabled_cache_stale`) persist in
+`extension_operations` with the failing migration. The `APP_ENV=production`
+enable/disable refusals are removed — authority, locking, and audit are the safety
+boundary. Core leaves (`auth`, `extensions`, `locks`, `metrics`, `notifications`,
+`queue`, `scheduler`, `uploads`) now provision unconditionally.
+::
+
+::card
+#title
+Checksum-driven readiness, receipt normalization, and verifier-gated adoption
+#description
+`SchemaReadiness` classifies each descriptor ready/pending/divergent from ledger receipts
+and exact SHA-256s — never `hasTable` probes; a missing ledger means pending with zero
+DDL. `migrate:normalize-receipts` rewrites legacy-alias receipts to descriptor identity
+(checksum-verified, ambiguity refused). `migrate:verify --adopt <source>` adopts
+pre-existing schema only when the manifest-declared structural verifier passes every
+missing basename, re-verifies under the lock, and writes all receipts atomically —
+nothing is ever dropped. On transactional-DDL drivers each migration's DDL and receipt
+now commit or roll back together.
+::
+
+### Migration Notes
+
+- **Required, once, before any extension enable:** run the core migration that creates the
+  operation ledger — the executor refuses with `SchemaNotBootstrappedException` until it
+  exists.
+- **Package authors:** declare `extra.glueful.migrations` (or `"none"`) in your manifest;
+  `extensions:enable` now refuses undeclared packages with the manifest remedy. Undeclared
+  packages still boot and migrate via legacy global `migrate:run`.
+- **Global runs are policy-scoped:** `migrate:run` skips disabled `on_enable` descriptors
+  and validates explicit file arguments against scope before any DDL.
+
+```bash
+composer update glueful/framework
+php glueful migrate:run
+```
+
+---
+
+## v1.78.4 - Alioth
+**Released: August 17, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-database-off"}
+#description
+**Patch: the lazy-ledger contract completes v1.78.3.** That release deferred database work
+in the three migrate *commands*, but every extension provider still constructed
+`MigrationManager` at boot via `loadMigrationsFrom()` — and its constructor connected and
+ran version-table DDL, creating the `migrations` table as whatever role `.env` named. The
+manager now resolves its connection on first database operation: only `migrate()` creates
+the ledger, status and pending reads treat a missing ledger as zero applied migrations, and
+`rollback()` reports nothing-to-rollback. Migration discovery and registration perform zero
+database work, and read-only operational commands work with read-only credentials.
+Migration-internal; no API, env, or config changes.
+::
+
+### Migration Notes
+
+- `composer update glueful/framework` — nothing else.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.78.3 - Alioth
+**Released: August 16, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-terminal-2"}
+#description
+**Patch: the console works before the database does.** `migrate:run`/`rollback`/`status`
+resolved their migration manager — which connects and runs version-table DDL — at console
+*registration*, so every `glueful` command required a reachable database just to list
+commands: exactly the state a first-run provisioning flow exists to repair. Resolution now
+happens on first use, pinned by a refusing-container regression test. Console-internal;
+no API, env, or config changes.
+::
+
+### Migration Notes
+
+- `composer update glueful/framework` — nothing else.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.78.2 - Alioth
 **Released: August 15, 2026**
 
