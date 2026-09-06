@@ -5,6 +5,43 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.81.0 - Alnair
+**Released: September 6, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Minor: the boot profiler dump is opt-in and best-effort.** Every boot used to write a
+hard-coded `/tmp/boot_profile.log`. On any host where a different OS user had created that
+file first — a second site, or a CLI run as root followed by one as the site user — the
+denied write was promoted to a fatal `ErrorException` by the framework's error handler, and
+no command (including first-run provisioning) could boot. The dump is now enabled only by
+`BOOT_PROFILE_LOG`, and a dump that cannot be written is skipped silently. Low risk: no
+framework code read the file; minor only because a default changed and an env var is new.
+::
+
+### Key Highlights
+
+::card
+#title
+`BOOT_PROFILE_LOG`
+#description
+Unset (the default) writes nothing. `true` writes a per-phase boot timing breakdown to a
+per-user file under the system temp directory, so two sites on one host never contend for
+a single path. Any other value is taken as an explicit file path. The structured boot
+summary still reaches the framework logger exactly as before.
+::
+
+### Migration Notes
+
+- **No action required.** If external tooling tailed `/tmp/boot_profile.log`, set
+  `BOOT_PROFILE_LOG=/tmp/boot_profile.log` to keep it.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.80.2 - Almach
 **Released: August 19, 2026**
 

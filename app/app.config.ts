@@ -30,7 +30,7 @@ export default defineAppConfig({
     title: '',
     to: '/',
     // Current framework version shown next to the logo — bump on each framework release.
-    version: '1.80.2',
+    version: '1.81.0',
     logo: {
       alt: '',
       light: '',
