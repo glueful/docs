@@ -17,6 +17,17 @@ bindings registered there silently vanished on every production boot. Low risk:
 behaviour-restoring, no API change.
 ::
 
+### Key Highlights
+
+::card
+#title
+`register()` runs on every boot
+#description
+The extension cache decides only *which* providers load. Their lifecycle is the same on both
+discovery paths: `register()` during `discover()`, then `boot()`, with the same per-provider
+failure handling — logged and skipped in production, rethrown elsewhere.
+::
+
 ### Migration Notes
 
 - **No action required.** If an extension of yours registers commands or bindings in
