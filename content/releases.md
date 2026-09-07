@@ -5,6 +5,62 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.82.0 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-rocket"}
+#description
+**Minor: the compiled container finally engages, and a never-installed production checkout
+boots quietly.** Every production boot used to log `[Container][WARNING] container compilation
+failed` and fall back to the runtime container — the framework's own core factories were all
+"unsupported" by the compiler. Static factories now compile to direct calls, closure factories
+and live objects such as the `ApplicationContext` are handed in after construction, and the
+artifact lives under the app's `storage/cache/container`. Separately, a checkout that has not
+been installed yet (no security keys) skips the boot-time security validation and resolves
+extensions live once, writing the cache, instead of failing with "Extension cache missing".
+Moderate risk: production runs a different (faster) container implementation from this
+release on; installed hosts are otherwise unchanged.
+::
+
+### Key Highlights
+
+::card
+#title
+Compiled container, hydrated at boot
+#description
+`ContainerCompiler` emits `'Class::method'` / `[Class::class, 'method']` factories as direct
+static calls. What cannot become code — closures, instance factories, the live
+`ApplicationContext` — is declared in `RUNTIME_FACTORY_IDS` / `RUNTIME_VALUE_IDS` on the
+generated class and injected by `ContainerFactory` via `withRuntimeFactories()` /
+`withRuntimeValues()`, on every production boot and for a precompiled container. The
+container self-reference compiles to `$this`.
+::
+
+::card
+#title
+First run bootstraps itself
+#description
+`InstallState::isInstalled()` is true once `APP_KEY`, `JWT_KEY` and `TOKEN_SALT` exist. Until
+then a production checkout skips the security validation (its warnings would all be about
+state the installer creates) and extension discovery resolves live ONCE and writes the cache.
+Once installed, a missing cache is still a deploy mistake and fails loudly.
+::
+
+### Migration Notes
+
+- **Compiled container now active in production.** If something behaves differently only in
+  production, set `APP_DEBUG=true` to compare against the runtime container and report it.
+  Delete `<app>/storage/cache/container/` to force a fresh compile.
+- **Recompile a `container:compile` artifact built before 1.82.0** once — it is still loaded
+  but carries no runtime values.
+- **`FORCE_HTTPS` unset in production** no longer draws a recommendation; unset means enabled.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.81.2 - Alnair
 **Released: September 7, 2026**
 
