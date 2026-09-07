@@ -5,6 +5,44 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.82.1 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: boot-time re-pins reach the compiled container.** A provider that re-binds a service
+after the container is built (`$this->app->load([...])` in `boot()`) used to guard on
+`instanceof Glueful\Container\Container`, which the compiled container is not. With 1.82.0
+making compilation succeed, such re-pins silently no-op'd in production and the service
+reverted to the compiled binding. Low risk: behaviour-restoring.
+::
+
+### Key Highlights
+
+::card
+#title
+`RebindableContainer`
+#description
+Both the runtime `Container` and every compiled container implement
+`Glueful\Container\RebindableContainer`. Its `load()` accepts definitions after construction;
+they win over compiled ones and evict a stale singleton. Guard boot-time re-pins on this
+interface, never on the concrete container class.
+::
+
+### Migration Notes
+
+- **If a provider guards a boot-time `load()` with `instanceof Glueful\Container\Container`**,
+  change the guard to `instanceof Glueful\Container\RebindableContainer` — otherwise the
+  re-pin skips the compiled container in production.
+- **Optional constructor dependencies** (nullable or defaulted) absent from the container now
+  resolve to their default / `null` under the compiled container, exactly as at runtime.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.82.0 - Alnasl
 **Released: September 7, 2026**
 
