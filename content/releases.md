@@ -5,6 +5,44 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.81.2 - Alnair
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the production command manifest is app-owned and validated.** The cached console
+command list lived in the framework package's own `storage/cache`, which never exists in a
+dist install, so every host fell through to one shared `/tmp/glueful_commands_manifest.php`
+and loaded it verbatim. A manifest written by an older framework on the same host fed phantom
+command classes into every production boot: container compilation failed on the unknown class,
+and resolving the tagged commands threw a 500 out of the console. Low risk: behaviour-restoring,
+no API change.
+::
+
+### Key Highlights
+
+::card
+#title
+Manifest under the app, validated on load
+#description
+The manifest now lives in the application's `storage/cache` (a per-user, per-framework-version
+temp file only as a fallback). Every cached class is re-checked with `class_exists()`; a stale
+manifest is rediscovered and rewritten. `commands:cache` and `commands:clear` operate on the
+app path and also retire the two legacy locations.
+::
+
+### Migration Notes
+
+- **No action required.** On a host that showed `Cannot compile autowire definition for
+  unknown class: …` at boot, the next production boot after updating rewrites the manifest.
+  Running `php glueful commands:clear` once removes the old shared temp file explicitly.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.81.1 - Alnair
 **Released: September 7, 2026**
 
