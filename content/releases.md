@@ -5,6 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.82.3 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the `php -S … router.php` quickstart serves deep links under a mounted SPA.** With
+`public/admin/index.html` present, PHP's built-in server resolved `/admin/setup` to that
+directory index (`SCRIPT_NAME=/admin/index.html`, `PATH_INFO=/setup`), Symfony inferred
+`/admin` as a base path and stripped it, and every admin deep link or reload 404'd locally —
+while nginx and Apache served them. Low risk: local development only.
+::
+
+### Key Highlights
+
+::card
+#title
+`router.php` presents the front controller like a real web server
+#description
+Before requiring `index.php` the script sets `SCRIPT_NAME`, `PHP_SELF` and `SCRIPT_FILENAME`
+to the front controller and drops the server-computed `PATH_INFO`, so the application sees
+`/admin/setup` exactly as it would behind nginx. Pinned by an end-to-end test that spawns the
+built-in server.
+::
+
+### Migration Notes
+
+- **No action required.** Restart any running `php -S` after `composer update`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.82.2 - Alnasl
 **Released: September 7, 2026**
 
