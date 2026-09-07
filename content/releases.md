@@ -5,6 +5,115 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.81.2 - Alnair
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the production command manifest is app-owned and validated.** The cached console
+command list lived in the framework package's own `storage/cache`, which never exists in a
+dist install, so every host fell through to one shared `/tmp/glueful_commands_manifest.php`
+and loaded it verbatim. A manifest written by an older framework on the same host fed phantom
+command classes into every production boot: container compilation failed on the unknown class,
+and resolving the tagged commands threw a 500 out of the console. Low risk: behaviour-restoring,
+no API change.
+::
+
+### Key Highlights
+
+::card
+#title
+Manifest under the app, validated on load
+#description
+The manifest now lives in the application's `storage/cache` (a per-user, per-framework-version
+temp file only as a fallback). Every cached class is re-checked with `class_exists()`; a stale
+manifest is rediscovered and rewritten. `commands:cache` and `commands:clear` operate on the
+app path and also retire the two legacy locations.
+::
+
+### Migration Notes
+
+- **No action required.** On a host that showed `Cannot compile autowire definition for
+  unknown class: …` at boot, the next production boot after updating rewrites the manifest.
+  Running `php glueful commands:clear` once removes the old shared temp file explicitly.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.81.1 - Alnair
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: providers loaded from the extension cache get `register()` called.** `discover()`
+used to construct the cached providers and return, so `register()` ran only on live
+discovery — never in production, where the cache is mandatory. Console commands and runtime
+bindings registered there silently vanished on every production boot. Low risk:
+behaviour-restoring, no API change.
+::
+
+### Key Highlights
+
+::card
+#title
+`register()` runs on every boot
+#description
+The extension cache decides only *which* providers load. Their lifecycle is the same on both
+discovery paths: `register()` during `discover()`, then `boot()`, with the same per-provider
+failure handling — logged and skipped in production, rethrown elsewhere.
+::
+
+### Migration Notes
+
+- **No action required.** If an extension of yours registers commands or bindings in
+  `register()` and they were missing in production, they appear after this update.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.81.0 - Alnair
+**Released: September 6, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Minor: the boot profiler dump is opt-in and best-effort.** Every boot used to write a
+hard-coded `/tmp/boot_profile.log`. On any host where a different OS user had created that
+file first — a second site, or a CLI run as root followed by one as the site user — the
+denied write was promoted to a fatal `ErrorException` by the framework's error handler, and
+no command (including first-run provisioning) could boot. The dump is now enabled only by
+`BOOT_PROFILE_LOG`, and a dump that cannot be written is skipped silently. Low risk: no
+framework code read the file; minor only because a default changed and an env var is new.
+::
+
+### Key Highlights
+
+::card
+#title
+`BOOT_PROFILE_LOG`
+#description
+Unset (the default) writes nothing. `true` writes a per-phase boot timing breakdown to a
+per-user file under the system temp directory, so two sites on one host never contend for
+a single path. Any other value is taken as an explicit file path. The structured boot
+summary still reaches the framework logger exactly as before.
+::
+
+### Migration Notes
+
+- **No action required.** If external tooling tailed `/tmp/boot_profile.log`, set
+  `BOOT_PROFILE_LOG=/tmp/boot_profile.log` to keep it.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.80.2 - Almach
 **Released: August 19, 2026**
 
