@@ -5,6 +5,29 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.81.1 - Alnair
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: providers loaded from the extension cache get `register()` called.** `discover()`
+used to construct the cached providers and return, so `register()` ran only on live
+discovery — never in production, where the cache is mandatory. Console commands and runtime
+bindings registered there silently vanished on every production boot. Low risk:
+behaviour-restoring, no API change.
+::
+
+### Migration Notes
+
+- **No action required.** If an extension of yours registers commands or bindings in
+  `register()` and they were missing in production, they appear after this update.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.81.0 - Alnair
 **Released: September 6, 2026**
 
