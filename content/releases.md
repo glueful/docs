@@ -5,6 +5,41 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.82.2 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: a mounted SPA's index.html gets a document Content-Security-Policy, not the
+static-asset one.** `SpaMountController` applied `SecurityHeaders::defaultStaticAssetHeaders()`
+— whose `style-src 'self'` forbids inline styles — to the HTML document as well. A built
+front-end injects style elements at runtime, so the served app lost those styles: a primary
+button with no background, in every environment. Low risk: behaviour-restoring.
+::
+
+### Key Highlights
+
+::card
+#title
+`SecurityHeaders::defaultDocumentHeaders()` and the `csp` mount option
+#description
+index.html now ships `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob:`,
+`font-src 'self' data:`, `connect-src 'self'`, with scripts still self-only and
+`frame-ancestors 'self'`. Static assets keep the strict asset policy. Pass
+`['csp' => '…']` to `serveFrontend()` to set a mount's own document policy.
+::
+
+### Migration Notes
+
+- **No action required.** If you had worked around the missing styles with a custom header
+  in front of PHP, remove it; the framework now sends a correct document policy itself.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.82.1 - Alnasl
 **Released: September 7, 2026**
 
