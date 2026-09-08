@@ -5,6 +5,53 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.83.1 - Alnilam
+**Released: September 8, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: production recommendations stop spamming the error log and stop degrading health.**
+PHP-FPM boots the framework on every request, so each applicable `[security] RECOMMENDATION`
+(an empty `CSP_HEADER`, for instance) landed in the error log on every hit, and the health
+service folded the same recommendations into a `warning` status that monitors alerted on. Both
+were advisory information presented as trouble. Low risk: logging and one optional payload key.
+::
+
+### Key Highlights
+
+::card
+#title
+`RecommendationLog`: once per boot cache
+#description
+A marker under the app's `storage/cache` records the last set of recommendations logged. The
+same set stays silent on later boots; a changed set, an emptied set that later regresses, or a
+cache clear logs again. Warnings keep their per-request logging — they signal misconfiguration
+that must not go quiet.
+::
+
+::card
+#title
+Health: advisory stays advisory
+#description
+`HealthService::checkConfiguration()` now returns `status: ok` with the recommendations listed
+under their own `recommendations` key; only genuine issues (missing keys, production warnings
+such as debug on) fail the check. `convertToSystemCheckFormat()` renders them as
+"Recommendation: …" lines for the CLI. The health singleton also rebuilds itself for a
+different application context instead of serving a stale base path.
+::
+
+### Migration Notes
+
+- **No action required.** The next boot after updating logs the current recommendations one
+  more time, then stays quiet until they change. Monitors that alerted on the `warning`
+  status for recommendation-only hosts go quiet.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.83.0 - Alnilam
 **Released: September 8, 2026**
 
