@@ -5,6 +5,42 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.83.2 - Alnilam
+**Released: September 8, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the Installer publishes freshly written database credentials to the running process.**
+A fresh `create-project` boots with the sample's placeholder credentials; the operator types real
+ones at the provision prompt. They reached `.env` and the injected migration connection, but any
+migration that opens its own connection still read the placeholders and failed with "role
+your_database_user does not exist". Low risk: installer-only; nothing changes when `.env`
+already held real credentials.
+::
+
+### Key Highlights
+
+::card
+#title
+`ApplicationContext::forgetConfig()`
+#description
+Drops the cached values for one config name so the next read reloads the file — and the `env()`
+values it reads — from the current environment. The Installer calls it for `database` right after
+setting the written pairs on `$_ENV`, `$_SERVER` and `putenv`, so pack permission seeds and
+Aegis's role seed connect to the real database in the same provisioning process.
+::
+
+### Migration Notes
+
+- **No action required.** Installed hosts are unaffected; fresh installs stop failing at migrate
+  when credentials are entered at the prompt.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.83.1 - Alnilam
 **Released: September 8, 2026**
 
