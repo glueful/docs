@@ -5,6 +5,55 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.83.0 - Alnilam
+**Released: September 8, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-check"}
+#description
+**Minor: `CSP_HEADER` now does what its name says.** The variable shipped in every
+`.env.example` and was recommended at production boot, yet nothing in the framework read it.
+From this release a non-empty value is sent verbatim as `Content-Security-Policy` on every
+response that does not already carry a policy, and the new `CSP_REPORT_ONLY=true` switches it
+to the report-only header. Moderate risk only for hosts that had already set the variable:
+review the value before upgrading. Empty stays a no-op.
+::
+
+### Key Highlights
+
+::card
+#title
+One chokepoint, precedence to the response
+#description
+`Application::handle()` applies the policy after dispatch and after the exception handler, so
+API responses, rendered pages and error pages all carry it — unless they already set their own.
+A mounted SPA's document policy (`SecurityHeaders::defaultDocumentHeaders()`), a controller's
+explicit header and an extension's middleware all win. No nonces are generated (cached pages
+could not carry them) and no other header changes.
+::
+
+::card
+#title
+`CSP_REPORT_ONLY` and an honest boot message
+#description
+Set `CSP_REPORT_ONLY=true` to send the value as `Content-Security-Policy-Report-Only` and read
+violations in the browser console before enforcing. The production recommendation now reads
+"CSP_HEADER is empty - no Content-Security-Policy is sent on responses that do not set their
+own …" instead of pretending the variable was already wired.
+::
+
+### Migration Notes
+
+- **Empty `CSP_HEADER` (the shipped default): no action.**
+- **Non-empty `CSP_HEADER`:** it will start being sent. Test it with `CSP_REPORT_ONLY=true`
+  first; a policy written for a different app can block inline styles or third-party embeds.
+- Mirror `CSP_REPORT_ONLY=false` into your `.env.example` if you keep one.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.82.3 - Alnasl
 **Released: September 7, 2026**
 
