@@ -5,6 +5,53 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.83.3 - Alnilam
+**Released: September 9, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the production container is compiled once, atomically, under a signed name.** Every
+PHP-FPM worker compiled the container on its own boot and rewrote one shared file before
+requiring it: a 783 KB write per request, workers requiring a half-written file ("Unclosed '{'
+on line 9557") and silently falling back to the runtime container, and — with OPcache not
+revalidating timestamps — workers executing whatever version they cached first, long after a
+deploy rewrote it. Low risk: the production boot path only.
+::
+
+### Key Highlights
+
+::card
+#title
+`DefinitionSignature` names the artifact
+#description
+A cheap hash of the definitions (services, aliases, factories by declaration site, tags, the
+framework version) becomes `CompiledContainer_<signature>.php` and the compiled class name. A
+boot reuses the artifact while nothing changed and compiles a new one — a path OPcache has never
+seen — when anything does. Artifacts for other definition sets are pruned.
+::
+
+::card
+#title
+Atomic writes, signed precompiles
+#description
+The artifact is written to a temp file and renamed into place, so a concurrent worker sees either
+nothing or the whole file. `di:container:compile` output now carries `DEFINITIONS_SIGNATURE` and is
+used only when it matches the boot's definitions; unsigned artifacts from earlier releases are
+treated as stale and skipped.
+::
+
+### Migration Notes
+
+- **No action required.** After updating, the first production boot compiles one signed artifact;
+  later boots require it. Re-run `php glueful di:container:compile` if you rely on a precompiled
+  container — the pre-1.83.3 file is unsigned and will be ignored.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.83.2 - Alnilam
 **Released: September 8, 2026**
 
