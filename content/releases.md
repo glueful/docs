@@ -5,6 +5,348 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.83.3 - Alnilam
+**Released: September 9, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the production container is compiled once, atomically, under a signed name.** Every
+PHP-FPM worker compiled the container on its own boot and rewrote one shared file before
+requiring it: a 783 KB write per request, workers requiring a half-written file ("Unclosed '{'
+on line 9557") and silently falling back to the runtime container, and — with OPcache not
+revalidating timestamps — workers executing whatever version they cached first, long after a
+deploy rewrote it. Low risk: the production boot path only.
+::
+
+### Key Highlights
+
+::card
+#title
+`DefinitionSignature` names the artifact
+#description
+A cheap hash of the definitions (services, aliases, factories by declaration site, tags, the
+framework version) becomes `CompiledContainer_<signature>.php` and the compiled class name. A
+boot reuses the artifact while nothing changed and compiles a new one — a path OPcache has never
+seen — when anything does. Artifacts for other definition sets are pruned.
+::
+
+::card
+#title
+Atomic writes, signed precompiles
+#description
+The artifact is written to a temp file and renamed into place, so a concurrent worker sees either
+nothing or the whole file. `di:container:compile` output now carries `DEFINITIONS_SIGNATURE` and is
+used only when it matches the boot's definitions; unsigned artifacts from earlier releases are
+treated as stale and skipped.
+::
+
+### Migration Notes
+
+- **No action required.** After updating, the first production boot compiles one signed artifact;
+  later boots require it. Re-run `php glueful di:container:compile` if you rely on a precompiled
+  container — the pre-1.83.3 file is unsigned and will be ignored.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.83.2 - Alnilam
+**Released: September 8, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the Installer publishes freshly written database credentials to the running process.**
+A fresh `create-project` boots with the sample's placeholder credentials; the operator types real
+ones at the provision prompt. They reached `.env` and the injected migration connection, but any
+migration that opens its own connection still read the placeholders and failed with "role
+your_database_user does not exist". Low risk: installer-only; nothing changes when `.env`
+already held real credentials.
+::
+
+### Key Highlights
+
+::card
+#title
+`ApplicationContext::forgetConfig()`
+#description
+Drops the cached values for one config name so the next read reloads the file — and the `env()`
+values it reads — from the current environment. The Installer calls it for `database` right after
+setting the written pairs on `$_ENV`, `$_SERVER` and `putenv`, so pack permission seeds and
+Aegis's role seed connect to the real database in the same provisioning process.
+::
+
+### Migration Notes
+
+- **No action required.** Installed hosts are unaffected; fresh installs stop failing at migrate
+  when credentials are entered at the prompt.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.83.1 - Alnilam
+**Released: September 8, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: production recommendations stop spamming the error log and stop degrading health.**
+PHP-FPM boots the framework on every request, so each applicable `[security] RECOMMENDATION`
+(an empty `CSP_HEADER`, for instance) landed in the error log on every hit, and the health
+service folded the same recommendations into a `warning` status that monitors alerted on. Both
+were advisory information presented as trouble. Low risk: logging and one optional payload key.
+::
+
+### Key Highlights
+
+::card
+#title
+`RecommendationLog`: once per boot cache
+#description
+A marker under the app's `storage/cache` records the last set of recommendations logged. The
+same set stays silent on later boots; a changed set, an emptied set that later regresses, or a
+cache clear logs again. Warnings keep their per-request logging — they signal misconfiguration
+that must not go quiet.
+::
+
+::card
+#title
+Health: advisory stays advisory
+#description
+`HealthService::checkConfiguration()` now returns `status: ok` with the recommendations listed
+under their own `recommendations` key; only genuine issues (missing keys, production warnings
+such as debug on) fail the check. `convertToSystemCheckFormat()` renders them as
+"Recommendation: …" lines for the CLI. The health singleton also rebuilds itself for a
+different application context instead of serving a stale base path.
+::
+
+### Migration Notes
+
+- **No action required.** The next boot after updating logs the current recommendations one
+  more time, then stays quiet until they change. Monitors that alerted on the `warning`
+  status for recommendation-only hosts go quiet.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.83.0 - Alnilam
+**Released: September 8, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-shield-check"}
+#description
+**Minor: `CSP_HEADER` now does what its name says.** The variable shipped in every
+`.env.example` and was recommended at production boot, yet nothing in the framework read it.
+From this release a non-empty value is sent verbatim as `Content-Security-Policy` on every
+response that does not already carry a policy, and the new `CSP_REPORT_ONLY=true` switches it
+to the report-only header. Moderate risk only for hosts that had already set the variable:
+review the value before upgrading. Empty stays a no-op.
+::
+
+### Key Highlights
+
+::card
+#title
+One chokepoint, precedence to the response
+#description
+`Application::handle()` applies the policy after dispatch and after the exception handler, so
+API responses, rendered pages and error pages all carry it — unless they already set their own.
+A mounted SPA's document policy (`SecurityHeaders::defaultDocumentHeaders()`), a controller's
+explicit header and an extension's middleware all win. No nonces are generated (cached pages
+could not carry them) and no other header changes.
+::
+
+::card
+#title
+`CSP_REPORT_ONLY` and an honest boot message
+#description
+Set `CSP_REPORT_ONLY=true` to send the value as `Content-Security-Policy-Report-Only` and read
+violations in the browser console before enforcing. The production recommendation now reads
+"CSP_HEADER is empty - no Content-Security-Policy is sent on responses that do not set their
+own …" instead of pretending the variable was already wired.
+::
+
+### Migration Notes
+
+- **Empty `CSP_HEADER` (the shipped default): no action.**
+- **Non-empty `CSP_HEADER`:** it will start being sent. Test it with `CSP_REPORT_ONLY=true`
+  first; a policy written for a different app can block inline styles or third-party embeds.
+- Mirror `CSP_REPORT_ONLY=false` into your `.env.example` if you keep one.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.82.3 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the `php -S … router.php` quickstart serves deep links under a mounted SPA.** With
+`public/admin/index.html` present, PHP's built-in server resolved `/admin/setup` to that
+directory index (`SCRIPT_NAME=/admin/index.html`, `PATH_INFO=/setup`), Symfony inferred
+`/admin` as a base path and stripped it, and every admin deep link or reload 404'd locally —
+while nginx and Apache served them. Low risk: local development only.
+::
+
+### Key Highlights
+
+::card
+#title
+`router.php` presents the front controller like a real web server
+#description
+Before requiring `index.php` the script sets `SCRIPT_NAME`, `PHP_SELF` and `SCRIPT_FILENAME`
+to the front controller and drops the server-computed `PATH_INFO`, so the application sees
+`/admin/setup` exactly as it would behind nginx. Pinned by an end-to-end test that spawns the
+built-in server.
+::
+
+### Migration Notes
+
+- **No action required.** Restart any running `php -S` after `composer update`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.82.2 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: a mounted SPA's index.html gets a document Content-Security-Policy, not the
+static-asset one.** `SpaMountController` applied `SecurityHeaders::defaultStaticAssetHeaders()`
+— whose `style-src 'self'` forbids inline styles — to the HTML document as well. A built
+front-end injects style elements at runtime, so the served app lost those styles: a primary
+button with no background, in every environment. Low risk: behaviour-restoring.
+::
+
+### Key Highlights
+
+::card
+#title
+`SecurityHeaders::defaultDocumentHeaders()` and the `csp` mount option
+#description
+index.html now ships `style-src 'self' 'unsafe-inline'`, `img-src 'self' data: blob:`,
+`font-src 'self' data:`, `connect-src 'self'`, with scripts still self-only and
+`frame-ancestors 'self'`. Static assets keep the strict asset policy. Pass
+`['csp' => '…']` to `serveFrontend()` to set a mount's own document policy.
+::
+
+### Migration Notes
+
+- **No action required.** If you had worked around the missing styles with a custom header
+  in front of PHP, remove it; the framework now sends a correct document policy itself.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.82.1 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: boot-time re-pins reach the compiled container.** A provider that re-binds a service
+after the container is built (`$this->app->load([...])` in `boot()`) used to guard on
+`instanceof Glueful\Container\Container`, which the compiled container is not. With 1.82.0
+making compilation succeed, such re-pins silently no-op'd in production and the service
+reverted to the compiled binding. Low risk: behaviour-restoring.
+::
+
+### Key Highlights
+
+::card
+#title
+`RebindableContainer`
+#description
+Both the runtime `Container` and every compiled container implement
+`Glueful\Container\RebindableContainer`. Its `load()` accepts definitions after construction;
+they win over compiled ones and evict a stale singleton. Guard boot-time re-pins on this
+interface, never on the concrete container class.
+::
+
+### Migration Notes
+
+- **If a provider guards a boot-time `load()` with `instanceof Glueful\Container\Container`**,
+  change the guard to `instanceof Glueful\Container\RebindableContainer` — otherwise the
+  re-pin skips the compiled container in production.
+- **Optional constructor dependencies** (nullable or defaulted) absent from the container now
+  resolve to their default / `null` under the compiled container, exactly as at runtime.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.82.0 - Alnasl
+**Released: September 7, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-rocket"}
+#description
+**Minor: the compiled container finally engages, and a never-installed production checkout
+boots quietly.** Every production boot used to log `[Container][WARNING] container compilation
+failed` and fall back to the runtime container — the framework's own core factories were all
+"unsupported" by the compiler. Static factories now compile to direct calls, closure factories
+and live objects such as the `ApplicationContext` are handed in after construction, and the
+artifact lives under the app's `storage/cache/container`. Separately, a checkout that has not
+been installed yet (no security keys) skips the boot-time security validation and resolves
+extensions live once, writing the cache, instead of failing with "Extension cache missing".
+Moderate risk: production runs a different (faster) container implementation from this
+release on; installed hosts are otherwise unchanged.
+::
+
+### Key Highlights
+
+::card
+#title
+Compiled container, hydrated at boot
+#description
+`ContainerCompiler` emits `'Class::method'` / `[Class::class, 'method']` factories as direct
+static calls. What cannot become code — closures, instance factories, the live
+`ApplicationContext` — is declared in `RUNTIME_FACTORY_IDS` / `RUNTIME_VALUE_IDS` on the
+generated class and injected by `ContainerFactory` via `withRuntimeFactories()` /
+`withRuntimeValues()`, on every production boot and for a precompiled container. The
+container self-reference compiles to `$this`.
+::
+
+::card
+#title
+First run bootstraps itself
+#description
+`InstallState::isInstalled()` is true once `APP_KEY`, `JWT_KEY` and `TOKEN_SALT` exist. Until
+then a production checkout skips the security validation (its warnings would all be about
+state the installer creates) and extension discovery resolves live ONCE and writes the cache.
+Once installed, a missing cache is still a deploy mistake and fails loudly.
+::
+
+### Migration Notes
+
+- **Compiled container now active in production.** If something behaves differently only in
+  production, set `APP_DEBUG=true` to compare against the runtime container and report it.
+  Delete `<app>/storage/cache/container/` to force a fresh compile.
+- **Recompile a `container:compile` artifact built before 1.82.0** once — it is still loaded
+  but carries no runtime values.
+- **`FORCE_HTTPS` unset in production** no longer draws a recommendation; unset means enabled.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.81.2 - Alnair
 **Released: September 7, 2026**
 
