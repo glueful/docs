@@ -5,6 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.83.4 - Alnilam
+**Released: September 11, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: a mounted SPA document may frame itself and its own `blob:` documents.** The document
+CSP had no `frame-src`, so `default-src 'self'` applied and browsers refused an iframe pointing
+at a `blob:` URL the page had minted itself — an admin previewing its own rendered output showed
+nothing. Low risk: SPA document responses only; no third-party origin is allowed.
+::
+
+### Key Highlights
+
+::card
+#title
+`frame-src 'self' blob:` on the document policy
+#description
+`SecurityHeaders::DEFAULT_DOCUMENT_CSP` — the policy `SpaMountController` sends with a mounted
+SPA's `index.html` — now names `frame-src 'self' blob:`. Framing the same origin and the
+document's own blobs is the document's own content. `frame-ancestors 'self'` (being framed) is
+unchanged, and a mount's explicit `csp` override still replaces the whole policy.
+::
+
+### Migration Notes
+
+- **No action required.** Mounts that pass their own `csp` keep it verbatim; add
+  `frame-src 'self' blob:` to it if your SPA previews its own documents in an iframe.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.83.3 - Alnilam
 **Released: September 9, 2026**
 
