@@ -5,6 +5,54 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.84.0 - Alnitak
+**Released: September 11, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-route"}
+#description
+**Minor: the API reference moves from `/docs` to `/api-docs`.** The reference UI and its
+`openapi.json` are served at the path in `documentation.route_prefix` (env `API_DOCS_PATH`), and
+the default is now `/api-docs`, leaving `/docs` to your application's own documentation.
+Moderate risk: links, bookmarks and tooling that used `/docs` need the new address, or set
+`API_DOCS_PATH=/docs` to keep it.
+::
+
+### Key Highlights
+
+::card
+#title
+One setting, four consumers
+#description
+`Glueful\Support\Documentation\ApiDocsPath` resolves the path once. The route group in
+`routes/docs.php`, the spec URL embedded in every generated UI page (Scalar, Swagger UI, Redoc),
+`app.urls.docs` and the URL `generate:openapi` prints all derive from it — previously four
+separate `/docs` literals. Values are normalised to a leading slash and no trailing slash; empty
+or `/` means the default.
+::
+
+::card
+#title
+Your `/docs` is yours
+#description
+A framework that claims `/docs` on every application collides with the most natural place to put
+documentation. Applications that publish their own docs at `/docs` — a CMS, a product site — no
+longer have to work around the reference UI.
+::
+
+### Migration Notes
+
+- **Update links** to the reference (`/api-docs`), or set `API_DOCS_PATH=/docs` to keep the old
+  address.
+- **Regenerate the UI page** with `php glueful generate:openapi --ui`: a page generated before
+  1.84.0 still loads `/docs/openapi.json`.
+- Mirror `API_DOCS_PATH=/api-docs` into your `.env.example` if you keep one.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.83.4 - Alnilam
 **Released: September 11, 2026**
 
