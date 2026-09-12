@@ -5,6 +5,51 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.0 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-arrows-exchange"}
+#description
+**Minor: migrations can change owner without breaking existing databases.** A migration lane may
+declare the source names its files were recorded under before (`previous_sources`); rows under
+those names count as applied and are adopted under the current source on the next run. Low risk:
+an optional key, no behaviour change without it.
+::
+
+### Key Highlights
+
+::card
+#title
+`previous_sources` in the manifest, or from a provider
+#description
+`{ "id": "default", "path": "database/migrations", "priority": "default", "mode": "core",
+"previous_sources": ["app"] }` in `extra.glueful.migrations`, or
+`$this->loadMigrationsFrom($dir, $priority, 'vendor/name', ['old/name'])`. Rows the ledger holds
+under a previous source count as applied for the lane, so nothing re-runs and nothing looks
+pending.
+::
+
+::card
+#title
+Adoption, scoped to what the lane ships
+#description
+The next `migrate:run` (or `migrateSources()`) rewrites those rows to the current source — only
+for files the lane actually contains, so a previous source that is still a live lane of its own
+(the skeleton's `app`) keeps every other row. After one run on an existing install the key is
+inert; fresh installs never see it.
+::
+
+### Migration Notes
+
+- **No action required.** Use the key when your package takes over migrations previously
+  recorded under another source: an application that became a package, a rename, a split lane.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.84.0 - Alnitak
 **Released: September 11, 2026**
 
