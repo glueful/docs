@@ -5,6 +5,29 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.2 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: `env()` sees variables the real process environment holds.** It read `$_ENV` alone,
+which PHP fills only when `variables_order` includes "E", and Dotenv skips keys the real
+environment already holds — so a CI job or container exporting `DB_*` fell to the sqlite default
+for a fresh install's first connections. `env()` now also reads `$_SERVER` and `getenv()`. Low
+risk: a value that was invisible before is honoured now.
+::
+
+### Migration Notes
+
+- **No action required.** Tests that want a key absent must clear the real environment too
+  (`putenv('KEY')`).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.1 - Alphard
 **Released: September 12, 2026**
 
