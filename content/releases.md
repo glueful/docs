@@ -5,6 +5,27 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.1 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: `migrate:run` adopts previous sources even with nothing pending.** The command returned
+at "No pending migrations found" before adoption ran, so an up-to-date database kept its rows
+under a lane's previous source names. Low risk: only lanes declaring `previous_sources` are
+affected.
+::
+
+### Migration Notes
+
+- **No action required.**
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.0 - Alphard
 **Released: September 12, 2026**
 
