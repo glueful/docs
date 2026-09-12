@@ -5,6 +5,33 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.3 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the boot environment is read the way `env()` reads everything else.** `Framework::create()`
+and console commands chose the environment from `$_ENV['APP_ENV']` alone, so a process-exported
+`APP_ENV` (a CI job, a container) was ignored: a CLI run booted as the wrong environment, skipped
+its `config/{env}/` overrides, and `extensions:cache` compiled the wrong provider list for whoever
+booted next. The extension cache now records the environment it was compiled for and is not
+consumed under another one outside production. Low risk: an exported value that was ignored is
+honoured now, and older bare-list caches still load.
+::
+
+### Migration Notes
+
+- **Skeleton bootstraps:** pass `env('APP_ENV', 'development')` to `withEnvironment()` instead of
+  `$_ENV['APP_ENV'] ?? 'development'`.
+- Rebuild the extension cache on deploy as usual (`php glueful extensions:cache`); the new file
+  shape is read by this release and the bare-list shape remains readable.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.2 - Alphard
 **Released: September 12, 2026**
 
