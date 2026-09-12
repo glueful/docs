@@ -5,6 +5,32 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.4 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Patch: jobs declared in `config/schedule.php` now actually run.** The scheduler registered each
+config job as a callback that only returned its handler class name, so `queue:scheduler run`
+logged "Executed job (0ms)" and never ran the handler — every config-declared job was a no-op
+unless persisted to the database. Config jobs now resolve and run their handler like database
+jobs, `enabled => false` is honoured, the command hands the scheduler the booted context, and
+`list` tolerates a missing `enabled` key. Moderate: jobs you believed were running will start
+running on the next tick.
+::
+
+### Migration Notes
+
+- **Review `config/schedule.php`** before upgrading: every enabled job will now execute on its
+  cron expression. Set `enabled => false` on any you do not want.
+- Make sure a cron entry ticks the scheduler: `* * * * * php /path/to/app/glueful queue:scheduler run`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.3 - Alphard
 **Released: September 12, 2026**
 
