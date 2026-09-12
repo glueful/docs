@@ -5,6 +5,204 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.3 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: the boot environment is read the way `env()` reads everything else.** `Framework::create()`
+and console commands chose the environment from `$_ENV['APP_ENV']` alone, so a process-exported
+`APP_ENV` (a CI job, a container) was ignored: a CLI run booted as the wrong environment, skipped
+its `config/{env}/` overrides, and `extensions:cache` compiled the wrong provider list for whoever
+booted next. The extension cache now records the environment it was compiled for and is not
+consumed under another one outside production. Low risk: an exported value that was ignored is
+honoured now, and older bare-list caches still load.
+::
+
+### Migration Notes
+
+- **Skeleton bootstraps:** pass `env('APP_ENV', 'development')` to `withEnvironment()` instead of
+  `$_ENV['APP_ENV'] ?? 'development'`.
+- Rebuild the extension cache on deploy as usual (`php glueful extensions:cache`); the new file
+  shape is read by this release and the bare-list shape remains readable.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.2 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: `env()` sees variables the real process environment holds.** It read `$_ENV` alone,
+which PHP fills only when `variables_order` includes "E", and Dotenv skips keys the real
+environment already holds — so a CI job or container exporting `DB_*` fell to the sqlite default
+for a fresh install's first connections. `env()` now also reads `$_SERVER` and `getenv()`. Low
+risk: a value that was invisible before is honoured now.
+::
+
+### Migration Notes
+
+- **No action required.** Tests that want a key absent must clear the real environment too
+  (`putenv('KEY')`).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.1 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: `migrate:run` adopts previous sources even with nothing pending.** The command returned
+at "No pending migrations found" before adoption ran, so an up-to-date database kept its rows
+under a lane's previous source names. Low risk: only lanes declaring `previous_sources` are
+affected.
+::
+
+### Migration Notes
+
+- **No action required.**
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.0 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-arrows-exchange"}
+#description
+**Minor: migrations can change owner without breaking existing databases.** A migration lane may
+declare the source names its files were recorded under before (`previous_sources`); rows under
+those names count as applied and are adopted under the current source on the next run. Low risk:
+an optional key, no behaviour change without it.
+::
+
+### Key Highlights
+
+::card
+#title
+`previous_sources` in the manifest, or from a provider
+#description
+`{ "id": "default", "path": "database/migrations", "priority": "default", "mode": "core",
+"previous_sources": ["app"] }` in `extra.glueful.migrations`, or
+`$this->loadMigrationsFrom($dir, $priority, 'vendor/name', ['old/name'])`. Rows the ledger holds
+under a previous source count as applied for the lane, so nothing re-runs and nothing looks
+pending.
+::
+
+::card
+#title
+Adoption, scoped to what the lane ships
+#description
+The next `migrate:run` (or `migrateSources()`) rewrites those rows to the current source — only
+for files the lane actually contains, so a previous source that is still a live lane of its own
+(the skeleton's `app`) keeps every other row. After one run on an existing install the key is
+inert; fresh installs never see it.
+::
+
+### Migration Notes
+
+- **No action required.** Use the key when your package takes over migrations previously
+  recorded under another source: an application that became a package, a rename, a split lane.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.84.0 - Alnitak
+**Released: September 11, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-route"}
+#description
+**Minor: the API reference moves from `/docs` to `/api-docs`.** The reference UI and its
+`openapi.json` are served at the path in `documentation.route_prefix` (env `API_DOCS_PATH`), and
+the default is now `/api-docs`, leaving `/docs` to your application's own documentation.
+Moderate risk: links, bookmarks and tooling that used `/docs` need the new address, or set
+`API_DOCS_PATH=/docs` to keep it.
+::
+
+### Key Highlights
+
+::card
+#title
+One setting, four consumers
+#description
+`Glueful\Support\Documentation\ApiDocsPath` resolves the path once. The route group in
+`routes/docs.php`, the spec URL embedded in every generated UI page (Scalar, Swagger UI, Redoc),
+`app.urls.docs` and the URL `generate:openapi` prints all derive from it — previously four
+separate `/docs` literals. Values are normalised to a leading slash and no trailing slash; empty
+or `/` means the default.
+::
+
+::card
+#title
+Your `/docs` is yours
+#description
+A framework that claims `/docs` on every application collides with the most natural place to put
+documentation. Applications that publish their own docs at `/docs` — a CMS, a product site — no
+longer have to work around the reference UI.
+::
+
+### Migration Notes
+
+- **Update links** to the reference (`/api-docs`), or set `API_DOCS_PATH=/docs` to keep the old
+  address.
+- **Regenerate the UI page** with `php glueful generate:openapi --ui`: a page generated before
+  1.84.0 still loads `/docs/openapi.json`.
+- Mirror `API_DOCS_PATH=/api-docs` into your `.env.example` if you keep one.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.83.4 - Alnilam
+**Released: September 11, 2026**
+
+::u-alert{color="success" variant="subtle" icon="i-tabler-bug-off"}
+#description
+**Patch: a mounted SPA document may frame itself and its own `blob:` documents.** The document
+CSP had no `frame-src`, so `default-src 'self'` applied and browsers refused an iframe pointing
+at a `blob:` URL the page had minted itself — an admin previewing its own rendered output showed
+nothing. Low risk: SPA document responses only; no third-party origin is allowed.
+::
+
+### Key Highlights
+
+::card
+#title
+`frame-src 'self' blob:` on the document policy
+#description
+`SecurityHeaders::DEFAULT_DOCUMENT_CSP` — the policy `SpaMountController` sends with a mounted
+SPA's `index.html` — now names `frame-src 'self' blob:`. Framing the same origin and the
+document's own blobs is the document's own content. `frame-ancestors 'self'` (being framed) is
+unchanged, and a mount's explicit `csp` override still replaces the whole policy.
+::
+
+### Migration Notes
+
+- **No action required.** Mounts that pass their own `csp` keep it verbatim; add
+  `frame-src 'self' blob:` to it if your SPA previews its own documents in an iframe.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.83.3 - Alnilam
 **Released: September 9, 2026**
 
