@@ -5,6 +5,28 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.6 - Alphard
+**Released: September 13, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: an SVG served with a width hint is the original, not a 422.** `GET /blobs/{uuid}?width=160`
+sent every `image/*` blob through the resizer, whose raster validator only knows JPEG, PNG, GIF
+and WebP, so any thumbnail request for an SVG answered `422 Unprocessable Content`. Only raster
+formats take the variant path now; SVG falls through to the original bytes with the resize
+parameters ignored. Low risk: no behaviour change for raster images.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.5 - Alphard
 **Released: September 13, 2026**
 
