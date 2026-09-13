@@ -5,6 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.5 - Alphard
+**Released: September 13, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Patch: a failed token generation can no longer poison every later login.** When JWT generation
+threw (a missing or invalid key), the provider answered empty tokens, a session was stored anyway,
+and a refresh token of `""` was issued; its constant hash made every later login answer
+`409 A conflicting record already exists`, unlogged. Empty tokens are a failed login now, the
+refresh-token store refuses an empty token, the cause is logged, and unique-constraint violations
+are reported at warning. Moderate: an install already affected must delete the poisoned row once.
+::
+
+### Migration Notes
+
+- If logins on an install answer 409 today, delete the poisoned rows once, then log in again:
+
+```sql
+-- the token rows reference the sessions, so they go first
+CREATE TEMP TABLE poisoned AS SELECT session_uuid FROM auth_refresh_tokens
+  WHERE token_hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+DELETE FROM auth_refresh_tokens
+  WHERE token_hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+DELETE FROM auth_sessions WHERE uuid IN (SELECT session_uuid FROM poisoned);
+```
+
+- Then fix what made generation throw: the log now names it (`[Auth] Token generation failed: …`).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.4 - Alphard
 **Released: September 12, 2026**
 
