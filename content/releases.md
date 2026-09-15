@@ -5,6 +5,30 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.8 - Alphard
+**Released: September 15, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a scheduled framework job never fails its tick on the logger lookup.** With their
+context restored in 1.85.7, `NotificationRetryJob`, `SessionCleanupJob`, `LogCleanupJob`,
+`CacheMaintenanceJob` and `DatabaseBackupJob` resolved `LogManager` from the container
+unguarded, and a container that binds none — a skeleton install — failed every due tick with
+`Service 'Glueful\Logging\LogManager' not found`, so `queue:scheduler run` still failed every
+tenth minute on a fresh install. The five jobs share one guarded lookup that falls back to the
+static instance. Low risk: no behaviour change beyond the jobs running as intended.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.7 - Alphard
 **Released: September 15, 2026**
 
