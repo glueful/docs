@@ -5,6 +5,30 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.85.7 - Alphard
+**Released: September 15, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: scheduled framework jobs keep the application context.** `JobHandlerResolver` hands
+the context to a job's constructor, but `NotificationRetryJob`, `SessionCleanupJob`,
+`LogCleanupJob`, `CacheMaintenanceJob` and `DatabaseBackupJob` overrode that constructor
+without the parameter and dropped it. The notification retry job then threw
+`NotificationContextRequiredException` on every due tick, so `queue:scheduler run` failed
+every tenth minute on a fresh install; the others ran context-less. Every one now forwards
+the context. Low risk: no behaviour change beyond the jobs running as intended.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.6 - Alphard
 **Released: September 13, 2026**
 
