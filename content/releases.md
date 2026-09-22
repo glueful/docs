@@ -5,6 +5,29 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.86.1 - Alpherg
+**Released: September 22, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a job that releases itself is retried.** The worker runs a fresh instance of the job
+class, with no driver, so a job's own `release($delay)` (a scheduled retry) only set a flag: the
+queue wrapper deleted the row and the job never ran again. A failed webhook delivery was marked
+"retrying" and never retried. `DatabaseJob` and `RedisJob` now carry out the release on the
+queued job, with the delay the job asked for. Low risk: no behaviour change beyond scheduled
+retries running.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.86.0 - Alpherg
 **Released: September 22, 2026**
 
