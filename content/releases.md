@@ -5,6 +5,84 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.86.0 - Alpherg
+**Released: September 22, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-tool"}
+#description
+**Minor: webhooks deliver, failed jobs come back, and config means what it says.** Webhook
+deliveries failed to queue on every dispatch; they now reach the queue, and a test send is guarded
+against private addresses. Failed queue jobs can be listed, retried and removed on the database
+and Redis drivers. An ORM-created model carries its real id, stored text is never refused as SQL,
+and the scheduled backup takes a real dump. App config lists now replace the framework's instead
+of merging by position. Moderate risk: read the Migration Notes; `security:check` can now fail
+where it passed, and a custom `config/schedule.php` no longer inherits framework jobs.
+::
+
+### Key Highlights
+
+::card
+#title
+Webhooks that deliver
+#description
+`WebhookDispatcher` and `Webhook::retry()` handed `QueueManager::push()` a job object where it
+takes a class name, so every delivery stayed `pending` and Retry answered 500. Both now go through
+`DeliverWebhookJob::enqueue()`. Deleting a subscription deletes its deliveries,
+`api.webhooks.cleanup` is honoured by `webhook:cleanup` and a daily `webhook_cleanup` job, and
+`Webhook::test()` applies the delivery's destination guard before any request.
+::
+
+::card
+#title
+`queue:failed`, `queue:retry`, `queue:forget`, `queue:flush`
+#description
+A job that used its attempts had no way back. The four commands work on any connection whose driver
+implements `Glueful\Queue\Contracts\FailedJobStore` (database and Redis). A retry verifies the
+stored payload's signature, so an altered payload is refused, never re-signed. `FailedJobProvider`
+now works against the stock `queue_failed_jobs` table, and two workers never claim the same job.
+::
+
+::card
+#title
+What you store is what you get
+#description
+`Model::create()` set the new key from the insert's row count, so every auto-increment model came
+back with id 1; the new `insertGetId()` reads the real id. `QueryValidator` no longer refuses bound
+values that read like `"; delete …"` or warn on values over 64 KB. `DatabaseBackupTask` reads the
+stock `engine` / `pgsql` config and fails its job when no dump is made.
+::
+
+::card
+#title
+Config that means what it says
+#description
+Config files were layered with `array_replace_recursive`, which merged lists by position: an app's
+third scheduled job took the keys it lacked from the framework's third. Lists now replace; maps
+still merge. Dead keys are gone, scheduled jobs get their settings, `security:check` runs the five
+checks it used to fake, and `permissions:diff` counts permissions enforced by middleware named in
+`permissions.enforcing_middleware`.
+::
+
+### Migration Notes
+
+- **Your `config/schedule.php` list replaces the framework's.** Add any framework job you relied on
+  inheriting, and the new `webhook_cleanup` job if you want it.
+- **Delete the dead config** from your copies: the `sync`/`null` queue connections, the schedule's
+  `settings` block, `queue_mapping` and per-job `queue`/`timeout`/`retry_attempts`,
+  `app.force_https`, `security.headers`, and `HSTS_HEADER`, `FORCE_HTTPS`, `SCHEDULE_QUEUE_*`,
+  `MAIL_BCC`. Leaving it changes nothing.
+- **Run `security:check` and fix what it now reports.**
+- **The scheduled backup needs `pg_dump` or `mysqldump`** on the scheduler host.
+- **Enforce permissions in route middleware?** List it in `permissions.enforcing_middleware`.
+- **Deprecated:** `FailedJobProvider::setMaxRetries()` / `getMaxRetries()` (nothing enforces them;
+  removal in 1.88).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.8 - Alphard
 **Released: September 15, 2026**
 
