@@ -5,6 +5,28 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.86.2 - Alpherg
+**Released: September 22, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: an empty array in config adds nothing again.** 1.86.0 made a config list replace the
+list below it, and PHP counts `[]` as a list, so a package that ships a key as `[]` wiped the value
+another package or the app contributed to it (in Thallo, the uploads root admin imports read their
+file from). An empty array now leaves the value below it alone, as it did before 1.86.0; a
+non-empty list still replaces. Low risk: restores the earlier meaning of `[]`.
+::
+
+### Migration Notes
+
+- None. Upgrade from 1.86.0 or 1.86.1.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.86.1 - Alpherg
 **Released: September 22, 2026**
 
