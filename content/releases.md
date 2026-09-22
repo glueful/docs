@@ -5,6 +5,82 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.87.0 - Alrakis
+**Released: September 22, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-tool"}
+#description
+**Minor: responses carry security headers, uploads keep their promises, and search matches what
+you typed.** Every response now gets `X-Content-Type-Options: nosniff` and a referrer policy where
+it set none. Uploaded images are stripped of their embedded metadata, deleted uploads are purged
+after a grace period, and a resized image follows its blob when the file changes. Text search
+folds case on every database and treats `%` and `_` literally. Mail no longer pretends to be
+configured. Moderate risk: read the Migration Notes; mail needs `MAIL_HOST` and `MAIL_FROM`, and
+image metadata is removed by default.
+::
+
+### Key Highlights
+
+::card
+#title
+Baseline security headers on every response
+#description
+The `security_headers` middleware is opt-in per route, so JSON API responses and the API reference
+went out with no headers at all. The response chokepoint that applies CORS and the CSP now adds
+`X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin` wherever a
+response has not set them (`Glueful\Http\BaselineSecurityHeaders`). Framing and HSTS stay per
+route and with whatever terminates TLS.
+::
+
+::card
+#title
+Uploads that do what the config says
+#description
+`uploads.security.strip_exif` was on and read by nothing: a phone photo kept its GPS position.
+JPEG, PNG and WebP uploads are now stripped of EXIF, XMP, IPTC and comments before storage,
+without re-encoding (`ImageMetadataStripper`). Deleting a blob only marked it; `blobs:purge` and the
+`blob_purge` job now remove the file and then the row after `uploads.purge_deleted_after_days`
+(30). A resized variant and its ETag are versioned by the blob's size and update time.
+::
+
+::card
+#title
+Search that matches what you typed
+#description
+`LIKE '%term%'` from user input was case-sensitive on PostgreSQL and treated `%` and `_` as
+wildcards. The query builder gains `whereContains()`, `orWhereContains()`, `whereStartsWith()` and
+`whereEndsWith()`, which lower-case both sides and escape the term; search and the `contains`,
+`starts` and `ends` filters use them.
+::
+
+::card
+#title
+Honest mail and console
+#description
+`services.mail` no longer defaults to `smtp.mailtrap.io` and `noreply@glueful.com`, so an app that
+never set up mail reports it unavailable. The console logs a command name two packages claim,
+gives a discovered command the booted container, and rediscovers the production command manifest
+when the framework version changes.
+::
+
+### Migration Notes
+
+- **Set `MAIL_HOST` and `MAIL_FROM`** if your app sends mail; without them the email channel reports
+  itself unavailable.
+- **List `blob_purge` in your `config/schedule.php`** to purge deleted uploads (an app's schedule
+  replaces the framework's list). `UPLOADS_PURGE_DELETED_AFTER_DAYS` sets the grace period.
+- **Uploaded images lose their metadata by default.** Set `UPLOADS_STRIP_EXIF=false` to keep it.
+- **PostgreSQL searches now match any case**, and `%` or `_` in a term is matched literally. A
+  custom `WhereClauseInterface` implementation must add the four text-match methods.
+- **Deprecated:** `Utils::buildSearchConditions()` (it writes the term into raw SQL unescaped); use
+  `QueryBuilder::whereContains()`. Removal in 1.88.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.86.2 - Alpherg
 **Released: September 22, 2026**
 
