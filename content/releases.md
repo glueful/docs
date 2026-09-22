@@ -5,6 +5,259 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.86.2 - Alpherg
+**Released: September 22, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: an empty array in config adds nothing again.** 1.86.0 made a config list replace the
+list below it, and PHP counts `[]` as a list, so a package that ships a key as `[]` wiped the value
+another package or the app contributed to it (in Thallo, the uploads root admin imports read their
+file from). An empty array now leaves the value below it alone, as it did before 1.86.0; a
+non-empty list still replaces. Low risk: restores the earlier meaning of `[]`.
+::
+
+### Migration Notes
+
+- None. Upgrade from 1.86.0 or 1.86.1.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.86.1 - Alpherg
+**Released: September 22, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a job that releases itself is retried.** The worker runs a fresh instance of the job
+class, with no driver, so a job's own `release($delay)` (a scheduled retry) only set a flag: the
+queue wrapper deleted the row and the job never ran again. A failed webhook delivery was marked
+"retrying" and never retried. `DatabaseJob` and `RedisJob` now carry out the release on the
+queued job, with the delay the job asked for. Low risk: no behaviour change beyond scheduled
+retries running.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.86.0 - Alpherg
+**Released: September 22, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-tool"}
+#description
+**Minor: webhooks deliver, failed jobs come back, and config means what it says.** Webhook
+deliveries failed to queue on every dispatch; they now reach the queue, and a test send is guarded
+against private addresses. Failed queue jobs can be listed, retried and removed on the database
+and Redis drivers. An ORM-created model carries its real id, stored text is never refused as SQL,
+and the scheduled backup takes a real dump. App config lists now replace the framework's instead
+of merging by position. Moderate risk: read the Migration Notes; `security:check` can now fail
+where it passed, and a custom `config/schedule.php` no longer inherits framework jobs.
+::
+
+### Key Highlights
+
+::card
+#title
+Webhooks that deliver
+#description
+`WebhookDispatcher` and `Webhook::retry()` handed `QueueManager::push()` a job object where it
+takes a class name, so every delivery stayed `pending` and Retry answered 500. Both now go through
+`DeliverWebhookJob::enqueue()`. Deleting a subscription deletes its deliveries,
+`api.webhooks.cleanup` is honoured by `webhook:cleanup` and a daily `webhook_cleanup` job, and
+`Webhook::test()` applies the delivery's destination guard before any request.
+::
+
+::card
+#title
+`queue:failed`, `queue:retry`, `queue:forget`, `queue:flush`
+#description
+A job that used its attempts had no way back. The four commands work on any connection whose driver
+implements `Glueful\Queue\Contracts\FailedJobStore` (database and Redis). A retry verifies the
+stored payload's signature, so an altered payload is refused, never re-signed. `FailedJobProvider`
+now works against the stock `queue_failed_jobs` table, and two workers never claim the same job.
+::
+
+::card
+#title
+What you store is what you get
+#description
+`Model::create()` set the new key from the insert's row count, so every auto-increment model came
+back with id 1; the new `insertGetId()` reads the real id. `QueryValidator` no longer refuses bound
+values that read like `"; delete …"` or warn on values over 64 KB. `DatabaseBackupTask` reads the
+stock `engine` / `pgsql` config and fails its job when no dump is made.
+::
+
+::card
+#title
+Config that means what it says
+#description
+Config files were layered with `array_replace_recursive`, which merged lists by position: an app's
+third scheduled job took the keys it lacked from the framework's third. Lists now replace; maps
+still merge. Dead keys are gone, scheduled jobs get their settings, `security:check` runs the five
+checks it used to fake, and `permissions:diff` counts permissions enforced by middleware named in
+`permissions.enforcing_middleware`.
+::
+
+### Migration Notes
+
+- **Your `config/schedule.php` list replaces the framework's.** Add any framework job you relied on
+  inheriting, and the new `webhook_cleanup` job if you want it.
+- **Delete the dead config** from your copies: the `sync`/`null` queue connections, the schedule's
+  `settings` block, `queue_mapping` and per-job `queue`/`timeout`/`retry_attempts`,
+  `app.force_https`, `security.headers`, and `HSTS_HEADER`, `FORCE_HTTPS`, `SCHEDULE_QUEUE_*`,
+  `MAIL_BCC`. Leaving it changes nothing.
+- **Run `security:check` and fix what it now reports.**
+- **The scheduled backup needs `pg_dump` or `mysqldump`** on the scheduler host.
+- **Enforce permissions in route middleware?** List it in `permissions.enforcing_middleware`.
+- **Deprecated:** `FailedJobProvider::setMaxRetries()` / `getMaxRetries()` (nothing enforces them;
+  removal in 1.88).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.8 - Alphard
+**Released: September 15, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a scheduled framework job never fails its tick on the logger lookup.** With their
+context restored in 1.85.7, `NotificationRetryJob`, `SessionCleanupJob`, `LogCleanupJob`,
+`CacheMaintenanceJob` and `DatabaseBackupJob` resolved `LogManager` from the container
+unguarded, and a container that binds none — a skeleton install — failed every due tick with
+`Service 'Glueful\Logging\LogManager' not found`, so `queue:scheduler run` still failed every
+tenth minute on a fresh install. The five jobs share one guarded lookup that falls back to the
+static instance. Low risk: no behaviour change beyond the jobs running as intended.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.7 - Alphard
+**Released: September 15, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: scheduled framework jobs keep the application context.** `JobHandlerResolver` hands
+the context to a job's constructor, but `NotificationRetryJob`, `SessionCleanupJob`,
+`LogCleanupJob`, `CacheMaintenanceJob` and `DatabaseBackupJob` overrode that constructor
+without the parameter and dropped it. The notification retry job then threw
+`NotificationContextRequiredException` on every due tick, so `queue:scheduler run` failed
+every tenth minute on a fresh install; the others ran context-less. Every one now forwards
+the context. Low risk: no behaviour change beyond the jobs running as intended.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.6 - Alphard
+**Released: September 13, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: an SVG served with a width hint is the original, not a 422.** `GET /blobs/{uuid}?width=160`
+sent every `image/*` blob through the resizer, whose raster validator only knows JPEG, PNG, GIF
+and WebP, so any thumbnail request for an SVG answered `422 Unprocessable Content`. Only raster
+formats take the variant path now; SVG falls through to the original bytes with the resize
+parameters ignored. Low risk: no behaviour change for raster images.
+::
+
+### Migration Notes
+
+- None.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.5 - Alphard
+**Released: September 13, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Patch: a failed token generation can no longer poison every later login.** When JWT generation
+threw (a missing or invalid key), the provider answered empty tokens, a session was stored anyway,
+and a refresh token of `""` was issued; its constant hash made every later login answer
+`409 A conflicting record already exists`, unlogged. Empty tokens are a failed login now, the
+refresh-token store refuses an empty token, the cause is logged, and unique-constraint violations
+are reported at warning. Moderate: an install already affected must delete the poisoned row once.
+::
+
+### Migration Notes
+
+- If logins on an install answer 409 today, delete the poisoned rows once, then log in again:
+
+```sql
+-- the token rows reference the sessions, so they go first
+CREATE TEMP TABLE poisoned AS SELECT session_uuid FROM auth_refresh_tokens
+  WHERE token_hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+DELETE FROM auth_refresh_tokens
+  WHERE token_hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+DELETE FROM auth_sessions WHERE uuid IN (SELECT session_uuid FROM poisoned);
+```
+
+- Then fix what made generation throw: the log now names it (`[Auth] Token generation failed: …`).
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.85.4 - Alphard
+**Released: September 12, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Patch: jobs declared in `config/schedule.php` now actually run.** The scheduler registered each
+config job as a callback that only returned its handler class name, so `queue:scheduler run`
+logged "Executed job (0ms)" and never ran the handler — every config-declared job was a no-op
+unless persisted to the database. Config jobs now resolve and run their handler like database
+jobs, `enabled => false` is honoured, the command hands the scheduler the booted context, and
+`list` tolerates a missing `enabled` key. Moderate: jobs you believed were running will start
+running on the next tick.
+::
+
+### Migration Notes
+
+- **Review `config/schedule.php`** before upgrading: every enabled job will now execute on its
+  cron expression. Set `enabled => false` on any you do not want.
+- Make sure a cron entry ticks the scheduler: `* * * * * php /path/to/app/glueful queue:scheduler run`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.85.3 - Alphard
 **Released: September 12, 2026**
 
