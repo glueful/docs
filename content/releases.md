@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.1 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a change to the extension list that can't get the lock says so.** Low risk: no
+configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Extension-list lock timeouts are lock contention
+#description
+When `ExtensionStateMutex` times out because another change to the extension list is still
+running, it now throws `LockContentionException` (still a `RuntimeException`), so a caller can
+answer "busy, try again" rather than reporting a bad request. The schema executor's `enable()` and
+`disable()` record that operation as failed, with the reason, instead of leaving it running.
+::
+
+### Migration Notes
+
+- No action needed. Code that catches `RuntimeException` keeps working; catch
+  `LockContentionException` to tell contention apart.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.88.0 - Alrescha
 **Released: October 3, 2026**
 
