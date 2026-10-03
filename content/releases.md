@@ -5,6 +5,52 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.0 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Minor: route tables that know the state they were compiled under, and one lock for every change
+to the enabled extensions.** An application can add its own state to the compiled route table's
+signature, and every command that edits `config/extensions.php` or rebuilds the extension cache now
+holds the same lock. Low risk: additive, with no configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Route-table signature inputs
+#description
+`ApplicationContext::setRouteSignatureInput($name, $value)` adds application state to the
+compiled route table's signature. A table compiled under one state is rejected by a context booted
+under another, including a table first built on a cold cache. Set it before routes are registered,
+from the state the routes are registered by.
+::
+
+::card
+#title
+One lock for every enabled-list change
+#description
+`extensions:enable`, `extensions:disable`, `extensions:cache` and the schema executor hold
+`ExtensionStateMutex` from reading the list (or resolving providers) through rebuilding the
+extension cache, so two changes can't overwrite each other's edits. It's a PostgreSQL advisory lock
+on `glueful:extension-state`, or a file lock on other drivers. Applications that write the list
+themselves take the same lock with `ExtensionStateMutex::within()`; `ExtensionManager::rebuildCache()`
+is the locked rebuild.
+::
+
+### Migration Notes
+
+- No action needed. An application that edits `config/extensions.php` or rebuilds the extension
+  cache itself should do it inside `ExtensionStateMutex::within()`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.87.0 - Alrakis
 **Released: September 22, 2026**
 
