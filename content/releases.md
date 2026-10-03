@@ -5,6 +5,118 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.2 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a new project installs cleanly.** `composer create-project` no longer fails at its
+`extensions:cache` step before the database is configured. Low risk: no configuration or default
+changes.
+::
+
+### Key Highlights
+
+::card
+#title
+The extension-state lock needs no database
+#description
+The lock every change to the enabled extension list holds guards files (`config/extensions.php`
+and the extension cache), so it is now an flock on `storage/framework/locks/extension-state.lock`
+on every database driver. In 1.88.0 and 1.88.1 it was a PostgreSQL advisory lock on PostgreSQL,
+which made `extensions:cache` need a database: a fresh project failed at that step while `.env`
+still held placeholder credentials. The lock is re-entrant within a process.
+::
+
+### Migration Notes
+
+- No action needed. `ExtensionStateMutex::within()` still accepts its `$db` argument and ignores
+  it; an application that passed one can stop.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.88.1 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a change to the extension list that can't get the lock says so.** Low risk: no
+configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Extension-list lock timeouts are lock contention
+#description
+When `ExtensionStateMutex` times out because another change to the extension list is still
+running, it now throws `LockContentionException` (still a `RuntimeException`), so a caller can
+answer "busy, try again" rather than reporting a bad request. The schema executor's `enable()` and
+`disable()` record that operation as failed, with the reason, instead of leaving it running.
+::
+
+### Migration Notes
+
+- No action needed. Code that catches `RuntimeException` keeps working; catch
+  `LockContentionException` to tell contention apart.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
+## v1.88.0 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Minor: route tables that know the state they were compiled under, and one lock for every change
+to the enabled extensions.** An application can add its own state to the compiled route table's
+signature, and every command that edits `config/extensions.php` or rebuilds the extension cache now
+holds the same lock. Low risk: additive, with no configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Route-table signature inputs
+#description
+`ApplicationContext::setRouteSignatureInput($name, $value)` adds application state to the
+compiled route table's signature. A table compiled under one state is rejected by a context booted
+under another, including a table first built on a cold cache. Set it before routes are registered,
+from the state the routes are registered by.
+::
+
+::card
+#title
+One lock for every enabled-list change
+#description
+`extensions:enable`, `extensions:disable`, `extensions:cache` and the schema executor hold
+`ExtensionStateMutex` from reading the list (or resolving providers) through rebuilding the
+extension cache, so two changes can't overwrite each other's edits. It's a PostgreSQL advisory lock
+on `glueful:extension-state`, or a file lock on other drivers. Applications that write the list
+themselves take the same lock with `ExtensionStateMutex::within()`; `ExtensionManager::rebuildCache()`
+is the locked rebuild.
+::
+
+### Migration Notes
+
+- No action needed. An application that edits `config/extensions.php` or rebuilds the extension
+  cache itself should do it inside `ExtensionStateMutex::within()`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.87.0 - Alrakis
 **Released: September 22, 2026**
 
