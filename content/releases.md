@@ -5,6 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.2 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: a new project installs cleanly.** `composer create-project` no longer fails at its
+`extensions:cache` step before the database is configured. Low risk: no configuration or default
+changes.
+::
+
+### Key Highlights
+
+::card
+#title
+The extension-state lock needs no database
+#description
+The lock every change to the enabled extension list holds guards files (`config/extensions.php`
+and the extension cache), so it is now an flock on `storage/framework/locks/extension-state.lock`
+on every database driver. In 1.88.0 and 1.88.1 it was a PostgreSQL advisory lock on PostgreSQL,
+which made `extensions:cache` need a database: a fresh project failed at that step while `.env`
+still held placeholder credentials. The lock is re-entrant within a process.
+::
+
+### Migration Notes
+
+- No action needed. `ExtensionStateMutex::within()` still accepts its `$db` argument and ignores
+  it; an application that passed one can stop.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.88.1 - Alrescha
 **Released: October 3, 2026**
 
