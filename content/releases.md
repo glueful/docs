@@ -5,6 +5,40 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.3 - Alrescha
+**Released: October 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: enabling an extension over HTTP takes effect under OPcache.** Low risk: no configuration
+or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+The extension files are invalidated when written
+#description
+`config/extensions.php` and `bootstrap/cache/extensions.php` are PHP files the framework writes
+and then requires. Under PHP-FPM with OPcache, a web request that enabled an extension could
+rebuild the cache from OPcache's compiled old list, so the next request booted without the
+extension. `ExtensionStateWriter` and the extension cache writer now call `opcache_invalidate()` on
+the file they wrote.
+::
+
+### Migration Notes
+
+- No action needed. A change made from the CLI (`extensions:enable`, `extensions:cache`) reaches
+  PHP-FPM when OPcache next checks the file's timestamp; with `opcache.validate_timestamps=0`,
+  reload PHP-FPM after it.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.88.2 - Alrescha
 **Released: October 3, 2026**
 
