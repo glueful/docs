@@ -5,6 +5,41 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.4 - Alrescha
+**Released: October 5, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: large resized images no longer fail after their first request.** Low risk: no
+configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+A cached image variant is always readable
+#description
+The image route caches each resized variant. On Redis, the cache's serializer wrote values of any
+size but refused anything over its 1MB limit when reading, so a variant over 1MB was served once
+and answered 500 on every request after. The serializer now enforces the limit when writing too,
+the Redis driver answers `false` from `set()` for a value it cannot store and treats an entry it
+cannot read as a miss, and the image route renders a variant again when the cache cannot answer.
+::
+
+### Migration Notes
+
+- No action needed. Variants already cached over the limit are rendered again. A variant over the
+  cache limit is now served uncached, so it is rendered on each request.
+- `RedisCacheDriver::set()`, `setNx()` and `mset()` return `false` for a value the serializer
+  refuses, instead of storing it; code that relied on such a write had a value it could never read.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.88.3 - Alrescha
 **Released: October 3, 2026**
 
