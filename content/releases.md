@@ -5,6 +5,39 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.88.5 - Alrescha
+**Released: October 7, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: an after-commit callback that commits its own transaction no longer loops.** Low risk: no
+configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+After-commit callbacks run once
+#description
+The outermost commit ran its after-commit callbacks before taking them off the queue. A callback
+that opened and committed a transaction of its own (an event listener writing a record, say) found
+them still queued and ran them again, over and over, until the request ran out of memory. The data
+had already committed, so a client saw a request that never answered for work that had in fact
+been saved. Commit and rollback now clear a level's callbacks before running them, and a rollback
+callback's own transaction no longer runs the rolled-back work's after-commit callbacks.
+::
+
+### Migration Notes
+
+- No action needed. Each after-commit and after-rollback callback now runs exactly once.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.88.4 - Alrescha
 **Released: October 5, 2026**
 
