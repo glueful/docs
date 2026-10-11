@@ -5,6 +5,53 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.90.0 - Alsciaukat
+**Released: October 11, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Minor: the file cache and `.env` stay usable when the web server cannot write the code.**
+Moderate risk: the framework config's default file-cache path changed from the framework's own
+folder to the app's `storage/cache`.
+::
+
+### Key Highlights
+
+::card
+#title
+The file cache lives in your app
+#description
+The cache service was created without the application context, and the file driver looked up a
+config key no app defines, so file-cache entries were written to
+`vendor/glueful/framework/storage/cache`. Where the web server cannot write the code — the safe way
+to run a production site — the cache failed to start and requests ran without it. The driver now
+uses `cache.stores.file.path` (`CACHE_FILE_PATH`), else `<app>/storage/cache`, and services that
+create a cache or a logger without a context use the one set at boot.
+::
+
+::card
+#title
+`.env` keeps who can read it
+#description
+Every write replaced `.env` with a fresh temporary file — mode 0600, in the writing user's own
+group — so a web server reading `.env` through its group lost access the moment the deploy user ran
+an install or provision. Writes now keep the file's mode and group, and an unchanged file is left
+alone.
+::
+
+### Migration Notes
+
+- An app whose `config/cache.php` sets the file-cache path (the API skeleton does) is unaffected.
+- An app relying on the framework's default now caches in `<app>/storage/cache`: make sure the web
+  server can write it, or set `CACHE_FILE_PATH`. Old entries under `vendor/glueful/framework/storage`
+  can be deleted.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.89.0 - Alsafi
 **Released: October 11, 2026**
 
