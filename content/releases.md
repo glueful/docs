@@ -5,6 +5,39 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.89.0 - Alsafi
+**Released: October 11, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Minor: `queue:restart` asks running workers to pick up new code.** Low risk: additive, no
+configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Restart workers after a deploy
+#description
+A queue worker is a long-running process that loads the application once, so after an upgrade it
+keeps running the old code until it exits. `php glueful queue:restart` stores a timestamp in the
+cache; each worker compares it with its own start time and exits after the job it is running, and
+its supervisor (systemd, Supervisor) starts it again on the code installed now. A worker started
+after the signal keeps running. Without a cache store nothing is signalled.
+::
+
+### Migration Notes
+
+- No action needed. Add `php glueful queue:restart` to your deploy or upgrade steps, after the code
+  and migrations are in place.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.88.5 - Alrescha
 **Released: October 7, 2026**
 
