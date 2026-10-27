@@ -586,7 +586,7 @@ PlaceOrderEvent    // Use: PlaceOrderCommand
 - Verify the listener is registered before the event is dispatched (e.g. in a provider's `boot()`)
 - Check the event class name matches (listeners on a parent class or interface also receive subclasses)
 - Check the event is one core actually dispatches (see Built-in Framework Events)
-- Subscribed a class (`subscribe()` / `#[AsListener]`) that isn't registered in the container? It's resolved on first dispatch, and the "Service not found" error is logged and skipped like any listener failure
+- Subscribed a class (`subscribe()` / `#[AsListener]`) that isn't registered in the container? `subscribe()` builds it straight away and throws `InvalidArgumentException` if it can't (an unresolvable constructor dependency, say), so check the boot error
 - Look in the PHP error log: a listener that throws is logged and skipped
 
 **Performance issues?**
