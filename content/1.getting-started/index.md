@@ -12,7 +12,7 @@ Glueful is a high-performance PHP framework that prioritizes developer productiv
 
 - **Developer-first experience** - Interactive setup wizard and powerful CLI tools
 - **Enterprise architecture** - Production-ready with connection pooling, queues, and advanced caching  
-- **Security by default** - Multi-layered security with CSRF, rate limiting, and secure sessions
+- **Security by default** - CSRF protection, baseline security headers, tiered rate limiting, and hardened API keys
 - **Performance optimized** - Built-in memory management and query optimization
 - **API-first design** - Automatic OpenAPI/Swagger documentation
 - **Extensible** - High-performance extension system
@@ -37,7 +37,9 @@ cd my-api
 php glueful serve
 ```
 
-Your API is now running at `http://127.0.0.1:8080` (try `/welcome`, `/v1/status`, `/health`).
+Your API is now running at `http://localhost:8000` (try `/welcome`, `/v1/status`, `/health`). Use `--port`/`--host` to change the bind address, or `--watch` to restart on file changes.
+
+The skeleton enables the [`glueful/users`](/essentials/identity) user store by default, so the framework's auth endpoints are live under the API prefix (e.g. `POST /api/v1/auth/login`).
 
 From here, follow the dedicated guides:
 
@@ -49,42 +51,47 @@ The API skeleton provides a clean, organized structure:
 
 ```
 my-api/
-├── app/                    # Application code
-│   ├── Controllers/        # HTTP controllers
-│   ├── Models/            # Data models
-│   └── Services/          # Business logic
+├── app/                    # Application code (namespace App\)
+│   ├── Controllers/        # HTTP controllers (WelcomeController)
+│   ├── Models/             # ORM models
+│   └── Providers/          # AppServiceProvider — registers your services/controllers
 ├── bootstrap/
-│   └── app.php            # Framework bootstrap
-├── config/                # Configuration files
-│   ├── app.php            # Application config
-│   ├── database.php       # Database settings
-│   └── ...                # Feature-specific configs
+│   └── app.php             # Framework bootstrap
+├── config/                 # App config (overrides framework defaults)
+│   ├── app.php
+│   ├── database.php
+│   ├── extensions.php      # Which installed extensions are enabled
+│   ├── serviceproviders.php
+│   └── ...
 ├── database/
-│   └── migrations/        # Database migrations
+│   └── migrations/         # Your app's migrations
 ├── public/
-│   └── index.php          # HTTP entry point
+│   └── index.php           # HTTP entry point
 ├── routes/
-│   └── api.php            # Route definitions
-├── storage/               # Cache, logs, database
+│   └── api.php             # Every routes/*.php file is auto-loaded
+├── storage/                # Cache, logs, SQLite database
 │   ├── cache/
 │   ├── logs/
 │   └── database/
-└── tests/                 # Test files
+├── tests/                  # PHPUnit: Feature/, Unit/, Support/
+└── glueful                 # CLI entrypoint (php glueful …)
 ```
+
+Add your own folders (e.g. `app/Services`, `app/Repositories`) as the app grows — anything under `app/` autoloads as `App\`.
 
 ## Core Features Overview
 
 ### Foundation
 - Modern PHP 8.3+ architecture with attributes and typed properties
 - Powerful Dependency Injection container with service providers
-- Advanced routing system with PSR-15 middleware support
+- High-performance router with a `RouteMiddleware` pipeline (a PSR-15 bridge is available for third-party middleware)
 - Request Context architecture eliminating superglobal dependencies
 
 ### API Development
 - RESTful API endpoints with automatic OpenAPI/Swagger documentation
 - Multi-layer request validation with centralized helpers
 - Standardized error handling with secure production responses
-- Adaptive rate limiting with behavior analysis
+- Tiered rate limiting (fixed window, sliding window, token bucket) configured per route
 
 ### Database & Performance  
 - Connection pooling with health monitoring
@@ -94,13 +101,13 @@ my-api/
 
 ### Security & Production
 - Multi-layered security (CSRF, headers, lockdown modes)
-- Permission system with role-based access control
-- Audit logging and security event tracking
+- Authorization seams (`#[RequiresPermission]`, `#[RequiresRole]`, policies) — role-based access control itself comes from the optional `glueful/aegis` extension
+- Security events, with audit logging available via the `glueful/audit` extension
 - Production-hardened defaults and monitoring
 
 ### Developer Experience
 - Interactive CLI with setup wizards and generators
-- Hot-reload development server
+- Development server with file watching (`php glueful serve --watch`)
 - Comprehensive error pages and debugging tools
 - Built-in profiling and performance monitoring
 
@@ -140,7 +147,7 @@ Now that you have Glueful running:
     ---
     label: What about database support?
     ---
-    Glueful supports PostgreSQL, MySQL, SQLite, and other PDO-compatible databases with advanced features like connection pooling and query optimization.
+    Glueful supports PostgreSQL, MySQL, and SQLite (the skeleton defaults to SQLite). `php glueful install` can configure any of the three, with connection pooling and query optimization built in.
     ::::
 
     ::::accordion-item

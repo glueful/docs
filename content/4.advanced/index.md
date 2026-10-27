@@ -13,7 +13,8 @@ Take your Glueful application to the next level with advanced patterns, testing 
 - **[Middleware](/advanced/middleware)** - the pipeline, alias catalog, and PSR-15
 - **[Configuration](/advanced/configuration)** - environment-aware configuration
 - **[Performance](/advanced/performance)** - optimization and monitoring
-- **[Testing](/advanced/testing)** - unit, integration, and feature testing
+- **[Testing](/advanced/testing)** - the base `TestCase`, HTTP and database tests, test-state gotchas
+- **[OpenAPI](/advanced/openapi)** - generating the API spec from your routes
 
 ## What You'll Learn
 
@@ -25,21 +26,21 @@ Take your Glueful application to the next level with advanced patterns, testing 
 
 ### Configuration Management
 - Environment-based configuration
+- How framework, app and per-environment files merge
 - Secrets and sensitive data
-- Configuration caching
-- Multi-environment setups
+- Environment tooling (`doctor`, `env:sync`)
 
 ### Middleware Patterns
 - Creating custom middleware
 - Middleware ordering
-- Global vs route-specific
-- Performance optimization
+- Route, group and app-wide middleware
+- The built-in alias catalog
 
 ### Performance Optimization
-- Query optimization
+- Query optimization and profiling
 - Caching strategies
-- Code profiling
-- Horizontal scaling
+- Memory management
+- Connection pooling
 
 ## Production Readiness
 
@@ -52,3 +53,5 @@ These guides help you:
 ## Next Steps
 
 Start with [Testing](/advanced/testing) to learn how to write reliable tests for your application.
+
+Upgrading an existing app? Read [Upgrading](/upgrading) first: several 1.91 fixes change behaviour on upgrade (route params now applied, rate limits auto-attached, `API_RATE_LIMITING_ENABLED` / `api.field_selection.enabled` honoured, `LOG_LEVEL` filtering, route cache format v3, OpenAPI tags, removed tracing keys).

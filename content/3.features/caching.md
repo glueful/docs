@@ -5,22 +5,41 @@ description: Speed up your application with Redis, Memcached, or file caching
 
 Cache expensive database queries and computations to reduce latency and improve performance.
 
-> Note: For production resilience, prefer `CacheHelper::createCacheInstance()` when you need graceful degradation — it returns `null` if the cache backend is unavailable so your code can continue (use `CacheHelper::safeExecute` or branch on `null`). Use `CacheFactory::create()` when you want a hard failure if the cache cannot be reached.
-
 ## Quick Start
 
+Inject the cache store (`Glueful\Cache\CacheStore`, container id `cache.store`) and use `remember()`:
+
 ```php
-use Glueful\Cache\CacheFactory;
+use Glueful\Cache\CacheStore;
+use Glueful\Database\Connection;
 
-$cache = CacheFactory::create();
+final class UserStatsService
+{
+    public function __construct(
+        private readonly CacheStore $cache,
+        private readonly Connection $db,
+    ) {}
 
-// Cache with automatic refresh on miss
-$users = $cache->remember('users:active', function() {
-    return $this->getConnection()->table('users')
-        ->where(['status' => 'active'])
-        ->get();
-}, 600); // TTL in seconds
+    public function activeUsers(): array
+    {
+        return $this->cache->remember('users:active', function () {
+            return $this->db->table('users')
+                ->where('status', 'active')
+                ->get();
+        }, 600); // TTL in seconds
+    }
+}
 ```
+
+Outside DI, resolve it with `app($context, CacheStore::class)`. The examples below assume `$cache` is a `CacheStore` and `$db` a `Connection` (or `db($context)`).
+
+### Getting a store
+
+| Option | When the backend is down |
+|--------|--------------------------|
+| Inject `CacheStore` / `app($context, 'cache.store')` | Throws on resolution. Returns an `EventDispatchingCacheStore` wrapping the driver (see [Cache events](#cache-events)) |
+| `CacheFactory::create('', $context)` | Throws; `create('redis', $context)` forces a driver |
+| `CacheHelper::createCacheInstance($context)` | Returns `null`; pair it with `CacheHelper::safeExecute()` or `CacheHelper::remember()`, which both accept `null` |
 
 ## When to Cache
 
@@ -36,198 +55,172 @@ $users = $cache->remember('users:active', function() {
 
 ## Cache Drivers
 
-Configure in `config/cache.php`:
+Set `CACHE_DRIVER` (default `file`):
 
-| Driver | Best For | Pros | Cons |
-|--------|----------|------|------|
-| **Redis** | Production, multi-server | Fast, rich features, pattern delete | External dependency |
-| **Memcached** | High-traffic, simple caching | Low latency, horizontal scaling | Fewer features |
-| **File** | Development, single server | No setup needed | Not ideal for production |
+| Driver | Best For | Notes |
+|--------|----------|-------|
+| **file** (default) | Development, single server | Stored in `<app>/storage/cache/`, or `CACHE_FILE_PATH`. Tags via per-tag index files |
+| **redis** | Production, multi-server | Tags, pattern delete, atomic `setNx` |
+| **memcached** | High-traffic, simple caching | No tags; `deletePattern()` always returns `false` |
+| **array** | Tests | In-process only |
 
 ## Basic Operations
 
-### Get & Set
-
 ```php
-// Set cache
-$cache->set('user:123', $userData, 600);
+$cache->set('user:123', $userData, 600);    // TTL in seconds
+$user = $cache->get('user:123');             // null on miss
+$user = $cache->get('user:123', $default);   // default on miss
+$cache->has('user:123');
+$cache->delete('user:123');
 
-// Get cache
-$user = $cache->get('user:123');
-
-// Get with default
-$user = $cache->get('user:123', $defaultValue);
+$cache->increment('page:views');             // counters
+$cache->setNx('lock:import', 1, 30);         // set only if absent
+$cache->ttl('user:123');                     // seconds remaining
 ```
 
-### Remember Pattern
+## Read-Through (`remember`)
 
-Best practice - automatic cache on miss:
+`remember($key, $callback, $ttl)` returns the cached value, or runs the callback on a miss and stores the result:
 
 ```php
-$product = $cache->remember('product:'.$sku, function() use ($sku) {
-    return $this->getConnection()->table('products')
-        ->where(['sku' => $sku])
+$product = $cache->remember('product:' . $sku, function () use ($db, $sku) {
+    return $db->table('products')
+        ->where('sku', $sku)
         ->first();
 }, 900);
 ```
 
-## Read-Through Pattern
+Don't rely on caching `null`: the Redis and Memcached drivers treat a stored `null` as a miss, so a callback that returns `null` runs on every request. To cache "not found", store a sentinel such as `['found' => false]` and check for it.
 
-Populate cache automatically on miss:
+## Write-Through
 
-```php
-$profile = $cache->remember('profile:'.$id, function() use ($id) {
-    // Only executed on cache miss
-    return $this->getConnection()->table('users')
-        ->where(['id' => $id])
-        ->first();
-}, 300);
-```
-
-## Write-Through Pattern
-
-Update cache when data changes:
+Update the cache when data changes:
 
 ```php
-// Update database
-$this->getConnection()->table('users')
-    ->where(['id' => $userId])
-    ->update($data);
+$db->table('users')->where('uuid', $uuid)->update($data);
 
-// Keep cache warm
-$user = $this->getConnection()->table('users')->find($userId);
-$cache->set('user:'.$userId, $user, 600);
+$user = $db->table('users')->where('uuid', $uuid)->first();
+$cache->set('user:' . $uuid, $user, 600);
 ```
 
 ## Tagging & Group Invalidation
 
-Tag related cache items for bulk invalidation:
+Tag related entries for bulk invalidation. Tags work on the Redis, file and array drivers; on Memcached, `addTags()`/`invalidateTags()` return `false`. Check `$cache->getCapabilities()['features']['tags']` if your code must run on any driver.
 
 ```php
-// Cache with tags
 $cache->set('user:123', $userData, 600);
 $cache->addTags('user:123', ['user:123', 'role:admin']);
 
-// Invalidate all user caches
-$cache->invalidateTags(['user:123']);
-
-// Invalidate all admin role caches
+$cache->invalidateTags(['user:123']);   // every entry tagged user:123
 $cache->invalidateTags(['role:admin']);
 ```
 
+On the **file** driver (since 1.91) each tag keeps an index file of its keys under the cache directory, updated under an exclusive `flock` so concurrent requests don't drop each other's keys. `invalidateTags()` deletes the indexed keys and then the index; an index pointing at a key that has since expired or been deleted is harmless, and `clear()` removes the indexes too. As on Redis, tagging doesn't require the key to exist, and an overwritten key stays tagged until the tag is invalidated.
+
+Controllers using `ResponseCachingTrait` store the tags passed to `cacheResponse()`, so `invalidateCache()` / `invalidateTags()` evict those cached responses.
+
 ## Pattern Deletion
 
-Delete multiple keys at once (Redis/File only):
-
 ```php
-// Delete all session keys
-$cache->deletePattern('session:*');
-
-// Delete all user caches
-$cache->deletePattern('user:*');
+$cache->deletePattern('session:*');   // Redis, file and array drivers
 ```
 
-## Common Patterns
-
-### Cache User Data
-
-```php
-public function getUser($id)
-{
-    $cache = \Glueful\Cache\CacheFactory::create();
-    return $cache->remember('user:'.$id, function() use ($id) {
-        return $this->getConnection()->table('users')->find($id);
-    }, 3600); // 1 hour
-}
-```
-
-### Cache API Responses
-
-```php
-public function getWeather($city)
-{
-    $cache = \Glueful\Cache\CacheFactory::create();
-    return $cache->remember('weather:'.$city, function() use ($city) {
-        return $this->httpClient->get("api.weather.com?city={$city}");
-    }, 1800); // 30 minutes
-}
-```
-
-### Cache Computed Values
-
-```php
-public function getStats()
-{
-    $cache = \Glueful\Cache\CacheFactory::create();
-    return $cache->remember('dashboard:stats', function() {
-        return [
-            'users' => $this->getConnection()->table('users')->count(),
-            'posts' => $this->getConnection()->table('posts')->count(),
-            'revenue' => $this->getConnection()->table('orders')->sum('total')
-        ];
-    }, 300); // 5 minutes
-}
-```
-
-### Negative Cache
-
-Cache known-missing items to prevent repeated DB lookups:
-
-```php
-$cache = \Glueful\Cache\CacheFactory::create();
-$user = $cache->remember('user:'.$id, function() use ($id) {
-    return $this->getConnection()->table('users')->find($id);
-}, 60); // Short TTL for missing items
-
-if (!$user) {
-    // Cache the "not found" result
-    $this->cache->set('user:'.$id, null, 60);
-}
-```
+Memcached can't enumerate keys, so `deletePattern()` returns `false` there.
 
 ## Stampede Protection
 
-Prevent multiple simultaneous cache misses:
-
-```php
-// Enable via config (cache.stampede_protection)
-// Only one request recomputes on miss
-$result = $cache->remember('expensive:data', function() {
-    sleep(5); // Expensive operation
-    return computeExpensiveData();
-}, 600);
-```
-
-## Safe Operations
-
-Handle cache failures gracefully:
+A driver's own `$cache->remember()` has **no** stampede protection: on a miss, every concurrent request runs the callback. Use `CacheHelper::remember()` instead:
 
 ```php
 use Glueful\Helpers\CacheHelper;
 
-// Returns null if cache unavailable
-$cache = CacheHelper::createCacheInstance();
-
-// Execute with fallback
-$value = CacheHelper::safeExecute(
-    $cache,
-    fn($c) => $c->get('feature:flag'),
-    $defaultValue = false
+$result = CacheHelper::remember(
+    $cache,                       // CacheStore, or null (then the callback just runs)
+    'expensive:data',
+    fn () => computeExpensiveData(),
+    600,
+    true                          // force protection; null (default) follows config
 );
 ```
 
+With protection on, one request takes a lock (`setNx`) and computes the value. The others poll the cache every `retry_interval` microseconds for up to `max_wait_time` seconds, then compute without the lock if the value still isn't there.
+
+To tune a single call, use the explicit helpers:
+
+```php
+// TTL, lock TTL, max wait (s), retry interval (µs)
+CacheHelper::rememberWithStampedeProtection($cache, 'report:daily', $callback, 3600, 60, 30, 100000);
+
+// Early refresh: once 80% of the TTL has elapsed, the request that wins the refresh
+// lock recomputes (synchronously, inside that request) while others get the current value
+CacheHelper::rememberWithEarlyExpiration($cache, 'app:config', $callback, 3600, 0.8, 60);
+```
+
+When the fifth argument is `null`, `CacheHelper::remember()` uses `cache.stampede_protection.enabled`, and switches to early expiration when `early_expiration.enabled` is also true.
+
+## Safe Operations
+
+Survive cache outages without failing the request:
+
+```php
+use Glueful\Helpers\CacheHelper;
+
+$cache = CacheHelper::createCacheInstance($context); // null if unavailable
+
+$flag = CacheHelper::safeExecute(
+    $cache,
+    fn ($c) => $c->get('feature:flag'),
+    false // fallback when $cache is null or the operation throws
+);
+
+if (CacheHelper::isCacheHealthy($cache)) {
+    // a set/get round trip succeeded
+}
+```
+
+## Cache Events
+
+The container's store fires `Glueful\Events\Cache\CacheMissEvent` and `CacheHitEvent` from `get()` and `remember()`, for every driver. Events are built only when a listener for either is registered, so an unobserved cache pays one listener lookup per read, and a failing listener never breaks the read.
+
+```php
+use Glueful\Events\Attributes\AsListener;
+use Glueful\Events\Cache\{CacheHitEvent, CacheMissEvent};
+
+final class CacheMetrics
+{
+    #[AsListener(CacheHitEvent::class)]
+    public function onHit(CacheHitEvent $event): void
+    {
+        // $event->getKey(), $event->getRetrievalTime() (ms), $event->getValueSize()
+    }
+
+    #[AsListener(CacheMissEvent::class)]
+    public function onMiss(CacheMissEvent $event): void
+    {
+        // $event->getKey()
+    }
+}
+```
+
+Call `EventService::subscribe(CacheMetrics::class)` (registering the class as a service is optional; an unregistered class is autowired) (see [Events](/features/events#attribute-listeners)). Other operations (`set()`, `has()`, `getMultiple()`, ...) don't fire events.
+
+::u-alert{color="warning" variant="subtle" icon="i-lucide-triangle-alert"}
+**Since 1.91**, `cache.store` / `CacheStore` resolves to the `EventDispatchingCacheStore` wrapper, so `instanceof RedisCacheDriver` (or any driver class) checks against it fail. Call `getInnerStore()` to reach the driver. Driver-only methods outside the `CacheStore` contract are forwarded, so calling them directly still works.
+::
+
 ## Configuration
 
-`config/cache.php` (keys shown reflect what the framework reads):
+`config/cache.php`:
 
 ```php
 return [
-    'default' => env('CACHE_DRIVER', 'redis'),
+    'default' => env('CACHE_DRIVER', 'file'),   // file | redis | memcached | array
+    'prefix' => env('CACHE_PREFIX', 'glueful:'),
+    'fallback_to_file' => env('CACHE_FALLBACK', true),
 
     'stores' => [
         'redis' => [
             'driver' => 'redis',
-            // The factory reads these keys or falls back to REDIS_* envs
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'port' => env('REDIS_PORT', 6379),
             'password' => env('REDIS_PASSWORD'),
@@ -236,31 +229,51 @@ return [
         ],
         'memcached' => [
             'driver' => 'memcached',
-            // Single host/port used by factory; extend as needed
             'host' => env('MEMCACHED_HOST', '127.0.0.1'),
             'port' => env('MEMCACHED_PORT', 11211),
         ],
-        // File driver is supported if default === 'file' or when fallback is enabled
         'file' => [
             'driver' => 'file',
-            // Path is determined automatically; override via app.paths.storage_path
+            'path' => env('CACHE_FILE_PATH'),    // unset: <app>/storage/cache/
         ],
+        'array' => ['driver' => 'array'],
     ],
 
-    // If true and default driver fails, factory may fall back to file cache
-    'fallback_to_file' => false,
+    'ttl' => env('CACHE_TTL', 3600),
 
     'stampede_protection' => [
-        'enabled' => false,
+        'enabled' => env('CACHE_STAMPEDE_PROTECTION', false),
+        'lock_ttl' => env('CACHE_STAMPEDE_LOCK_TTL', 60),
+        'max_wait_time' => env('CACHE_STAMPEDE_MAX_WAIT', 30),
+        'retry_interval' => env('CACHE_STAMPEDE_RETRY_INTERVAL', 100000), // µs
         'early_expiration' => [
-            'enabled' => false,
-            'threshold' => 0.8,
+            'enabled' => env('CACHE_EARLY_EXPIRATION', false),
+            'threshold' => env('CACHE_EARLY_EXPIRATION_THRESHOLD', 0.8),
         ],
-        'lock_ttl' => 60,
-        'max_wait_time' => 30,
-        'retry_interval' => 100000, // microseconds
     ],
 ];
+```
+
+What these keys do:
+
+- `prefix` is applied by `CacheHelper::key()` and its key builders (`userKey()`, `sessionKey()`, ...), not by the drivers. Keys you pass to `$cache->get()`/`set()` are used as is.
+- `fallback_to_file` only applies when `default` names a driver the factory doesn't know. A Redis or Memcached connection failure throws; use `CacheHelper::createCacheInstance()` to degrade gracefully.
+- `ttl` is displayed by `cache:status` but isn't applied as a driver default.
+
+1.91 removed `lock_ttl`, `enable_tags`, `tags_store` and `distributed` from `config/cache.php`: nothing read them. Delete them from a published copy of the file. Tags are always available on drivers that support them, stampede-lock TTL is `stampede_protection.lock_ttl`, distributed locks are configured in `config/lock.php` ([Distributed Locks](/features/distributed-locks)), and multi-node caching is covered in [Caching Recipes](/cookbook/caching).
+
+## CLI Commands
+
+```bash
+php glueful cache:status                        # driver, prefix, statistics
+php glueful cache:inspect                       # driver and PHP extension status
+php glueful cache:get user:123
+php glueful cache:set user:123 '{"name":"Ada"}' --json --ttl=600
+php glueful cache:ttl user:123
+php glueful cache:expire user:123 1h --human-time
+php glueful cache:delete 'user:*' --pattern --force
+php glueful cache:clear --force                 # or --tag=<tag> (repeatable)
+php glueful cache:maintenance                   # run or queue maintenance tasks
 ```
 
 ## Best Practices
@@ -269,66 +282,57 @@ return [
 
 ```php
 // ✅ Good - fresh data, simple invalidation
-$cache->remember('users', fn() => $users, 300); // 5 min
+$cache->remember('users', fn () => $users, 300); // 5 min
 
 // ❌ Risky - stale data, complex invalidation
-$cache->remember('users', fn() => $users, 86400); // 24 hours
+$cache->remember('users', fn () => $users, 86400); // 24 hours
 ```
 
 ### Clear on Update
 
 ```php
-// Update data
-$this->getConnection()->table('users')->where(['id' => $id])->update($data);
-
-// Clear cache
-$cache->delete('user:'.$id);
+$db->table('users')->where('uuid', $uuid)->update($data);
+$cache->delete('user:' . $uuid);
 ```
 
 ### Consistent Keys
 
 ```php
 // ✅ Good - predictable, namespaced
-$cache->remember('user:'.$id, ...);
-$cache->remember('product:'.$sku, ...);
+$cache->remember('user:' . $uuid, ...);
+$cache->remember('product:' . $sku, ...);
 
 // ❌ Bad - hard to invalidate, no namespace
-$cache->remember($id, ...);
+$cache->remember($uuid, ...);
 ```
 
 ## Monitoring
 
-Track these metrics:
+`$cache->getStats()` and `php glueful cache:status` report driver statistics (for Redis: memory, connections, commands processed, hit rate). Track:
 - Hit ratio (target: >60%)
 - Miss rate
-- Average TTL
-- Cache size
-- Eviction rate
+- Cache size and eviction rate
 
-Low hit ratio usually means:
-- Keys changing too frequently
-- TTL too short
-- Over-personalization
+A low hit ratio usually means keys change too often, TTLs are too short, or values are over-personalized.
 
 ## Troubleshooting
 
 **Low hit ratio?**
 - Check key naming consistency
-- Verify `CACHE_PREFIX` in `.env`
-- Ensure cache driver is running
+- Check that callbacks don't return `null` (not cached on Redis/Memcached)
+- Make sure the backend is reachable (`php glueful cache:status`)
 
-**Frequent cache misses?**
-- Enable stampede protection
-- Increase TTL
-- Pre-warm cache after deploys
+**Load spikes when a hot key expires?**
+- Use `CacheHelper::remember()` with stampede protection
+- Increase the TTL or enable early expiration
+- Pre-warm the cache after deploys
 
-**Memory issues?**
-- Reduce value sizes
-- Compress large values
-- Use shorter TTLs
+**File cache not writable?**
+- The file store writes to `<app>/storage/cache/` (or `CACHE_FILE_PATH`); make sure the web server user can write there
 
 ## Next Steps
 
+- [Caching Recipes](/cookbook/caching) - Distributed caching, tagging service, edge/CDN seam
 - [Queues & Jobs](/features/queues-jobs) - Offload expensive work
 - [Database](/essentials/database) - Optimize queries before caching
 - [Performance](/advanced/performance) - Advanced optimization

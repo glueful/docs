@@ -16,11 +16,11 @@ namespace App\Repositories;
 
 use Glueful\Repository\BaseRepository;
 
-class UserRepository extends BaseRepository
+class CustomerRepository extends BaseRepository
 {
     public function getTableName(): string
     {
-        return 'users';
+        return 'customers';
     }
 
     public function findByEmail(string $email)
@@ -42,25 +42,25 @@ class UserRepository extends BaseRepository
 ### Use in Controller
 
 ```php
-class UserController
+class CustomerController
 {
-    public function __construct(private UserRepository $users) {}
+    public function __construct(private CustomerRepository $customers) {}
 
     public function index()
     {
-        $activeUsers = $this->users->findActive();
-        return Response::success($activeUsers);
+        $active = $this->customers->findActive();
+        return Response::success($active);
     }
 
-    public function show($id)
+    public function show(string $id)
     {
-        $user = $this->users->find($id);
+        $customer = $this->customers->find($id);
 
-        if (!$user) {
-            return Response::error('User not found', 404);
+        if ($customer === null) {
+            return Response::error('Customer not found', 404);
         }
 
-        return Response::success($user);
+        return Response::success($customer);
     }
 }
 ```
@@ -129,8 +129,9 @@ $repository->delete($uuid);
 // Bulk delete
 $repository->bulkDelete(['uuid1', 'uuid2', 'uuid3']);
 
-// Soft delete (if supported)
+// Status-based soft delete: sets status = 'deleted' (column and value are parameters)
 $repository->softDelete($uuid);
+$repository->softDelete($uuid, statusColumn: 'state', deletedValue: 'archived');
 ```
 
 ### Pagination
@@ -153,15 +154,17 @@ $result = $repository->paginate(
     fields: ['uuid', 'name', 'email', 'status']
 );
 
-// Returns an array structure like:
+// Returns (same shape as QueryBuilder::paginate()):
 // [
 //   'data' => [...records...],
+//   'current_page' => 1,
+//   'per_page' => 20,
 //   'total' => 100,
-//   'page' => 1,
-//   'perPage' => 20,
-//   'totalPages' => 5,
-//   'hasNextPage' => true,
-//   'hasPreviousPage' => false,
+//   'last_page' => 5,
+//   'has_more' => true,
+//   'from' => 1,
+//   'to' => 20,
+//   'execution_time_ms' => 3,
 // ]
 ```
 
@@ -232,12 +235,11 @@ class OrderRepository extends BaseRepository
     public function getRevenueByMonth(int $year): array
     {
         return $this->db->table($this->table)
-            ->select([
-                'MONTH(created_at) as month',
-                'SUM(total) as revenue',
-            ])
-            ->where('YEAR(created_at)', $year)
-            ->groupBy('MONTH(created_at)')
+            // Raw SQL fragments go through selectRaw()/whereRaw() with bound values.
+            // MONTH()/YEAR() are MySQL functions; use EXTRACT() on PostgreSQL.
+            ->selectRaw('MONTH(created_at) AS month, SUM(total) AS revenue')
+            ->whereRaw('YEAR(created_at) = ?', [$year])
+            ->groupBy('month')
             ->get();
     }
 }
@@ -254,7 +256,7 @@ Use DTOs for explicit contracts and type safety:
 
 namespace App\DTO;
 
-final class UserDTO
+final class CustomerDTO
 {
     public function __construct(
         public readonly string $uuid,
@@ -290,24 +292,24 @@ final class UserDTO
 ### Repository with DTOs
 
 ```php
-class UserRepository extends BaseRepository
+class CustomerRepository extends BaseRepository
 {
     public function getTableName(): string
     {
-        return 'users';
+        return 'customers';
     }
 
-    public function findDto(string $uuid): ?UserDTO
+    public function findDto(string $uuid): ?CustomerDTO
     {
         $row = $this->find($uuid);
-        return $row ? UserDTO::fromArray($row) : null;
+        return $row ? CustomerDTO::fromArray($row) : null;
     }
 
-    /** @return UserDTO[] */
+    /** @return CustomerDTO[] */
     public function findActiveDto(): array
     {
         $rows = $this->findWhere(['status' => 'active']);
-        return array_map(fn($r) => UserDTO::fromArray($r), $rows);
+        return array_map(fn($r) => CustomerDTO::fromArray($r), $rows);
     }
 }
 ```
@@ -322,8 +324,8 @@ use Glueful\Repository\UnitOfWork;
 $uow = new UnitOfWork($connection);
 
 // Register operations
-$uow->registerNew('users', [
-    'uuid' => nanoid(),
+$uow->registerNew('customers', [
+    'uuid' => \Glueful\Helpers\Utils::generateNanoID(),
     'name' => 'John',
     'email' => 'john@example.com',
 ]);
@@ -419,8 +421,7 @@ $events->addListener(EntityCreatedEvent::class, function ($event) use ($context)
     ]);
 
     // Clear cache
-    $cache = \Glueful\Cache\CacheFactory::create();
-    $cache->delete("entities:{$event->getTable()}");
+    app($context, \Glueful\Cache\CacheStore::class)->delete("entities:{$event->getTable()}");
 });
 
 $events->addListener(EntityUpdatedEvent::class, function ($event) use ($context) {
@@ -438,19 +439,32 @@ $events->addListener(EntityUpdatedEvent::class, function ($event) use ($context)
 ```php
 use PHPUnit\Framework\TestCase;
 
-class UserRepositoryTest extends TestCase
+class CustomerRepositoryTest extends TestCase
 {
-    private UserRepository $repository;
+    private CustomerRepository $repository;
 
     protected function setUp(): void
     {
-        // Use SQLite in-memory for fast tests
-        $connection = new Connection('sqlite::memory:');
+        // Use SQLite in-memory for fast tests (Connection takes a config array)
+        $connection = new \Glueful\Database\Connection([
+            'engine' => 'sqlite',
+            'sqlite' => ['primary' => ':memory:'],
+            'pooling' => ['enabled' => false],
+        ]);
 
-        // Run migrations
-        $this->runMigrations($connection);
+        // Create the table the repository needs
+        $connection->getSchemaBuilder()->createTable('customers', function ($table): void {
+            $table->bigInteger('id')->primary()->autoIncrement();
+            $table->string('uuid', 12);
+            $table->string('name', 255);
+            $table->string('email', 255);
+            $table->string('status', 20);
+            $table->timestamp('created_at');
+            $table->timestamp('updated_at')->nullable();
+        });
 
-        $this->repository = new UserRepository($connection);
+        // Note: a connection passed here becomes the shared connection for every repository
+        $this->repository = new CustomerRepository($connection);
     }
 
     public function test_creates_user()
@@ -508,14 +522,14 @@ class OrderServiceTest extends TestCase
 
 ```php
 // ✅ Good - focused on data access
-class UserRepository extends BaseRepository
+class CustomerRepository extends BaseRepository
 {
     public function findByEmail(string $email) { ... }
     public function findActive() { ... }
 }
 
 // ❌ Bad - business logic in repository
-class UserRepository extends BaseRepository
+class CustomerRepository extends BaseRepository
 {
     public function sendWelcomeEmail($userId) { ... }
     public function calculateRewards($userId) { ... }
@@ -526,7 +540,7 @@ class UserRepository extends BaseRepository
 
 ```php
 // ✅ Good - select only needed columns
-public function listUsers(): array
+public function listCustomers(): array
 {
     return $this->db->table($this->table)
         ->select(['uuid', 'name', 'email', 'status'])
@@ -534,7 +548,7 @@ public function listUsers(): array
 }
 
 // ❌ Bad - select all columns
-public function listUsers(): array
+public function listCustomers(): array
 {
     return $this->db->table($this->table)->get();
 }
@@ -544,11 +558,11 @@ public function listUsers(): array
 
 ```php
 // ✅ Good - bulk create
-$repository->bulkCreate($users);
+$repository->bulkCreate($rows);
 
 // ❌ Bad - loop with create
-foreach ($users as $user) {
-    $repository->create($user);
+foreach ($rows as $row) {
+    $repository->create($row);
 }
 ```
 
@@ -569,18 +583,18 @@ $repository->findWhere(['active' => 1]);
 ### Avoid N+1 Queries
 
 ```php
-// ❌ Bad - N+1 query
-$users = $repository->findAll();
-foreach ($users as $user) {
-    $user->orders = $orderRepository->findByUser($user->id);
+// ❌ Bad - N+1 query (rows are arrays)
+$customers = $repository->findAll();
+foreach ($customers as $i => $customer) {
+    $customers[$i]['orders'] = $orderRepository->findAllBy('customer_uuid', $customer['uuid']);
 }
 
 // ✅ Good - use joins
-public function findUsersWithOrders(): array
+public function findCustomersWithOrders(): array
 {
-    return $this->db->table('users')
-        ->join('orders', 'users.id', '=', 'orders.user_id')
-        ->select(['users.*', 'orders.total'])
+    return $this->db->table('customers')
+        ->join('orders', 'customers.uuid', '=', 'orders.customer_uuid')
+        ->select(['customers.*', 'orders.total'])
         ->get();
 }
 ```
@@ -592,7 +606,7 @@ public function findUsersWithOrders(): array
 $result = $repository->paginate(page: 1, perPage: 50);
 
 // ❌ Bad - load everything
-$users = $repository->findAll();
+$customers = $repository->findAll();
 ```
 
 ### Index Frequently Queried Columns
@@ -611,3 +625,4 @@ Ensure columns used in `where()` clauses are indexed in your migrations.
 - [Service Providers](/advanced/service-providers) - Register repositories
 - [Testing](/advanced/testing) - Test repositories
 - [Database](/essentials/database) - Query builder
+- [ORM](/essentials/orm) - Models, when you want entities instead of arrays

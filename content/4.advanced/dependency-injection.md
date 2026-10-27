@@ -31,7 +31,7 @@ $c = container($context);
 $database = $c->get('database'); // some services are string IDs
 
 // Optional access — there is no getOptional(); guard with has_service()
-if (has_service(\Glueful\Auth\AuthenticationService::class)) {
+if (has_service($context, \Glueful\Auth\AuthenticationService::class)) {
     $auth = app($context, \Glueful\Auth\AuthenticationService::class);
 }
 ```
@@ -39,16 +39,18 @@ if (has_service(\Glueful\Auth\AuthenticationService::class)) {
 ### Constructor injection
 
 ```php
-class UserController
+use Glueful\Cache\CacheStore;
+
+class ReportService
 {
     public function __construct(
-        private UserRepository $users,
-        private CacheInterface $cache
+        private ReportRepository $reports,
+        private CacheStore $cache
     ) {}
 
-    public function index()
+    public function summary(): array
     {
-        return $this->cache->remember('users:all', fn () => $this->users->all());
+        return $this->cache->remember('reports:summary', fn () => $this->reports->summary(), 300);
     }
 }
 ```
@@ -76,11 +78,11 @@ class TaskController extends \Glueful\Controllers\BaseController
 - **Class name**: `app($context, Foo\Bar::class)` autowires constructor dependencies.
 - **Aliases**: string IDs (e.g. `'cache.store'`, `'database'`) resolve to services.
 - **Interfaces**: bind via alias so `app($context, Interface::class)` returns the implementation.
-- **Parameters**: inject via `#[Glueful\Container\Autowire\Inject(param: 'key')]` when autowiring, or read via `parameter('key')` inside a factory.
+- **Parameters**: inject via `#[Glueful\Container\Autowire\Inject(param: 'key')]` when autowiring, or read via `parameter($context, 'key')` inside a factory.
 
 ## Service Registration
 
-App and extension providers define services in a **static `services()` method** that returns a simple array DSL — this is the path used by the api-skeleton's `AppServiceProvider`. Framework **core** providers instead implement a `defs()` instance method that returns typed definitions (via `BaseServiceProvider`). If both forms exist for a provider, the typed `defs()` is used.
+App and extension providers define services in a **static `services()` method** that returns a simple array DSL — this is the path used by the api-skeleton's `AppServiceProvider`. The loader calls it statically (`$providerClass::services()`). A provider may instead expose a **static** `defs()` returning typed definitions; if both exist, `defs()` wins. Framework **core** providers (`CoreProvider`, `QueueProvider`, ...) extend the internal `BaseServiceProvider`, whose `defs()` is an instance method; that base class is only for the framework's built-in provider list and can't be enabled through `config/serviceproviders.php`.
 
 ### The `services()` array DSL (app/extension providers)
 
@@ -157,9 +159,9 @@ return [
 
 **Production rules** (enforced by the loader/compiler): no Closure factories, and no arbitrary object instances in `arguments` (scalars/arrays/enums only). Prefer class/method factories.
 
-### Typed `defs()` (core / advanced providers)
+### Typed `defs()` (framework core providers)
 
-For maximum performance and explicit control, providers can extend `Glueful\Container\Providers\BaseServiceProvider` and return typed definitions with `autowire()`, `alias()`, factory, and value helpers:
+For reference, this is how the framework's own providers (which extend `Glueful\Container\Providers\BaseServiceProvider`) return typed definitions with the `autowire()`, `alias()` and `tag()` helpers. Read these to understand core registrations; in your app, use `services()`:
 
 ```php
 use Glueful\Container\Providers\BaseServiceProvider;
@@ -264,7 +266,7 @@ public static function services(): array
 Enable providers via config — both files use a single `enabled` list of plain string FQCNs:
 
 - **App providers**: `config/serviceproviders.php` → `enabled` (always loaded, in order).
-- **Composer-discovered extensions**: `config/extensions.php` → `enabled` (an installed `glueful-extension` does nothing until its provider FQCN is listed; manage with `extensions:enable|disable`).
+- **Composer-discovered extensions**: `config/extensions.php` → `enabled` (an installed `glueful-extension` does nothing until its provider FQCN is listed; manage with `extensions:enable|disable`, which also works in production and runs the extension's migrations first).
 
 ```php
 // config/serviceproviders.php
@@ -275,21 +277,23 @@ return [
 ];
 ```
 
-Extension providers extend `Glueful\Extensions\ServiceProvider` and may also implement `register()` / `boot()` lifecycle hooks:
+Extension providers extend `Glueful\Extensions\ServiceProvider`, which adds `register()` / `boot()` lifecycle hooks. Both receive the `ApplicationContext`; an override without that parameter is a fatal signature error. An app provider listed in `serviceproviders.php` can extend it too, to get the same hooks:
 
 ```php
+use Glueful\Bootstrap\ApplicationContext;
 use Glueful\Extensions\ServiceProvider;
 
 final class PaymentServiceProvider extends ServiceProvider
 {
     public static function services(): array { return [/* ... */]; }
 
-    public function register(): void
+    public function register(ApplicationContext $context): void
     {
-        $this->mergeConfig('payment', require base_path('config/payment.php'));
+        // Defaults sit under the app's own config/payment.php
+        $this->mergeConfig('payment', require __DIR__ . '/../config/payment.php');
     }
 
-    public function boot(): void
+    public function boot(ApplicationContext $context): void
     {
         // optional: runs after all providers are registered
     }
@@ -389,6 +393,7 @@ if (container($context)->has('service')) { /* ... */ }
 $db    = app($context, 'database');
 $cache = app($context, \Glueful\Cache\CacheStore::class);
 $queue = service($context, \Glueful\Queue\QueueManager::class);
+$size  = parameter($context, 'some.parameter');
 ```
 
 ## Built-in Aliases & Core Services
@@ -397,10 +402,10 @@ Common IDs and class aliases registered by core providers (exact registrations v
 
 - `'logger'` → `\Psr\Log\LoggerInterface`
 - `'database'` → `\Glueful\Database\Connection`; also `\Glueful\Database\QueryBuilder::class` and `\Glueful\Database\Schema\Interfaces\SchemaBuilderInterface::class` (factories via the connection)
-- `'cache.store'` → `\Glueful\Cache\CacheStore`
+- `'cache.store'` → `\Glueful\Cache\CacheStore`. The resolved store is an `EventDispatchingCacheStore` that wraps the configured driver and fires cache hit/miss events, so an `instanceof FileCacheDriver`-style check against it fails; call `getInnerStore()` for the driver. Driver-only methods are forwarded.
 - `'request'` → `\Symfony\Component\HttpFoundation\Request` (from globals)
 - Auth: `\Glueful\Auth\AuthenticationManager`, `\Glueful\Auth\AuthenticationGuard`, `\Glueful\Auth\TokenManager`
-- Permissions: `\Glueful\Permissions\Gate` (configured from `config/permissions.php`)
+- Permissions: `\Glueful\Permissions\Gate` (configured from `config/permissions.php`); `\Glueful\Permissions\PermissionManager` (canonical id since 1.91, so it constructor-injects by type), with `'permission.manager'` an alias to the same shared instance
 - Queue & scheduling: `\Glueful\Queue\QueueManager`, `\Glueful\Queue\Failed\FailedJobProvider`, `\Glueful\Scheduler\JobScheduler`
 - Middleware aliases: `'auth'`, `'rate_limit'`, `'csrf'`, `'metrics'`, `'tracing'`, etc. (see [Middleware](/advanced/middleware))
 
@@ -421,8 +426,8 @@ $order = $service->createOrder(['total' => 100.00, 'payment_method' => 'card_123
 **Integration tests** — boot the framework to build the real container, then resolve services and override bindings:
 
 ```php
-// Override a binding for the test
-container($context)->load([
+// Inside a Glueful\Testing\TestCase: override a binding for the test
+$this->getContainer()->load([
     UserRepositoryInterface::class => fn() => new FakeUserRepository(),
 ]);
 ```
@@ -440,7 +445,7 @@ See [Testing](/advanced/testing) for the full test harness.
 
 ## Troubleshooting
 
-**Missing service** — guard with `has_service(App\Services\UserService::class)` and confirm the provider is in `config/serviceproviders.php`.
+**Missing service** — guard with `has_service($context, App\Services\UserService::class)` and confirm the provider is in `config/serviceproviders.php`.
 
 **Circular dependency** — `Glueful\Container\Exception\ContainerException: Circular dependency detected: A -> B -> A`. Break the cycle: extract an interface, use a factory, or invert one dependency.
 

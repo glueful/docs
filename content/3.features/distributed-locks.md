@@ -108,26 +108,26 @@ $lockManager->executeWithLock('cache:warm', function () {
 
 ```php
 return [
-    'default' => env('LOCK_DRIVER', 'file'),
+    'default' => env('LOCK_DRIVER', 'file'),   // file | redis | database
 
     'stores' => [
         'file' => [
             'driver' => 'file',
-            'path' => env('LOCK_FILE_PATH', 'framework/locks'),
+            'path' => env('LOCK_FILE_PATH', 'framework/locks'), // relative to storage/
             'prefix' => 'lock_',
             'extension' => '.lock',
         ],
 
         'redis' => [
             'driver' => 'redis',
-            // Connection is resolved from the container; prefix/ttl are used by the store
-            'connection' => env('LOCK_REDIS_CONNECTION', 'default'),
+            'connection' => env('LOCK_REDIS_CONNECTION', 'default'), // a cache.stores.* block
             'prefix' => env('LOCK_REDIS_PREFIX', 'glueful_lock_'),
             'ttl' => 300, // seconds
         ],
 
         'database' => [
             'driver' => 'database',
+            'connection' => env('LOCK_DB_CONNECTION', null), // a DB engine; null = app connection
             'table' => env('LOCK_DB_TABLE', 'locks'),
             'id_col' => 'key_id',
             'token_col' => 'token',
@@ -137,23 +137,43 @@ return [
 
     'prefix' => env('LOCK_PREFIX', 'glueful_lock_'),
     'ttl' => env('LOCK_TTL', 300),
-
     'retry' => [
-        'times' => env('LOCK_RETRY_TIMES', 10),
-        'delay' => env('LOCK_RETRY_DELAY', 100), // ms
+        'delay' => env('LOCK_RETRY_DELAY', 100), // ms between attempts
         'max_wait' => env('LOCK_MAX_WAIT', 10),  // seconds
     ],
 ];
 ```
 
+| Key | Effect |
+|-----|--------|
+| `default` | Store used by `LockManagerInterface` |
+| `stores.file.*` | Lock directory (relative paths resolve under `storage/`), file prefix and extension |
+| `stores.redis.connection` | Which `cache.stores.<name>` block supplies host/port/password/timeout; `default` means `cache.stores.redis` (the `REDIS_*` variables) |
+| `stores.redis.prefix` / `ttl` | Redis key prefix and the store's own key TTL |
+| `stores.database.connection` | A database engine name (`mysql`, `pgsql`, `sqlite`). Unset or the app's default engine reuses the framework connection; another engine opens a dedicated connection to it using `config/database.php` |
+| `stores.database.table` / `*_col` | Lock table and column names |
+| `prefix` | Prepended to every lock key |
+| `ttl` | TTL for any call that doesn't pass one (`createLock()`, `executeWithLock()`, `waitAndExecute()`) |
+| `retry.delay` | Pause between attempts in `waitAndExecute()` |
+| `retry.max_wait` | `waitAndExecute()`'s wait budget when you don't pass `maxWait` |
+
+::u-alert{color="warning" variant="subtle" icon="i-lucide-triangle-alert"}
+**Since 1.91**, locks created without a TTL expire after `lock.ttl` (300s) instead of never, so pass an explicit TTL to anything that can legitimately run longer. `retry.times` (`LOCK_RETRY_TIMES`) was removed: nothing read it, and `retry.max_wait` bounds the wait. Delete it from published copies of `config/lock.php`.
+::
+
 ### Environment Variables
 
 ```env
-LOCK_DRIVER=redis
+LOCK_DRIVER=file            # file | redis | database
+LOCK_FILE_PATH=framework/locks
 LOCK_REDIS_CONNECTION=default
 LOCK_REDIS_PREFIX=glueful_lock_
+LOCK_DB_CONNECTION=
+LOCK_DB_TABLE=locks
 LOCK_PREFIX=glueful_lock_
 LOCK_TTL=300
+LOCK_RETRY_DELAY=100
+LOCK_MAX_WAIT=10
 ```
 
 ## Lock Stores
@@ -185,8 +205,9 @@ LOCK_TTL=300
 
 ```env
 LOCK_DRIVER=redis
-LOCK_REDIS_CONNECTION=default
 ```
+
+The Redis store works on a stock install: it opens its own phpredis connection from the cache store named by `stores.redis.connection` (by default `cache.stores.redis`, i.e. `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB`, `REDIS_TIMEOUT`). If your app binds a connected `\Redis` instance in the container under `\Redis::class`, that instance is used instead. A connection or authentication failure throws when the lock manager is resolved.
 
 ### Database Store
 
@@ -204,6 +225,12 @@ LOCK_REDIS_CONNECTION=default
 LOCK_DRIVER=database
 LOCK_DB_TABLE=locks
 ```
+
+The framework ships the `locks` table migration (`key_id`, `token`, `expiration`); `php glueful migrate:run` creates it. The store writes through the framework's database connection, or a dedicated connection when `LOCK_DB_CONNECTION` names a different engine; no container binding is needed.
+
+::u-alert{color="info" variant="subtle" icon="i-lucide-info"}
+Before 1.91 the `redis` and `database` stores threw "Redis service not found" / "Database service not found" unless the app bound `\Redis` or `DatabaseInterface` itself. Those bindings are no longer required (a bound `\Redis` still wins).
+::
 
 ## Advanced Patterns
 
@@ -433,8 +460,8 @@ $lockManager->executeWithLock("process:shard:{$shard}", function () {
 - Use finer-grained lock keys
 
 **Locks not released after crashes?**
-- Shorten TTL
-- Enable auto-release
+- Always pass a TTL so a crashed holder's lock expires
+- Keep `autoRelease` on (`createLock($key, $ttl, true)`, the default)
 - Add monitoring for expired locks
 
 **High Redis usage?**
@@ -446,6 +473,12 @@ $lockManager->executeWithLock("process:shard:{$shard}", function () {
 - File store requires shared filesystem
 - Switch to Redis or Database store
 
+**Redis lock store can't connect?**
+- Check the `cache.stores` block named by `LOCK_REDIS_CONNECTION` (default `cache.stores.redis` / `REDIS_*`)
+
+**A lock outlived the work, or expired mid-job?**
+- Calls without a TTL use `LOCK_TTL` (300s); pass a TTL sized to the job, or `refresh()` long-running locks
+
 **Database lock table growing?**
 - Add cleanup job for expired locks
 - Reduce TTL durations
@@ -453,24 +486,23 @@ $lockManager->executeWithLock("process:shard:{$shard}", function () {
 
 ## Scheduler Integration
 
-Locks are automatically used by the scheduler to prevent overlapping jobs:
+The scheduler wraps every job run in `executeWithLock("scheduler:job:{$jobName}", ..., 3600)`, so a job that is still running is skipped rather than started twice. If no lock manager can be resolved, jobs run unlocked and a warning is logged.
 
 ```php
-// Scheduler internally uses:
-// executeWithLock('scheduler:job:{$jobName}', ...)
-
-// Configured in config/scheduler.php
-[
-    'name' => 'daily-report',
-    'schedule' => '0 2 * * *',
-    'handler_class' => 'App\\Jobs\\DailyReportJob',
-    // Automatically locked during execution
-]
+// config/schedule.php
+'jobs' => [
+    [
+        'name' => 'daily-report',
+        'schedule' => '0 2 * * *',
+        'handler_class' => 'App\\Jobs\\DailyReportJob',
+        // locked automatically while it runs
+    ],
+],
 ```
 
 ## Next Steps
 
-- [Queues & Jobs](queues-jobs) - Background processing
-- [Scheduling](scheduling) - Scheduled tasks
-- [Caching](caching) - Cache with locks
-- [Performance](../advanced/performance) - Monitoring locks
+- [Queues & Jobs](/features/queues-jobs) - Background processing
+- [Scheduling](/features/scheduling) - Scheduled tasks
+- [Caching](/features/caching) - Cache with locks
+- [Performance](/advanced/performance) - Monitoring locks

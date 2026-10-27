@@ -5,11 +5,10 @@ description: Practical recipes for common tasks
 
 Explore practical recipes by topic:
 
-- [ Error Handling Guide](/cookbook/error-handling)
+- [ Error Handling](/cookbook/error-handling)
 - [ API Metrics](/cookbook/api-metrics)
 - [ Caching](/cookbook/caching)
 - [ Writing Console Commands](/cookbook/console-commands)
-- [ Database Advanced Features](/cookbook/database)
 - [ Extensions](/cookbook/extensions)
 - [ Notification](/cookbook/notifications)
 - [ Performance Optimization Guide](/cookbook/performance)
@@ -24,3 +23,5 @@ Explore practical recipes by topic:
 - [ Routing](/cookbook/routing)
 - [ Storage](/cookbook/storage)
 - [ Service Options Resolver](/cookbook/configuration)
+
+Database recipes now live in [Database](/essentials/database), [Migrations](/essentials/migrations) and [Performance](/advanced/performance).

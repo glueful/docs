@@ -14,11 +14,16 @@ Learn the fundamental concepts you'll use in every Glueful application.
 - [Controllers](/essentials/controllers) - Handle requests and return responses
 - [Requests & Responses](/essentials/requests-responses) - Work with HTTP data
 - [Validation](/essentials/validation) - Validate input data
+- [Typed Request & Response DTOs](/essentials/typed-io) - Validated input objects and typed output
 
 ### Data Layer
 - [Database](/essentials/database) - Query builder and connections
+- [ORM](/essentials/orm) - Models, relationships and eager loading
 - [Migrations](/essentials/migrations) - Database schema management
-- [Authentication](/essentials/authentication) - JWT and user sessions
+
+### Security
+- [Authentication](/essentials/authentication) - Login, JWT/refresh tokens, browser sessions, API keys
+- [Identity & User Store](/essentials/identity) - The pluggable user store authentication runs on (the skeleton enables `glueful/users`; core ships none)
 
 ## Learning Path
 
@@ -42,7 +47,8 @@ $router->get('/users', [UserController::class, 'index']);
 
 **Query the database:**
 ```php
-$users = $this->getConnection()->table('users')->where(['active' => true])->get();
+// Anywhere you hold an ApplicationContext (in a controller: $this->getContext())
+$posts = db($context)->table('posts')->where(['status' => 'published'])->get();
 ```
 
 **Validate input:**
@@ -52,7 +58,7 @@ use Glueful\Validation\ValidationException;
 use Glueful\Validation\Rules\{Sanitize, Required, Email as EmailRule, Length};
 use Glueful\Helpers\RequestHelper;
 
-$input = RequestHelper::getRequestData();
+$input = RequestHelper::getRequestData($request); // decodes JSON or form bodies
 
 $v = RuleFactory::of([
     'email' => [new Sanitize(['trim']), new Required(), new EmailRule()],

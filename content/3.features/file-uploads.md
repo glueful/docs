@@ -5,13 +5,89 @@ description: Handle file uploads with validation and storage
 
 Securely accept and store file uploads with automatic validation, storage, and URL generation.
 
-## Quick Start
+The framework ships a ready-made **blob API** (`/blobs`) backed by the `blobs` table, plus the
+`FileUploader` service for building your own upload endpoints.
+
+## Blob HTTP API
+
+Registered by the framework under your API prefix (e.g. `/api/v1/blobs`) while
+`uploads.enabled` (`UPLOADS_ENABLED`) is true:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/blobs` | Upload a file |
+| `GET` | `/blobs/{uuid}` | Serve the file (Range, ETag; optional resize) |
+| `GET` | `/blobs/{uuid}/info` | Blob metadata |
+| `DELETE` | `/blobs/{uuid}` | Delete the file and mark the blob deleted |
+| `POST` | `/blobs/{uuid}/signed-url?ttl=3600` | Temporary URL for a private blob (auth required; TTL capped at 7 days) |
+
+### Upload
+
+Multipart form data, field `file`, with optional `visibility` (`public` | `private`, default
+`UPLOADS_DEFAULT_VISIBILITY`) and `path_prefix`:
+
+```bash
+curl -X POST https://api.example.com/api/v1/blobs \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@photo.jpg" \
+  -F "visibility=public"
+```
+
+Or JSON with base64 content:
+
+```json
+{ "type": "base64", "data": "iVBORw0KGgo...", "filename": "photo.png", "mime_type": "image/png" }
+```
+
+The `201` response carries `blob_uuid`, `url`, `thumb_url`, `type`, `mime_type`, `size_bytes`,
+`width`, `height`, `duration_s`, `filename`, `path` and `visibility`.
+
+### Serve and resize
+
+`GET /blobs/{uuid}` streams the file. Images accept `?width=`, `?height=`, `?quality=`, `?fit=`
+(`contain`, `cover`, `fill`) and `?format=`; resized variants are cached (`uploads.image_processing`).
+Resizing needs the `glueful/media` extension — without it the original is served, and only an
+explicit `format` conversion answers `415`.
+
+### Access control
+
+`uploads.access` (`UPLOADS_ACCESS`) sets the route middleware:
+
+| Mode | Upload / delete | View / info |
+|---|---|---|
+| `private` (default) | auth | auth (info), or a public blob / valid signed URL (view) |
+| `upload_only` | auth | public |
+| `public` | none | none (not recommended) |
+
+Uploads and retrievals are rate limited (`UPLOADS_RATE_LIMIT`, default 30/min;
+`UPLOADS_RETRIEVAL_RATE_LIMIT`, default 200/min). `API_RATE_LIMITING_ENABLED=false` switches these
+limits off along with every other rate limit.
+
+### Signed URLs
+
+`POST /blobs/{uuid}/signed-url` returns `signed_url` (the blob's `GET` route, API prefix included —
+e.g. `https://api.example.com/api/v1/blobs/{uuid}?expires=…&signature=…`), `expires_in` and
+`expires_at`. Signatures are
+HMACs over the path and query keyed on `UPLOADS_SIGNED_SECRET` (falling back to `APP_KEY`) — use a
+distinct secret per environment, since a signature is valid on any host that shares it.
+
+For disks whose driver can presign natively (the `glueful/storage-*` packs), opt in per disk under
+`uploads.native_urls.disks` to add a `native_url` that points straight at the bucket or CDN. It is a
+bearer link that bypasses app-side access control; private blobs are capped at
+`UPLOADS_NATIVE_MAX_PRIVATE_TTL` (900 s).
+
+::u-alert{color="neutral" variant="subtle" icon="i-lucide-info"}
+**Since 1.91:** signed URLs issued by earlier releases pointed at `/blobs/{uuid}` without the API
+prefix, a path no route serves. Generate new ones.
+::
+
+## Uploading from Your Own Controller
 
 ```php
-use Glueful\Uploader\FileUploader;
 use Glueful\Http\Response;
+use Glueful\Uploader\FileUploader;
 
-public function upload()
+public function upload(): Response
 {
     if ($this->currentUser === null) {
         return $this->unauthorized();
@@ -20,143 +96,60 @@ public function upload()
     $uploader = app($this->getContext(), FileUploader::class);
 
     $result = $uploader->handleUpload(
-        token: $this->currentUser->uuid,
-        getParams: array_merge($this->request->query->all(), [
-            'user_id' => $this->currentUser->uuid
-        ]),
+        token: $this->currentUser->uuid(),
+        getParams: ['user_id' => $this->currentUser->uuid()],
         fileParams: $this->request->files->all()
     );
 
     if (isset($result['error'])) {
-        return Response::error($result['error'], 422);
+        return Response::error($result['error'], $result['code']);
     }
 
     return Response::created([
         'uuid' => $result['uuid'],
-        'url' => $result['url']
+        'url' => $result['url'],
     ]);
 }
 ```
 
-## Storage Configuration
-
-`config/storage.php`:
-
-```php
-return [
-    'default' => env('STORAGE_DEFAULT_DISK', env('STORAGE_DRIVER', 'uploads')),
-
-    'disks' => [
-        'uploads' => [
-            'driver' => 'local',
-            'root' => env('UPLOADS_ROOT', dirname(__DIR__) . '/storage/uploads'),
-            'visibility' => 'private',
-            // Used by UrlGenerator for public URLs
-            'base_url' => env('UPLOADS_BASE_URL', 'http://localhost:8080/uploads'),
-        ],
-
-        's3' => [
-            'driver' => 's3',
-            'key' => env('S3_ACCESS_KEY_ID'),
-            'secret' => env('S3_SECRET_ACCESS_KEY'),
-            'region' => env('S3_REGION', 'us-east-1'),
-            'bucket' => env('S3_BUCKET'),
-            'endpoint' => env('S3_ENDPOINT'),
-            'use_path_style_endpoint' => true,
-            'signed_urls' => true,
-            'signed_ttl' => 3600,
-            'cdn_base_url' => env('S3_CDN_BASE_URL'),
-        ],
-    ],
-];
-```
-
-## File Upload Form
-
-```html
-<form action="/api/upload" method="POST" enctype="multipart/form-data">
-    <input type="file" name="file" required>
-    <button type="submit">Upload</button>
-</form>
-```
-
-## Handling Uploads
-
-### Simple Upload
-
-```php
-public function uploadAvatar()
-{
-    if ($this->currentUser === null) {
-        return $this->unauthorized();
-    }
-
-    $uploader = app($this->getContext(), FileUploader::class);
-
-    $result = $uploader->handleUpload(
-        token: $this->currentUser->uuid,
-        getParams: [
-            'type' => 'avatar',
-            'user_id' => $this->currentUser->uuid
-        ],
-        fileParams: $this->request->files->all()
-    );
-
-    if (isset($result['error'])) {
-        return Response::error($result['error'], 422);
-    }
-
-    // Update user avatar
-    $this->getConnection()->table('users')
-        ->where(['uuid' => $this->currentUser->uuid])
-        ->update(['avatar' => $result['url']]);
-
-    return Response::success(['url' => $result['url']]);
-}
-```
+`handleUpload(string $token, array $getParams, mixed $fileParams)` requires a non-empty token and
+`user_id`. `$fileParams` is a Symfony `UploadedFile`, a `$_FILES`-style entry, or a keyed set such as
+`$request->files->all()`. A keyed set holding one file uses it; with several files, pass `key` in
+`$getParams` to name the field — otherwise the call returns a `400` naming the keys it found. It
+returns `['uuid', 'url']` on success, or `['error', 'code']` — `400` for a validation failure, `500`
+for an invalid upload or a storage failure.
 
 ### Multiple Files
 
 ```php
-public function uploadGallery()
-{
-    if ($this->currentUser === null) {
-        return $this->unauthorized();
+foreach (array_keys($this->request->files->all()) as $field) {
+    $result = $uploader->handleUpload(
+        token: $this->currentUser->uuid(),
+        getParams: ['user_id' => $this->currentUser->uuid(), 'key' => $field],
+        fileParams: $this->request->files->all()
+    );
+
+    if (!isset($result['error'])) {
+        $uploaded[] = $result;
     }
-
-    $uploader = app($this->getContext(), FileUploader::class);
-    $files = $this->request->files->all();
-    $uploaded = [];
-
-    foreach ($files as $file) {
-        $result = $uploader->handleUpload(
-            token: $this->currentUser->uuid,
-            getParams: ['user_id' => $this->currentUser->uuid],
-            fileParams: ['file' => $file]
-        );
-
-        if (!isset($result['error'])) {
-            $uploaded[] = $result;
-        }
-    }
-
-    return Response::success($uploaded);
 }
 ```
 
 ## Media Uploads
 
-For images, videos, and audio files, use `uploadMedia()` to get automatic thumbnail generation and metadata extraction.
+For images, videos, and audio files, use `uploadMedia()` to store the file, record the blob and get
+its metadata. It throws `Glueful\Validation\ValidationException` or `Glueful\Uploader\UploadException`
+instead of returning an error array.
 
 ::u-alert{color="warning" variant="subtle" icon="i-lucide-package"}
-**Thumbnails and rich metadata require the `glueful/media` extension** (since framework 1.52.0).
+**Thumbnails and rich metadata require the `glueful/media` extension.**
 The upload pipeline (`FileUploader`, `handleUpload()`, `uploadMedia()`) and the `MediaMetadata`
-value object stay in core, but thumbnail generation and dimension/duration extraction were
-extracted into [`glueful/media`](https://github.com/glueful/media).
+value object stay in core, but thumbnail generation and dimension/duration extraction live in
+[`glueful/media`](https://github.com/glueful/media).
 
 Without `glueful/media` installed and enabled, `uploadMedia()` still succeeds, but the result has
-`thumb_url => null` and a **type-only** `MediaMetadata` (MIME type only — no `width`, `height`, or
-`duration_s`). To enable thumbnails and full metadata:
+`thumb_url => null` and a **type-only** metadata result (no `width`, `height`, or `duration_s`). To
+enable thumbnails and full metadata:
 
 ```bash
 composer require glueful/media
@@ -167,26 +160,33 @@ php glueful extensions:enable media
 ### Basic Media Upload
 
 ```php
-public function uploadMedia()
+use Glueful\Validation\ValidationException;
+
+public function uploadMedia(string $postUuid): Response
 {
     $uploader = app($this->getContext(), FileUploader::class);
     $file = $this->request->files->get('file');
 
-    $result = $uploader->uploadMedia($file, 'posts/' . $postUuid);
+    try {
+        $result = $uploader->uploadMedia($file, 'posts/' . $postUuid, [
+            'visibility' => 'public',
+        ]);
+    } catch (ValidationException $e) {
+        return Response::error($e->getMessage(), 422);
+    }
 
-    // Returns:
     // [
-    //     'type' => 'image',           // image, video, audio, or file
-    //     'url' => 'https://...',      // Full URL to file
-    //     'thumb_url' => 'https://...', // Thumbnail URL (images only)
+    //     'type' => 'image',             // image, video, audio, or file
+    //     'url' => 'https://...',
+    //     'thumb_url' => 'https://...',  // null without glueful/media
     //     'mime_type' => 'image/jpeg',
     //     'size_bytes' => 245678,
-    //     'width' => 1920,             // Image/video dimensions
+    //     'width' => 1920,               // null without glueful/media
     //     'height' => 1080,
-    //     'duration_s' => null,        // Video/audio duration in seconds
+    //     'duration_s' => null,          // video/audio duration
     //     'filename' => '1704123456_abc123.jpg',
     //     'path' => 'posts/uuid/1704123456_abc123.jpg',
-    //     'blob_uuid' => 'abc-123-def', // Database record UUID
+    //     'blob_uuid' => 'abc123def456',
     // ]
 
     return Response::created($result);
@@ -197,595 +197,231 @@ public function uploadMedia()
 
 ```php
 $result = $uploader->uploadMedia($file, 'gallery/', [
-    // Thumbnail settings
     'generate_thumbnail' => true,   // Default: true for images
     'thumbnail_width' => 800,       // Default: 400
     'thumbnail_height' => 600,      // Default: 400
     'thumbnail_quality' => 90,      // Default: 80
-
-    // Database storage
     'save_to_blobs' => true,        // Default: true
+    'visibility' => 'private',      // Default: uploads.default_visibility
 ]);
 ```
 
-### Supported Formats
-
-**Images** (with thumbnails):
-- JPEG, PNG, GIF, WebP
-
-**Videos** (with duration/dimensions via getID3):
-- MP4, WebM, AVI, MOV, MKV, FLV
-
-**Audio** (with duration via getID3):
-- MP3, WAV, OGG, FLAC, AAC, M4A
-
-### Thumbnail Configuration
-
-Configure in `config/filesystem.php`:
-
-```php
-'uploader' => [
-    // Enable/disable thumbnail generation globally
-    'thumbnail_enabled' => env('THUMBNAIL_ENABLED', true),
-
-    // Default dimensions
-    'thumbnail_width' => env('THUMBNAIL_WIDTH', 400),
-    'thumbnail_height' => env('THUMBNAIL_HEIGHT', 400),
-    'thumbnail_quality' => env('THUMBNAIL_QUALITY', 80),
-
-    // Formats that support thumbnails (null = defaults)
-    'thumbnail_formats' => [
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'image/webp',
-    ],
-
-    // Subdirectory for thumbnails
-    'thumbnail_subdirectory' => env('THUMBNAIL_SUBDIRECTORY', 'thumbs'),
-],
-```
-
-### Metadata Extraction
-
-With the `glueful/media` extension installed, metadata is extracted via
-[getID3](https://github.com/JamesHeinrich/getID3) — pure PHP, no external binaries needed.
-(Without the extension, `getMetadataExtractor()` returns a type-only extractor that reports the
-MIME type but no dimensions or duration.)
-
-```php
-// Access the metadata extractor directly
-$extractor = $uploader->getMetadataExtractor();
-$metadata = $extractor->extract('/path/to/video.mp4', 'video/mp4');
-
-echo $metadata->type;              // 'video'
-echo $metadata->width;             // 1920
-echo $metadata->height;            // 1080
-echo $metadata->durationSeconds;   // 125
-echo $metadata->getFormattedDuration(); // '2:05'
-echo $metadata->getAspectRatio();  // 1.777...
-
-// Get raw getID3 data for advanced use
-$rawInfo = $extractor->analyze('/path/to/audio.mp3');
-// Returns full getID3 array with bitrate, codec, ID3 tags, etc.
-```
+Thumbnail defaults come from `filesystem.uploader` (`THUMBNAIL_ENABLED`, `THUMBNAIL_WIDTH`,
+`THUMBNAIL_HEIGHT`, `THUMBNAIL_QUALITY`, `THUMBNAIL_SUBDIRECTORY`). The blob API itself only
+generates thumbnails when `uploads.thumbnails.enabled` (`UPLOADS_THUMBNAILS`, default `false`) is on.
 
 ## Validation
 
-### Size Limits
-
-Configure in `config/filesystem.php`:
-
-```php
-'security' => [
-    'max_upload_size' => env('MAX_FILE_UPLOAD_SIZE', 10485760), // 10MB
-],
-```
-
-### Allowed Extensions
-
-In `config/filesystem.php` (referenced by the uploader):
+`config/uploads.php`:
 
 ```php
 return [
+    'enabled' => env('UPLOADS_ENABLED', true),
+    'allowed_types' => ['image/*', 'video/*', 'audio/*', 'application/pdf'], // wildcards supported
+    'max_size' => env('UPLOADS_MAX_SIZE', 10 * 1024 * 1024),
+    'access' => env('UPLOADS_ACCESS', 'private'),
+    'disk' => env('UPLOADS_DISK', 'uploads'),
+    'default_visibility' => env('UPLOADS_DEFAULT_VISIBILITY', 'private'),
+    'purge_deleted_after_days' => (int) env('UPLOADS_PURGE_DELETED_AFTER_DAYS', 30),
     'security' => [
-        'max_upload_size' => env('MAX_FILE_UPLOAD_SIZE', 10485760), // 10MB
         'scan_uploads' => true,
+        'strip_exif' => env('UPLOADS_STRIP_EXIF', true),
     ],
-
-    'file_manager' => [
-        'allowed_extensions' => explode(',', env(
-            'FILE_ALLOWED_EXTENSIONS',
-            'jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,txt'
-        )),
-    ],
+    // also: signed_urls, native_urls, image_processing, thumbnails, rate_limits, response
 ];
 ```
+
+**Precedence.** `uploads.max_size` and `uploads.allowed_types` win; the older
+`filesystem.security.max_upload_size` (`MAX_FILE_UPLOAD_SIZE`) and
+`filesystem.uploader.allowed_mime_types` apply only when the `uploads.*` keys are unset. When
+`FILE_ALLOWED_EXTENSIONS` is set, the original extension must also be listed and match the
+detected MIME type.
 
 ### Custom Validation
 
 ```php
-public function upload()
-{
-    $file = $this->request->files->get('file');
+$file = $this->request->files->get('file');
 
-    // Validate size
-    if ($file->getSize() > 5242880) { // 5MB
-        return Response::error('File too large', 422);
-    }
-
-    // Validate type
-    $allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
-    if (!in_array($file->getMimeType(), $allowedTypes)) {
-        return Response::error('Invalid file type', 422);
-    }
-
-    // Process upload
-    $result = $uploader->handleUpload(...);
-
-    return Response::created($result);
+if ($file === null || $file->getSize() > 5 * 1024 * 1024) {
+    return Response::error('File too large', 422);
 }
-```
 
-## Storage Backends
-
-The framework uses Flysystem for storage abstraction. Local and memory adapters are included. Cloud adapters require additional packages.
-
-### Included Adapters
-
-- **Local filesystem** - No extra package needed
-- **Memory** - For testing, no extra package needed
-
-### Optional Adapters
-
-Install via Composer as needed:
-
-```bash
-# Amazon S3 / MinIO / DigitalOcean Spaces / Wasabi
-composer require league/flysystem-aws-s3-v3
-
-# Google Cloud Storage
-composer require league/flysystem-google-cloud-storage
-
-# Azure Blob Storage
-composer require league/flysystem-azure-blob-storage
-
-# SFTP
-composer require league/flysystem-sftp-v3
-
-# FTP
-composer require league/flysystem-ftp
-```
-
-### Local Storage
-
-```php
-'uploads' => [
-    'driver' => 'local',
-    'root' => storage_path($context, 'uploads'),
-    'visibility' => 'private',
-],
-```
-
-### Amazon S3
-
-```php
-'s3' => [
-    'driver' => 's3',
-    'key' => env('S3_ACCESS_KEY_ID'),
-    'secret' => env('S3_SECRET_ACCESS_KEY'),
-    'region' => env('S3_REGION'),
-    'bucket' => env('S3_BUCKET'),
-    'endpoint' => env('S3_ENDPOINT'), // For MinIO, etc.
-],
-```
-
-### Azure Blob
-
-```php
-'azure' => [
-    'driver' => 'azure',
-    'connection_string' => env('AZURE_STORAGE_CONNECTION_STRING'),
-    'container' => env('AZURE_STORAGE_CONTAINER'),
-],
-```
-
-### Google Cloud Storage
-
-```php
-'gcs' => [
-    'driver' => 'gcs',
-    'key_file' => env('GCS_KEY_FILE'),
-    'bucket' => env('GCS_BUCKET'),
-],
-```
-
-## Working with Storage
-
-### Store File
-
-```php
-use Glueful\Storage\StorageManager;
-
-$storage = app($this->getContext(), StorageManager::class);
-
-// Store file content
-$storage->disk()->put('avatars/user123.jpg', $fileContent);
-
-// Work with the uploaded file from Symfony's request object
-$uploadedFile = $this->request->files->get('avatar');
-$path = 'avatars/' . $uploadedFile->getClientOriginalName();
-```
-
-### Retrieve File
-
-```php
-// Get file content
-$content = $storage->disk()->get('avatars/user123.jpg');
-
-// Check if exists
-if ($storage->disk()->exists('avatars/user123.jpg')) {
-    // File exists
-}
-```
-
-### Delete File
-
-```php
-$storage->disk()->delete('avatars/user123.jpg');
-```
-
-### List Files
-
-```php
-// Returns iterable of StorageAttributes
-$files = $storage->listContents('avatars');
-
-foreach ($files as $attr) {
-    echo $attr->path();
-}
-```
-
-## URL Generation
-
-### Public URLs
-
-```php
-use Glueful\Storage\Support\UrlGenerator;
-
-$urls = app($this->getContext(), UrlGenerator::class);
-
-$publicUrl = $urls->url('avatars/user123.jpg', 'uploads');
-// https://cdn.example.com/avatars/user123.jpg
-```
-
-### Signed URLs
-
-For private files, generate temporary signed URLs:
-
-```php
-use Glueful\Uploader\Storage\FlysystemStorage;
-use Glueful\Storage\StorageManager;
-
-$storage = app($this->getContext(), StorageManager::class);
-$disk = new FlysystemStorage($storage, $urls, 's3');
-
-$signedUrl = $disk->getSignedUrl('documents/invoice.pdf', 3600);
-// https://s3.amazonaws.com/bucket/documents/invoice.pdf?signature=...
-```
-
-## Common Patterns
-
-### Profile Avatar
-
-```php
-public function updateAvatar()
-{
-    if ($this->currentUser === null) {
-        return $this->unauthorized();
-    }
-
-    $uploader = app($this->getContext(), FileUploader::class);
-
-    $result = $uploader->handleUpload(
-        token: $this->currentUser->uuid,
-        getParams: [],
-        fileParams: $this->request->files->all()
-    );
-
-    if (isset($result['error'])) {
-        return Response::error($result['error'], 422);
-    }
-
-    // Delete old avatar
-    $storage = app($this->getContext(), \Glueful\Storage\StorageManager::class);
-    $user = $this->getConnection()->table('users')
-        ->where(['uuid' => $this->currentUser->uuid])
-        ->first();
-
-    if (($user['avatar'] ?? null) !== null) {
-        $storage->disk()->delete($user['avatar']);
-    }
-
-    // Update user
-    $this->getConnection()->table('users')
-        ->where(['uuid' => $this->currentUser->uuid])
-        ->update(['avatar' => $result['path']]);
-
-    return Response::success(['url' => $result['url']]);
-}
-```
-
-### Document Upload
-
-```php
-public function uploadDocument()
-{
-    if ($this->currentUser === null) {
-        return $this->unauthorized();
-    }
-
-    // Validate file type
-    $file = $this->request->files->get('document');
-    $allowedTypes = ['application/pdf', 'application/msword'];
-
-    if (!in_array($file->getMimeType(), $allowedTypes)) {
-        return Response::error('Only PDF and DOC files allowed', 422);
-    }
-
-    $result = $uploader->handleUpload(
-        token: $this->currentUser->uuid,
-        getParams: [
-            'type' => 'document',
-            'user_id' => $this->currentUser->uuid
-        ],
-        fileParams: $this->request->files->all()
-    );
-
-    // Store metadata
-    $this->getConnection()->table('documents')->insert([
-        'uuid' => $result['uuid'],
-        'user_uuid' => $this->currentUser->uuid,
-        'filename' => $file->getClientOriginalName(),
-        'path' => $result['path'],
-        'size' => $file->getSize(),
-        'mime_type' => $file->getMimeType()
-    ]);
-
-    return Response::created($result);
-}
-```
-
-### Image Gallery
-
-```php
-public function uploadGalleryImage()
-{
-    if ($this->currentUser === null) {
-        return $this->unauthorized();
-    }
-
-    $file = $this->request->files->get('image');
-    $uploader = app($this->getContext(), FileUploader::class);
-
-    // Validate image
-    if (!str_starts_with($file->getMimeType(), 'image/')) {
-        return Response::error('Only images allowed', 422);
-    }
-
-    // Upload with automatic thumbnail generation
-    $result = $uploader->uploadMedia($file, 'gallery/' . $this->currentUser->uuid, [
-        'thumbnail_width' => 300,
-        'thumbnail_height' => 300,
-    ]);
-
-    // Save to gallery table
-    $this->getConnection()->table('gallery_images')->insert([
-        'uuid' => $result['blob_uuid'],
-        'user_uuid' => $this->currentUser->uuid,
-        'url' => $result['url'],
-        'thumb_url' => $result['thumb_url'],
-        'width' => $result['width'],
-        'height' => $result['height'],
-    ]);
-
-    return Response::created($result);
-}
-```
-
-## Base64 Uploads
-
-For API clients sending base64-encoded files, convert to a temp file and pass through the same uploader pipeline so validation, naming, and storage logic are reused:
-
-```php
-use Glueful\Uploader\FileUploader;
-
-public function uploadBase64()
-{
-    if ($this->currentUser === null) {
-        return $this->unauthorized();
-    }
-
-    $data = $this->getRequestData();
-    $base64 = (string) ($data['file'] ?? '');
-    $uploader = app($this->getContext(), FileUploader::class);
-
-    try {
-        // 1) Convert base64 to a temporary file path
-        $tempPath = $uploader->handleBase64Upload($base64);
-    } catch (\Glueful\Uploader\ValidationException|\Glueful\Uploader\UploadException $e) {
-        return Response::error($e->getMessage(), 422);
-    }
-
-    // 2) Build a synthetic $_FILES-like array for the uploader
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime = finfo_file($finfo, $tempPath) ?: 'application/octet-stream';
-    finfo_close($finfo);
-
-    $synthetic = [
-        'name' => 'upload',
-        'type' => $mime,
-        'tmp_name' => $tempPath,
-        'error' => UPLOAD_ERR_OK,
-        'size' => (int) (filesize($tempPath) ?: 0),
-    ];
-
-    // 3) Reuse the same handleUpload() path with required getParams
-    $result = $uploader->handleUpload(
-        token: $this->currentUser->uuid,
-        getParams: ['user_id' => $this->currentUser->uuid],
-        fileParams: $synthetic
-    );
-
-    // 4) Clean up temp file (handleUpload moves the file)
-    @unlink($tempPath);
-
-    if (isset($result['error'])) {
-        return Response::error($result['error'], 422);
-    }
-
-    return Response::created($result);
+if (!in_array($file->getMimeType(), ['image/jpeg', 'image/png', 'application/pdf'], true)) {
+    return Response::error('Invalid file type', 422);
 }
 ```
 
 ## Security
 
-### Path Validation
+- **MIME detection** — the type is detected from content with `finfo`, not taken from the client.
+- **Content scan** — a file whose first 64 KB contain `<?php`, `<?=` or `<script` is refused
+  (`uploads.security.scan_uploads`).
+- **EXIF stripping** — GPS position, camera, timestamps and other embedded metadata (EXIF, XMP,
+  IPTC, comments) are removed from JPEG, PNG and WebP images before they are stored, without
+  re-encoding; a JPEG keeps its orientation. On by default; `UPLOADS_STRIP_EXIF=false` keeps it.
+- **Random filenames** — stored names are generated (`{timestamp}_{random}.{ext}`).
+- **Path validation** — storage paths go through `PathGuard` (no traversal, null bytes, or absolute
+  paths).
 
-All paths are validated against traversal:
+### Blob Policy Seams
 
-```php
-// ✅ Safe
-$storage->disk()->put('avatars/user123.jpg', $content);
+Extensions can shape the blob API without replacing the controller — bind or register these in
+your provider:
 
-// ❌ Blocked - path traversal
-$storage->disk()->put('../../../etc/passwd', $content);
-```
-
-### MIME Type Verification
-
-Files are validated using actual content, not extensions:
-
-```php
-// Validates real MIME type with finfo
-$uploader->handleUpload(...);
-```
-
-### Allowed Extensions
-
-Only whitelisted extensions are accepted:
-
-```env
-FILE_ALLOWED_EXTENSIONS=jpg,jpeg,png,gif,pdf,doc,docx
-```
-
-### Random Filenames
-
-Generated filenames prevent guessing:
+| Contract (`Glueful\Uploader\Contracts\…`) | Use |
+|---|---|
+| `BlobAccessPolicy` via `BlobAccessPolicyRegistry::register($id, $policy)` | Extra allow/deny check per action (`view`, `info`, `delete`, `sign`); every registered policy must allow |
+| `BlobRouteMiddlewareProvider` | Add middleware to the blob routes per `BlobRouteAction` |
+| `BlobCreatedHook` | `onBlobCreated($blobUuid, $uploaderUserUuid)` after an upload |
+| `BlobPublicUrlProvider` | Base URL used for signed URLs (`publicBaseUrl($blob)`) |
 
 ```php
-// Format: {timestamp}_{random}.{ext}
-// Example: 1704123456_a1b2c3d4e5f6.jpg
+use Glueful\Uploader\Contracts\{BlobAccessContext, BlobAccessPolicy, BlobAccessPolicyRegistry, BlobAction};
+
+final class OwnerOnlyDelete implements BlobAccessPolicy
+{
+    public function authorizeAccess(array $blob, BlobAccessContext $context): bool
+    {
+        if ($context->action !== BlobAction::DELETE) {
+            return true;
+        }
+        return $context->authenticatedUserUuid !== null
+            && $context->authenticatedUserUuid === ($blob['created_by'] ?? null);
+    }
+}
+
+// In your ServiceProvider::boot()
+$this->app->get(BlobAccessPolicyRegistry::class)->register('acme.owner-delete', new OwnerOnlyDelete());
 ```
 
-## Cleanup
+## Deleting and Purging
 
-### Delete Old Files
+`DELETE /blobs/{uuid}` removes the file and marks the row `deleted`. Rows marked deleted are kept
+for `uploads.purge_deleted_after_days` (`UPLOADS_PURGE_DELETED_AFTER_DAYS`, 30), then purged — any
+remaining file through the disk the blob names, then the row:
+
+```bash
+php glueful blobs:purge                 # uses uploads.purge_deleted_after_days
+php glueful blobs:purge --days=7 --limit=500
+```
+
+The scheduled `blob_purge` job runs this daily (`BLOB_PURGE_ENABLED`). An app with its own
+`config/schedule.php` must list `blob_purge` itself — see
+[Task Scheduling](/features/scheduling#built-in-jobs).
+
+## Storage Backends
+
+Uploads are written to `uploads.disk` (`UPLOADS_DISK`, default `uploads`), a disk from
+`config/storage.php`. Core ships the `local` and `memory` drivers; cloud drivers come as
+first-party packs:
+
+```bash
+composer require glueful/storage-s3     # S3, R2, MinIO, Spaces, Wasabi
+composer require glueful/storage-gcs    # Google Cloud Storage
+composer require glueful/storage-azure  # Azure Blob Storage
+```
+
+A disk using a driver whose pack isn't installed fails fast with a `composer require glueful/storage-*`
+hint. Disk configuration, native signed URLs and the `storage:test` diagnostic are covered in
+[Storage](/cookbook/storage).
+
+### Working with Storage
+
+`StorageManager::disk()` returns a Flysystem v3 `FilesystemOperator`:
 
 ```php
-use Glueful\Uploader\FileUploader;
+use Glueful\Storage\StorageManager;
 
+$storage = app($this->getContext(), StorageManager::class);
+$disk = $storage->disk();
+
+$disk->write('avatars/user123.jpg', $fileContent);
+$content = $disk->read('avatars/user123.jpg');
+
+if ($disk->fileExists('avatars/user123.jpg')) {
+    $disk->delete('avatars/user123.jpg');
+}
+
+foreach ($storage->listContents('avatars') as $attr) {
+    echo $attr->path();
+}
+```
+
+### Signed URLs from Code
+
+```php
+use Glueful\Storage\StorageManager;
+use Glueful\Storage\Support\UrlGenerator;
+use Glueful\Uploader\Storage\FlysystemStorage;
+
+$disk = new FlysystemStorage(
+    app($this->getContext(), StorageManager::class),
+    app($this->getContext(), UrlGenerator::class),
+    's3'
+);
+
+$signedUrl = $disk->getSignedUrl('documents/invoice.pdf', 3600);
+```
+
+The disk's driver must implement `Glueful\Storage\Contracts\NativeSignedUrlProviderInterface` (the
+storage packs do); otherwise you get the plain public URL.
+
+## Utilities
+
+```php
 $uploader = app($this->getContext(), FileUploader::class);
 
-// Delete files older than 30 days
-$cleanup = $uploader->cleanupOldFiles('temp/', 2592000);
-
-logger()->info('Deleted ' . $cleanup['deleted_files'] . ' files');
-```
-
-### Directory Stats
-
-```php
+$tempPath = $uploader->handleBase64Upload($base64);          // base64 → temp file path
 $stats = $uploader->getDirectoryStats('uploads/');
-
-// Returns:
-// [
-//     'count' => 1234,
-//     'total_size' => 12345678,
-//     'by_type' => ['image' => 800, 'pdf' => 434]
-// ]
-```
-
-### Checksums
-
-Compute a SHA-256 checksum to verify integrity or deduplicate uploads:
-
-```php
-$checksum = $uploader->calculateChecksum($filePath); // hex string
+$cleanup = $uploader->cleanupOldFiles('temp/', 2592000);      // older than 30 days
+$checksum = $uploader->calculateChecksum($filePath);          // SHA-256 hex
 ```
 
 ## Best Practices
 
-### Validate Early
-
-```php
-// ✅ Good - validate before upload
-if ($file->getSize() > $maxSize) {
-    return Response::error('File too large', 422);
-}
-$result = $uploader->handleUpload(...);
-
-// ❌ Bad - upload then validate
-$result = $uploader->handleUpload(...);
-if ($file->getSize() > $maxSize) {
-    $storage->delete($result['path']);
-}
-```
-
 ### Use Signed URLs for Private Files
 
-```php
-// ✅ Good - temporary access
-$url = $disk->getSignedUrl($path, 3600);
-
-// ❌ Bad - permanent public access
-$url = $urls->url($path);
-```
+Keep blobs `private` and hand out short-lived signed URLs instead of making them public.
 
 ### Queue Processing
 
 ```php
 // ✅ Good - async processing
-$result = $uploader->handleUpload(...);
+$result = $uploader->uploadMedia($file, 'images/');
 app($this->getContext(), \Glueful\Queue\QueueManager::class)
     ->push(ProcessImageJob::class, ['path' => $result['path']]);
 
 // ❌ Bad - blocks response
-$result = $uploader->handleUpload(...);
 $this->processImage($result['path']); // Slow!
 ```
 
 ## Troubleshooting
 
 **Upload fails with 413?**
-- Increase `upload_max_filesize` in php.ini
-- Increase `post_max_size` in php.ini
+- Increase `upload_max_filesize` and `post_max_size` in php.ini
 - Check web server limits (nginx: `client_max_body_size`)
+- Check `UPLOADS_MAX_SIZE`
 
 **File type rejected?**
-- Add extension to `FILE_ALLOWED_EXTENSIONS`
-- Verify MIME type matches extension
+- Add the MIME type to `uploads.allowed_types`
+- If `FILE_ALLOWED_EXTENSIONS` is set, add the extension there too
+
+**`handleUpload()` returns 400 "Several files were uploaded"?**
+- Pass `key` in `getParams` naming the file field (see [Multiple Files](#multiple-files))
+
+**`handleUpload()` returns "Upload failed"?**
+- The named field is missing or the upload itself failed (PHP upload error, empty `tmp_name`); check
+  the error log
 
 **Signed URLs return plain URLs?**
-- Enable `signed_urls` in disk config
-- Install AWS SDK: `composer require aws/aws-sdk-php`
+- Use the blob API's `/blobs/{uuid}/signed-url`, or install the disk's `glueful/storage-*` pack
 
-**Memory errors on large files?**
-- Files are streamed by default
-- Check `memory_limit` in php.ini
+**Deleted files still on disk?**
+- Run `php glueful blobs:purge`, and make sure `blob_purge` is in your `config/schedule.php`
 
 ## Next Steps
 
 - [Queues & Jobs](/features/queues-jobs) - Process uploads async
-- [Storage](/cookbook/storage) - Advanced storage features
+- [Storage](/cookbook/storage) - Disks, cloud packs, URLs
+- [Image Processing](/cookbook/image-processing) - Resize and transform with `glueful/media`
 - [Security](/cookbook/security) - Upload security
