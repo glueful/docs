@@ -5,6 +5,47 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.91.2 - Alshain
+**Released: October 27, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: seeders and factories work in an app.** Low risk: additive API only, no configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+`db:seed` runs the seeders you generate
+#description
+`db:seed` asked the container for the seeder, and the container only builds registered services, so
+every seeder from `scaffold:seeder` failed with "Service 'App\Database\Seeders\…' not found". The new
+`Seeder::make()` uses the container's definition when there is one and builds the seeder directly
+otherwise; `db:seed`, seeder dependencies and `Seeder::call()` all go through it.
+::
+
+::card
+#title
+`Model::factory()->create()` has a context
+#description
+`factory()` built its factory without an application context, so `User::factory()->create()` always
+threw "ApplicationContext is required to create models". Factories now use the app's model context
+set at boot. Outside a booted app, pass one: `User::factory(10, $context)->create()` or
+`User::factory()->withContext($context)->create()`. Models from `make()` carry the context, so
+they can be saved later.
+::
+
+### Migration Notes
+
+- No action needed. Factories still need `fakerphp/faker` (dev) and the `HasFactory` trait on the model.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.91.1 - Alshain
 **Released: October 27, 2026**
 
