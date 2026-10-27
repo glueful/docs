@@ -101,8 +101,11 @@ New pages: /essentials/orm, /essentials/typed-io, /advanced/openapi, /features/a
 /features/browser-sessions, /features/webhooks, /upgrading. cookbook/database removed (split).
 releases.md: add the 1.91 entry at release time.
 
-## Framework bugs found during the 1.91 docs pass (open)
-Pages document workarounds; fix in framework, then simplify the docs.
+## Framework bugs found during the 1.91 docs pass (resolved)
+All fixed in framework 1.91.0 / 1.91.1 (2026-10-27) and the docs updated to match; kept as a record.
+Found later and fixed for 1.91.2: `db:seed` couldn't build app seeders; `Model::factory()->create()`
+had no context. Still open outside the framework: cookie login + 2FA completion in `glueful/users`
+doesn't set session cookies.
 
 ORM (src/Database/ORM) — highest impact
 - Models with default `$timestamps = true` and no datetime casts fail on save(): DateTimeImmutable bound to PDO.
@@ -149,5 +152,5 @@ Database / validation / misc
 - TRACING_DRIVER unread.
 - Overdue removals: Utils::buildSearchConditions(), FailedJobProvider::setMaxRetries() (announced for 1.88).
 
-Skeleton (at release): security.php exemptRoutes `webhooks/*` → `webhooks/inbound/*`; schedule.php scheduled_notifications + queue_maintenance; observability.php drop tracing driver/service keys; auth.php/.env.example refresh path; database.php `:memory:`
+Skeleton (done for 1.91.1; the skeleton has no observability.php): security.php exemptRoutes `webhooks/*` → `webhooks/inbound/*`; schedule.php scheduled_notifications + queue_maintenance; observability.php drop tracing driver/service keys; auth.php/.env.example refresh path; database.php `:memory:`
 (+ delete stray `:memory:` file); drop removed cache/lock/capabilities keys.
