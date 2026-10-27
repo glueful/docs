@@ -5,6 +5,84 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.91.3 - Alshain
+**Released: October 27, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Patch: job retries and timeouts work, migrations run queued schema changes, typed route/query fields validate.** Moderate risk: queue workers now honour per-job retry counts and stop jobs that run past `--timeout`, and three `scaffold:job` options are removed. Read the migration notes before deploying workers.
+::
+
+### Key Highlights
+
+::card
+#title
+A job's `getMaxAttempts()` takes effect
+#description
+Jobs are pushed by class name, so the queued payload's `maxAttempts` (default 3) was written without
+asking the job class, and an override never reached the worker. The database and Redis queues now
+ask the handler unless a `maxAttempts` was pushed with the data, which still wins;
+`queue:work --tries` caps both. Built-in webhook delivery, queue maintenance and notifications get
+the attempt counts they always declared.
+::
+
+::card
+#title
+`queue:work --timeout` is enforced
+#description
+The option was stored and never used. With the pcntl extension, a job that runs past it is released
+for another attempt (or failed when it has none left) and the worker exits, so its process manager
+starts a fresh one.
+::
+
+::card
+#title
+Migrations run what they queue
+#description
+`$schema->dropTable()` only queues its SQL (as do the `addColumn()`/`dropColumn()`/index/foreign-key
+helpers on MySQL and PostgreSQL), and the runner never flushed after `up()`/`down()`: a rollback
+removed the migration record and left the table. The runner now flushes after each step, and the
+helpers flush before reporting success.
+::
+
+::card
+#title
+Typed route and query fields validate
+#description
+Path and query values arrive as strings, so `#[FromQuery, Rule('integer')] public int $page`
+rejected `?page=2` and `?page=abc` crashed with a 500. They are now converted to the declared
+`int`/`float`/`bool` before the rules run, and a value that doesn't convert is a 422. `min:N` and
+`max:N` now compare a number's value and an array's item count as well as a string's length, so
+`integer|min:1` works.
+::
+
+::card
+#title
+`scaffold:job` writes jobs that keep their context
+#description
+The generated constructor took only `$data`, so `$this->context` was null in every scaffolded job.
+The dead `--backoff` and `--timeout` options (their methods were never read) and `--unique` (which
+emitted a trait that doesn't exist) are removed.
+::
+
+### Migration Notes
+
+- **Retry counts can change**: jobs that override `getMaxAttempts()` now get that many attempts
+  (capped by `--tries`), instead of 3.
+- **Run workers under a process manager** (Supervisor, systemd) that restarts them: with pcntl, a job
+  past `--timeout` (default 60s) stops the worker. Raise `--timeout` for long jobs, and keep
+  `queue.connections.*.retry_after` above it.
+- **`scaffold:job --backoff`, `--timeout` and `--unique` are removed**; drop them from scripts. In
+  jobs generated earlier, make the constructor forward the context:
+  `__construct(array $data = [], ?ApplicationContext $context = null)` calling
+  `parent::__construct($data, $context)`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.91.2 - Alshain
 **Released: October 27, 2026**
 

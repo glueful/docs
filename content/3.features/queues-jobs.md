@@ -101,7 +101,7 @@ php glueful queue:work --connection=redis --queue=high,default
 | `--stop-when-empty` | — | Exit when the queue is empty |
 | `--sleep` | `3` | Seconds to sleep when no job is available |
 | `--memory`, `-m` | `128` | Memory limit in MB |
-| `--timeout`, `-t` | `60` | Job timeout in seconds |
+| `--timeout`, `-t` | `60` | Job timeout in seconds: a job past it is released (or failed when out of attempts) and the worker exits for its process manager to restart. Needs the pcntl extension |
 | `--max-jobs` | `0` | Exit after this many jobs (0 = unlimited) |
 | `--max-runtime` | `0` | Exit after this many seconds (0 = unlimited) |
 | `--tries` | `3` | Maximum attempts before a job is marked failed |
