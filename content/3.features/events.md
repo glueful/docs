@@ -17,7 +17,7 @@ use Glueful\Events\Contracts\BaseEvent;
 class UserRegisteredEvent extends BaseEvent
 {
     public function __construct(
-        public readonly int $userId,
+        public readonly string $userUuid,
         public readonly string $email
     ) {
         parent::__construct();
@@ -28,22 +28,24 @@ class UserRegisteredEvent extends BaseEvent
 
 ### 2. Listen to Event
 
+Register listeners at boot, typically in a service provider's `boot()`:
+
 ```php
-use Glueful\Events\EventService;
 use App\Events\UserRegisteredEvent;
+use Glueful\Bootstrap\ApplicationContext;
+use Glueful\Events\EventService;
+use Glueful\Queue\QueueManager;
 
-$events = app($context, EventService::class);
+public function boot(ApplicationContext $context): void
+{
+    $events = app($context, EventService::class);
 
-$events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
-    // Send welcome email (queue async)
-    $queue = app($context, \Glueful\Queue\QueueManager::class);
-    $queue->push(SendWelcomeEmailJob::class, ['user_id' => $event->userId]);
-
-    // Track in analytics (pseudo)
-    app($context, 'analytics')->track('user.registered', [
-        'user_id' => $event->userId
-    ]);
-});
+    $events->addListener(UserRegisteredEvent::class, function (UserRegisteredEvent $event) use ($context) {
+        // Send the welcome email from a queued job
+        app($context, QueueManager::class)
+            ->push(SendWelcomeEmailJob::class, ['user_uuid' => $event->userUuid]);
+    });
+}
 ```
 
 ### 3. Dispatch Event
@@ -51,7 +53,7 @@ $events->addListener(UserRegisteredEvent::class, function($event) use ($context)
 ```php
 use Glueful\Events\EventService;
 
-app($context, EventService::class)->dispatch(new UserRegisteredEvent($user->id, $user->email));
+app($context, EventService::class)->dispatch(new UserRegisteredEvent($user['uuid'], $user['email']));
 ```
 
 ## When to Use Events
@@ -94,6 +96,25 @@ $events->addListener(OrderPlacedEvent::class, function($event) use ($context) {
 
 // Lazy listener via container service reference (id or id:method)
 $events->addListener(OrderPlacedEvent::class, '@send_order_confirmation:handle');
+
+// Priority: higher runs first (default 0); equal priorities run in registration order
+$events->addListener(OrderPlacedEvent::class, $auditListener, priority: 100);
+```
+
+Registering the same listener twice for an event is de-duplicated. `$events->hasListeners(OrderPlacedEvent::class)` and `getListeners()` let you inspect what's registered.
+
+### Listener Failures
+
+`dispatch()` is fault-isolated: if a listener throws, the exception is logged (`error_log`) and the remaining listeners still run. The caller never sees the exception.
+
+When a failure must surface (for example, a webhook handler that should be redelivered on error), use `dispatchOrFail()`. It rethrows the first listener's original exception and stops dispatching, so listeners after it don't run. A caller may retry the same event, so listeners on strictly-dispatched events must be idempotent.
+
+```php
+try {
+    $events->dispatchOrFail(new PaymentCapturedEvent($paymentId));
+} catch (\Throwable $e) {
+    // mark for redelivery
+}
 ```
 
 ## Event Subscribers
@@ -111,7 +132,7 @@ class UserLifecycleSubscriber implements EventSubscriberInterface
     {
         return [
             UserRegisteredEvent::class => 'onRegistered',
-            UserUpdatedEvent::class => 'onUpdated',
+            UserUpdatedEvent::class => ['onUpdated', 10], // [method, priority]
             UserDeletedEvent::class => 'onDeleted',
         ];
     }
@@ -139,6 +160,90 @@ Register the subscriber with the event service:
 app($context, EventService::class)->subscribe(UserLifecycleSubscriber::class);
 ```
 
+How `subscribe()` builds the class depends on whether it's a container service:
+
+- **Registered service** (listed in a provider's `services()`): each method is registered as a lazy `@Class:method` container reference, resolved the first time one of its events is dispatched.
+- **Not registered**: `subscribe()` constructs the class right away, autowiring its constructor dependencies from the container, and registers the instance. If it can't be built (an unresolvable dependency, for example), `subscribe()` throws `InvalidArgumentException` and registers none of the class's listeners.
+
+Either way the class can take constructor dependencies. Register it as a service when you want it built lazily, or shared with other code:
+
+```php
+public static function services(): array
+{
+    return [
+        UserLifecycleSubscriber::class => ['class' => UserLifecycleSubscriber::class, 'autowire' => true],
+    ];
+}
+```
+
+::u-alert{color="info" variant="subtle" icon="i-lucide-info"}
+**Since 1.91.** An unregistered class used to be wired as a lazy reference that failed at dispatch and was skipped silently, so its listeners never ran. Now it runs, and a listener class that can't be built fails at `subscribe()` (usually during boot) instead.
+::
+
+## Attribute Listeners
+
+`#[AsListener]` (`Glueful\Events\Attributes\AsListener`) declares listeners on the class itself, without implementing `EventSubscriberInterface`. It is read by the same `subscribe()` call; there is no directory scanning, so every class must still be subscribed.
+
+### On methods
+
+Put the attribute on any **public** method; it is repeatable, so one method can handle several events:
+
+```php
+namespace App\Listeners;
+
+use Glueful\Events\Attributes\AsListener;
+
+final class OrderListeners
+{
+    #[AsListener(OrderPlacedEvent::class, priority: 10)]
+    public function reserveStock(OrderPlacedEvent $event): void { /* ... */ }
+
+    #[AsListener(OrderPlacedEvent::class)]
+    #[AsListener(OrderUpdatedEvent::class)]
+    public function refreshSearchIndex(object $event): void { /* ... */ }
+}
+```
+
+### On the class
+
+On the class, `method` names the handler; without it, `__invoke` is called:
+
+```php
+#[AsListener(UserRegisteredEvent::class)]                            // calls __invoke()
+#[AsListener(UserDeletedEvent::class, method: 'onDeleted', priority: -10)]
+final class UserAuditListener
+{
+    public function __invoke(UserRegisteredEvent $event): void { /* ... */ }
+
+    public function onDeleted(UserDeletedEvent $event): void { /* ... */ }
+}
+```
+
+### Registering
+
+```php
+// Optional: list the classes in services() to build them lazily on first dispatch
+
+public function boot(ApplicationContext $context): void
+{
+    $events = app($context, EventService::class);
+    $events->subscribe(OrderListeners::class);
+    $events->subscribe(UserAuditListener::class);
+}
+```
+
+| Argument | Meaning |
+|----------|---------|
+| `event` | Event class (listeners on a parent class or interface also receive subclasses) |
+| `priority` | Higher runs first; default `0`, same ordering as `addListener()` |
+| `method` | Class-level only: the public method to call (default `__invoke`) |
+
+A class may combine `EventSubscriberInterface` and `#[AsListener]`; both sets are registered. `subscribe()` throws `InvalidArgumentException` when the class doesn't exist, has neither `getSubscribedEvents()` nor any `#[AsListener]`, a class-level attribute names a method that isn't public or doesn't exist, or an unregistered class can't be constructed.
+
+::u-alert{color="info" variant="subtle" icon="i-lucide-info"}
+**Since 1.91.** Before 1.91 the attribute existed but nothing read it, so annotated listeners never ran.
+::
+
 ## Async Event Handling
 
 Queue expensive listeners:
@@ -147,14 +252,14 @@ Queue expensive listeners:
 $events = app($context, EventService::class);
 
 $events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
-    // This listener runs synchronously
+    // Listeners always run synchronously, inside dispatch()
     app($context, \Psr\Log\LoggerInterface::class)->info('User registered');
 });
 
 $events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
-    // Queue this expensive work
+    // Push expensive work to a queued job
     $queue = app($context, \Glueful\Queue\QueueManager::class);
-    $queue->push(ProcessNewUserJob::class, ['user_id' => $event->userId]);
+    $queue->push(ProcessNewUserJob::class, ['user_uuid' => $event->userUuid]);
 });
 ```
 
@@ -167,7 +272,7 @@ $events->addListener(UserRegisteredEvent::class, function($event) use ($context)
 class UserRegisteredEvent extends BaseEvent
 {
     public function __construct(
-        public readonly int $userId,
+        public readonly string $userUuid,
         public readonly string $email,
         public readonly string $name
     ) {
@@ -181,29 +286,22 @@ $events = app($context, EventService::class);
 $events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // Send welcome email
     $queue = app($context, \Glueful\Queue\QueueManager::class);
-    $queue->push(SendWelcomeEmailJob::class, ['user_id' => $event->userId]);
-});
-
-$events->addListener(UserRegisteredEvent::class, function($event) {
-    // Track analytics
-    Analytics::track('user.registered', [
-        'email' => $event->email
-    ]);
+    $queue->push(SendWelcomeEmailJob::class, ['user_uuid' => $event->userUuid]);
 });
 
 $events->addListener(UserRegisteredEvent::class, function($event) use ($context) {
     // Create default preferences
     db($context)->table('user_preferences')->insert([
-        'user_id' => $event->userId,
+        'user_uuid' => $event->userUuid,
         'notifications' => true
     ]);
 });
 
 // Dispatch
 $events->dispatch(new UserRegisteredEvent(
-    $user->id,
-    $user->email,
-    $user->name
+    $user['uuid'],
+    $user['email'],
+    $user['name']
 ));
 ```
 
@@ -254,9 +352,9 @@ class PostUpdatedEvent extends BaseEvent
     }
 }
 
-app($context, EventService::class)->addListener(PostUpdatedEvent::class, function($event) {
+app($context, EventService::class)->addListener(PostUpdatedEvent::class, function($event) use ($context) {
     // Clear post cache
-    $cache = \Glueful\Cache\CacheFactory::create();
+    $cache = app($context, \Glueful\Cache\CacheStore::class);
     $cache->delete('post:' . $event->postUuid);
 
     // Clear list caches
@@ -266,85 +364,55 @@ app($context, EventService::class)->addListener(PostUpdatedEvent::class, functio
 
 ## Built-in Framework Events
 
-Glueful emits these events automatically:
+Glueful dispatches these events itself. They expose **getters**, not public properties (a few security/HTTP-auth events use public readonly properties, noted below).
 
-### HTTP Events
+| Event | Dispatched when | Useful accessors |
+|-------|-----------------|------------------|
+| `Glueful\Events\Auth\SessionCreatedEvent` | A login session is created | `getUserUuid()`, `getUsername()`, `getSessionData()` |
+| `Glueful\Events\Auth\SessionDestroyedEvent` | A session is destroyed | `getUserUuid()`, `getReason()`, `isExpired()`, `isRevoked()` |
+| `Glueful\Events\Auth\AuthenticationFailedEvent` | Username/password login fails | `getUsername()`, `getReason()`, `getClientIp()`, `isSuspicious()` |
+| `Glueful\Events\Http\HttpAuthSuccessEvent` / `HttpAuthFailureEvent` | The `auth` middleware accepts / rejects a request | public `$request`; `$tokenMetadata` / `$reason` |
+| `Glueful\Events\Http\ExceptionEvent` | The exception handler handles an exception | `getException()`, `getRequest()`, `getExceptionClass()` |
+| `Glueful\Events\Database\QueryExecutedEvent` | A query runs, whether or not debug mode is on (built only when a listener exists) | `getSql()`, `getBindings()`, `getExecutionTime()` (seconds), `isSlow()`; `getMetadata('purpose')` carries the `withPurpose()` label |
+| `Glueful\Events\Database\EntityCreatedEvent` / `EntityUpdatedEvent` / `EntityDeletedEvent` | `BaseRepository` writes (and API key changes) | `getTable()`, `getEntityId()`, `getEntity()`; `getChanges()` on updates |
+| `Glueful\Events\Security\CSRFViolationEvent` | CSRF origin or token check fails | public `$reason`, `$request` |
+| `Glueful\Events\Webhook\WebhookDeliveredEvent` / `WebhookFailedEvent` | An outbound webhook is delivered / fails | `getUrl()`, `getStatusCode()`, `getDurationMs()`; `getReason()` on failure |
+| `Glueful\Events\Http\RequestEvent` | The HTTP kernel receives a request, before routing | `getRequest()`, `getMethod()`, `getUri()`, `getClientIp()` |
+| `Glueful\Events\Http\ResponseEvent` | The final response is built (after CORS and security headers, error responses included) | `getRequest()`, `getResponse()`, `getStatusCode()`, `isServerError()` |
+| `Glueful\Events\Cache\CacheHitEvent` / `CacheMissEvent` | The container cache store's `get()` / `remember()` hits / misses | `getKey()`; `getRetrievalTime()` (ms), `getValueSize()` on hits |
+| `Glueful\Events\Auth\RateLimitExceededEvent` | The `rate_limit` middleware returns 429 | `getClientIp()`, `getLimit()`, `isSevereViolation()` |
 
 ```php
-// Request received
-use Glueful\Events\EventService;
-use Glueful\Events\Http\RequestEvent;
+use Glueful\Events\Auth\AuthenticationFailedEvent;
+use Glueful\Events\Auth\SessionCreatedEvent;
+use Glueful\Events\Database\QueryExecutedEvent;
+use Psr\Log\LoggerInterface;
 
 $events = app($context, EventService::class);
+$logger = app($context, LoggerInterface::class);
 
-$events->addListener(RequestEvent::class, function($event) use ($context) {
-    app($context, \Psr\Log\LoggerInterface::class)->info('Request', [
-        'method' => $event->request->getMethod(),
-        'path' => $event->request->getPathInfo()
+$events->addListener(SessionCreatedEvent::class, function (SessionCreatedEvent $event) use ($logger) {
+    $logger->info('User logged in', ['user_uuid' => $event->getUserUuid()]);
+});
+
+$events->addListener(AuthenticationFailedEvent::class, function (AuthenticationFailedEvent $event) use ($logger) {
+    $logger->warning('Login failed', [
+        'username' => $event->getUsername(),
+        'reason' => $event->getReason(),
     ]);
 });
 
-// Response sent
-use Glueful\Events\Http\ResponseEvent;
-
-$events->addListener(ResponseEvent::class, function($event) use ($context) {
-    app($context, \Psr\Log\LoggerInterface::class)->info('Response', [
-        'status' => $event->response->getStatusCode()
-    ]);
-});
-```
-
-### Auth Events
-
-```php
-// Login success
-use Glueful\Events\Auth\SessionCreatedEvent;
-
-$events->addListener(SessionCreatedEvent::class, function($event) use ($context) {
-    app($context, \Psr\Log\LoggerInterface::class)->info('User logged in', ['user_id' => $event->userId]);
-});
-
-// Login failure
-use Glueful\Events\Auth\AuthenticationFailedEvent;
-
-$events->addListener(AuthenticationFailedEvent::class, function($event) use ($context) {
-    app($context, \Psr\Log\LoggerInterface::class)->warning('Login failed', ['email' => $event->email]);
-});
-```
-
-### Cache Events
-
-```php
-// Cache hit
-use Glueful\Events\Cache\CacheHitEvent;
-
-$events->addListener(CacheHitEvent::class, function($event) {
-    // Track cache hit ratio
-});
-
-// Cache miss
-use Glueful\Events\Cache\CacheMissEvent;
-
-$events->addListener(CacheMissEvent::class, function($event) {
-    // Track cache miss ratio
-});
-```
-
-### Database Events
-
-```php
-// Query executed
-use Glueful\Events\Database\QueryExecutedEvent;
-
-$events->addListener(QueryExecutedEvent::class, function($event) use ($context) {
-    if ($event->time > 100) { // 100ms
-        app($context, \Psr\Log\LoggerInterface::class)->warning('Slow query', [
-            'sql' => $event->sql,
-            'time' => $event->time
+$events->addListener(QueryExecutedEvent::class, function (QueryExecutedEvent $event) use ($logger) {
+    if ($event->isSlow(0.1)) { // seconds
+        $logger->warning('Slow query', [
+            'sql' => $event->getSql(),
+            'seconds' => $event->getExecutionTime(),
         ]);
     }
 });
 ```
+
+The request, response and cache events are built and dispatched only when at least one listener is registered for them, so they cost a listener lookup when unobserved. A failing listener never breaks the request or the cache read (HTTP event failures are logged as a warning). They are dispatched since 1.91; earlier versions defined the classes but never fired them. See [Caching](/features/caching#cache-events) and [Rate Limiting](/features/rate-limiting#ratelimitexceededevent) for those events.
 
 ## Configuration
 
@@ -354,20 +422,28 @@ $events->addListener(QueryExecutedEvent::class, function($event) use ($context) 
 return [
     'enabled' => env('EVENTS_ENABLED', true),
 
+    // On/off flags for core listeners, not a map of event classes to listeners
     'listeners' => [
-        'cache_invalidation' => true,
-        'security_monitoring' => true,
-        'performance_monitoring' => true,
-        'audit_logging' => true,
+        'cache_invalidation' => env('EVENTS_CACHE_INVALIDATION', true),
+        'security_monitoring' => env('EVENTS_SECURITY_MONITORING', true),
+        'performance_monitoring' => env('EVENTS_PERFORMANCE_MONITORING', true),
+        'audit_logging' => env('EVENTS_AUDIT_LOGGING', true),
     ],
 
+    'debug' => env('EVENTS_DEBUG', env('APP_DEBUG', false)),
     'performance' => [
-        'enabled' => true,
-        'slow_threshold_ms' => 100,
-        'memory_threshold_mb' => 10,
+        'enabled' => env('EVENTS_PERFORMANCE_TRACKING', true),
+        'slow_threshold_ms' => env('EVENTS_SLOW_THRESHOLD', 100),
+        'memory_threshold_mb' => env('EVENTS_MEMORY_THRESHOLD', 10),
+    ],
+    'extensions' => [
+        'enabled' => env('EVENTS_EXTENSIONS_ENABLED', true),
+        'auto_register' => env('EVENTS_EXTENSIONS_AUTO_REGISTER', true),
     ],
 ];
 ```
+
+Only `enabled` and `listeners.audit_logging` are read. Together they decide whether the core `ActivityLoggingSubscriber` (auth/security activity logging) is subscribed at boot, and `enabled` (with `api.webhooks.enabled`) decides whether the webhook bridge for `#[Webhookable]` / `DispatchesWebhooks` events is registered (see [Webhooks](/features/webhooks#from-application-events)). `enabled = false` does **not** stop `dispatch()` or your own listeners. The other keys are currently unused. Register your own listeners in code with `addListener()` or `subscribe()`; there is no config-file listener map.
 
 ## Performance Tips
 
@@ -436,27 +512,30 @@ app($context, EventService::class)->addListener(OrderPlacedEvent::class, functio
 
 ## Testing Events
 
+Register a listener, run the code under test, and assert on what it captured:
+
 ```php
 use Glueful\Events\EventService;
 
-public function testUserRegistrationDispatchesEvent()
+public function testRegistrationDispatchesEvent(): void
 {
-    $dispatched = false;
+    $captured = null;
 
-    app($this->context, EventService::class)->addListener(UserRegisteredEvent::class, function($event) use (&$dispatched) {
-        $dispatched = true;
-        $this->assertEquals('test@example.com', $event->email);
-    });
+    app($this->context, EventService::class)->addListener(
+        UserRegisteredEvent::class,
+        function (UserRegisteredEvent $event) use (&$captured) {
+            $captured = $event;
+        }
+    );
 
-    // Register user
-    $this->post('/auth/register', [
-        'email' => 'test@example.com',
-        'password' => 'secret'
-    ]);
+    app($this->context, RegistrationService::class)->register('test@example.com', 'secret');
 
-    $this->assertTrue($dispatched);
+    $this->assertNotNull($captured);
+    $this->assertSame('test@example.com', $captured->email);
 }
 ```
+
+Because `dispatch()` swallows listener exceptions, assertions inside a listener don't fail the test; capture the event and assert afterwards, as above.
 
 ## Best Practices
 
@@ -464,22 +543,21 @@ public function testUserRegistrationDispatchesEvent()
 
 ```php
 // Main action
-public function createPost($data)
+public function createPost(array $data): string
 {
-    $post = $this->getConnection()->table('posts')->insert($data);
+    $this->db->table('posts')->insert($data);
 
     // Dispatch event for side effects
-    app($context, EventService::class)->dispatch(new PostCreatedEvent($post->uuid));
+    $this->events->dispatch(new PostCreatedEvent($data['uuid']));
 
-    return $post;
+    return $data['uuid'];
 }
 
 // Side effects as listeners
 $events = app($context, EventService::class);
 
-$events->addListener(PostCreatedEvent::class, function($event) {
-    $cache = \Glueful\Cache\CacheFactory::create();
-    $cache->delete('posts:latest');
+$events->addListener(PostCreatedEvent::class, function($event) use ($context) {
+    app($context, \Glueful\Cache\CacheStore::class)->delete('posts:latest');
 });
 
 $events->addListener(PostCreatedEvent::class, function($event) use ($context) {
@@ -505,9 +583,11 @@ PlaceOrderEvent    // Use: PlaceOrderCommand
 ## Troubleshooting
 
 **Listeners not firing?**
-- Verify listener is registered
-- Check event class name matches
-- Ensure events are enabled in config
+- Verify the listener is registered before the event is dispatched (e.g. in a provider's `boot()`)
+- Check the event class name matches (listeners on a parent class or interface also receive subclasses)
+- Check the event is one core actually dispatches (see Built-in Framework Events)
+- Subscribed a class (`subscribe()` / `#[AsListener]`) that isn't registered in the container? It's resolved on first dispatch, and the "Service not found" error is logged and skipped like any listener failure
+- Look in the PHP error log: a listener that throws is logged and skipped
 
 **Performance issues?**
 - Profile slow listeners

@@ -9,24 +9,48 @@ Offload slow operations from HTTP requests: emails, reports, image processing, w
 
 ### 1. Create a Job
 
+```bash
+php glueful scaffold:job SendWelcomeEmailJob   # writes app/Jobs/SendWelcomeEmailJob.php
+```
+
+A job extends `Glueful\Queue\Job` and implements `handle()`. The worker builds it with the data you
+pushed and the application context, so read input with `$this->getData()` and resolve services
+through `$this->context`:
+
 ```php
 namespace App\Jobs;
 
 use Glueful\Queue\Job;
+use Psr\Log\LoggerInterface;
 
 class SendWelcomeEmailJob extends Job
 {
     public function handle(): void
     {
         $data = $this->getData();
-        $userId = $data['userId'];
-        $user = db($context)->table('users')->find($userId);
 
-        // Send email
-        mail($user->email, 'Welcome!', 'Thanks for joining...');
+        $user = db($this->context)->table('users')
+            ->where('uuid', $data['userUuid'])
+            ->first();
+
+        if ($user === null) {
+            return; // Nothing to do
+        }
+
+        // ... send the email
+
+        app($this->context, LoggerInterface::class)->info('Welcome email sent', [
+            'user' => $data['userUuid'],
+        ]);
     }
 }
 ```
+
+::u-alert{color="warning" variant="subtle" icon="i-lucide-shield"}
+**Job classes must implement `Glueful\Queue\Contracts\JobInterface`** (extending `Glueful\Queue\Job`
+does this). A stored payload names a class; the worker refuses to instantiate any class that is not
+a job, so a tampered queue row cannot trigger an arbitrary constructor.
+::
 
 ### 2. Dispatch the Job
 
@@ -34,16 +58,19 @@ class SendWelcomeEmailJob extends Job
 use Glueful\Queue\QueueManager;
 use App\Jobs\SendWelcomeEmailJob;
 
-$queue = service($context, QueueManager::class);
-$queue->push(SendWelcomeEmailJob::class, ['userId' => $userId]);
+$queue = app($context, QueueManager::class);
+$jobUuid = $queue->push(SendWelcomeEmailJob::class, ['userUuid' => $userUuid]);
 ```
+
+`push(string $job, array $data = [], ?string $queue = null, ?string $connection = null)` returns the
+job's uuid.
 
 #### Why class names + data
 
 - Deterministic serialization: only the job class name and a plain array are enqueued, making payloads easy to serialize and version safely.
-- Safer and portable: avoids serializing arbitrary PHP objects; drivers store compact payloads (often JSON) that work across processes and connections.
-- Reliable retries/delays: workers rehydrate the job with the data and run handle(), ensuring consistent behavior on every attempt.
-- Clear contracts: jobs read inputs via getData(), keeping state explicit and idempotent-friendly.
+- Safer and portable: avoids serializing arbitrary PHP objects; drivers store compact JSON payloads that work across processes and connections.
+- Reliable retries/delays: workers rehydrate the job with the data and run `handle()`, ensuring consistent behavior on every attempt.
+- Clear contracts: jobs read inputs via `getData()`, keeping state explicit and idempotent-friendly.
 
 ### 3. Run a Worker
 
@@ -54,24 +81,36 @@ php glueful queue:work
 Plain `queue:work` runs **one** worker that processes jobs until stopped.
 
 ```bash
-# Drain the queue and exit (useful for cron / one-shot processing)
+# Process a single job, then exit
 php glueful queue:work --once
 
-# Target a specific connection
-php glueful queue:work --connection=redis
+# Drain the queue and exit (useful for cron / one-shot processing)
+php glueful queue:work --stop-when-empty
+
+# Target a specific connection and queues
+php glueful queue:work --connection=redis --queue=high,default
 ```
+
+#### `queue:work` options
+
+| Option | Default | Meaning |
+|---|---|---|
+| `--connection` | `queue.default` | Queue connection to process |
+| `--queue` | `default` | Queue(s) to process, comma-separated, in priority order |
+| `--once` | — | Process at most one job, then exit |
+| `--stop-when-empty` | — | Exit when the queue is empty |
+| `--sleep` | `3` | Seconds to sleep when no job is available |
+| `--memory`, `-m` | `128` | Memory limit in MB |
+| `--timeout`, `-t` | `60` | Job timeout in seconds |
+| `--max-jobs` | `0` | Exit after this many jobs (0 = unlimited) |
+| `--max-runtime` | `0` | Exit after this many seconds (0 = unlimited) |
+| `--tries` | `3` | Maximum attempts before a job is marked failed |
 
 ::u-alert{color="info" variant="subtle" icon="i-lucide-package"}
-**Need a supervised fleet or autoscaling?** Since framework 1.52.0, core ships only the
-lean single-worker `queue:work`. Multi-worker supervision, autoscaling, and worker/job
-metrics live in the optional [`glueful/queue-ops`](https://github.com/glueful/queue-ops)
-extension, which adds `queue:supervise` and `queue:autoscale`.
-
-```bash
-composer require glueful/queue-ops
-php glueful extensions:enable queue-ops
-php glueful migrate:run
-```
+**Need a supervised fleet or autoscaling?** Core ships only the lean single-worker
+`queue:work`. Multi-worker supervision, autoscaling, and worker/job metrics live in the optional
+[`glueful/queue-ops`](https://github.com/glueful/queue-ops) extension, which adds `queue:supervise`
+and `queue:autoscale`. See [Queue Infrastructure](/cookbook/queues-and-jobs).
 ::
 
 ## When to Use Jobs
@@ -92,10 +131,11 @@ php glueful migrate:run
 
 ## Configuration
 
-`config/queue.php`:
+`config/queue.php` (excerpt):
 
 ```php
 return [
+    // `database` or `redis` — the two drivers the framework ships
     'default' => env('QUEUE_CONNECTION', 'database'),
 
     'connections' => [
@@ -110,20 +150,52 @@ return [
             'driver' => 'redis',
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'port' => env('REDIS_PORT', 6379),
+            'password' => env('REDIS_PASSWORD'),
             'database' => env('REDIS_DB', 0),
             'prefix' => env('REDIS_QUEUE_PREFIX', 'glueful:queue:'),
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => 90,
+            'job_expiration' => 3600,
         ],
     ],
 
     'failed' => [
-        'driver' => env('QUEUE_FAILED_DRIVER', 'database'),
-        'database' => 'default',
         'table' => 'queue_failed_jobs',
+        'max_retries' => 5,     // stored only — nothing enforces it
+        'retention_days' => 30, // age at which cleanup() / queue_maintenance prune failures
+    ],
+
+    'workers' => [
+        'performance' => [
+            // Delay before a failed job is retried
+            'backoff_strategy' => env('QUEUE_BACKOFF_STRATEGY', 'exponential'), // linear, exponential, fixed
+            'backoff_base' => env('QUEUE_BACKOFF_BASE', 2),
+            'max_backoff' => env('QUEUE_MAX_BACKOFF', 3600),
+        ],
+    ],
+
+    'security' => [
+        'payload_signing' => [
+            'enabled' => env('QUEUE_PAYLOAD_SIGNING', true),
+            'require_signed' => env('QUEUE_REQUIRE_SIGNED_PAYLOADS', true),
+        ],
     ],
 ];
 ```
+
+There are no `sync` or `null` connections (removed in 1.86 — no such drivers exist).
+
+### Payload Signing
+
+Queue backends are mutable storage, so every payload the database and Redis drivers store is signed
+with an HMAC (SHA-256) keyed on `APP_KEY` (`app.key`). The worker verifies the signature before it
+runs a job: a payload whose class, data, attempts or timeout were altered is refused, and with
+`QUEUE_REQUIRE_SIGNED_PAYLOADS=true` an unsigned payload is refused too. Scheduled-job parameters
+persisted to `scheduled_jobs` are signed the same way.
+
+- Keep `APP_KEY` identical on every process that pushes or works jobs; changing it invalidates jobs
+  already queued.
+- Without an `APP_KEY`, payloads are neither signed nor verified.
 
 ## Job Basics
 
@@ -132,17 +204,13 @@ return [
 ```php
 use Glueful\Queue\Job;
 
-class ProcessImageJob extends Job
+class RecalculateMetricsJob extends Job
 {
     public function handle(): void
     {
-        $data = $this->getData();
-        $imagePath = $data['imagePath'];
+        $accountId = $this->getData()['accountId'];
 
-        // Resize image
-        $image = Image::load($imagePath);
-        $image->resize(800, 600);
-        $image->save();
+        // ... recalculate
     }
 }
 ```
@@ -150,7 +218,7 @@ class ProcessImageJob extends Job
 ### Dispatch
 
 ```php
-$queue->push(ProcessImageJob::class, ['imagePath' => $path]);
+$queue->push(RecalculateMetricsJob::class, ['accountId' => $accountId]);
 ```
 
 ## Delayed Jobs
@@ -174,7 +242,7 @@ Use different queues for different priorities:
 $queue->push(CriticalPaymentJob::class, ['data' => $data], 'payments_high');
 
 // Normal priority
-$queue->push(SendEmailJob::class, ['user' => $user], 'emails');
+$queue->push(SendEmailJob::class, ['userUuid' => $userUuid], 'emails');
 
 // Low priority
 $queue->push(GenerateReportJob::class, ['id' => $id], 'reports_low');
@@ -191,29 +259,46 @@ php glueful queue:work --queue=payments_high,emails,reports_low
 
 ### Automatic Retries
 
-Jobs retry automatically on failure:
+A job that throws is released back onto its queue until it has used
+`min($job->getMaxAttempts(), --tries)` attempts; each retry waits the backoff computed from
+`queue.workers.performance` (exponential by default). After the last attempt the worker calls the
+job's `failed()` method and the job is recorded as failed (see [Failed Jobs](#failed-jobs)).
 
 ```php
+use Glueful\Http\Client;
+use Glueful\Queue\Job;
+use Psr\Log\LoggerInterface;
+
 class SendWebhookJob extends Job
 {
     public function getMaxAttempts(): int
     {
-        return 3; // Retry up to 3 times
+        return 5; // default is 3; --tries still caps it
     }
 
     public function handle(): void
     {
         $data = $this->getData();
-        $response = $this->httpClient->post($data['webhookUrl'], $data['payload'] ?? []);
+        $response = app($this->context, Client::class)
+            ->post($data['webhookUrl'], ['json' => $data['payload'] ?? []]);
 
-        if (method_exists($response, 'failed') ? $response->failed() : !(method_exists($response, 'successful') && $response->successful())) {
-            throw new \Exception('Webhook failed');
+        if (!$response->isSuccessful()) {
+            throw new \RuntimeException('Webhook failed: HTTP ' . $response->getStatusCode());
         }
+    }
+
+    public function failed(\Exception $exception): void
+    {
+        app($this->context, LoggerInterface::class)
+            ->error('Webhook gave up', ['error' => $exception->getMessage()]);
     }
 }
 ```
 
 ### Custom Retry Logic
+
+Call `release($delay)` to put the job back with a delay of your choosing, or catch an error you
+should not retry:
 
 ```php
 class ImportDataJob extends Job
@@ -222,12 +307,12 @@ class ImportDataJob extends Job
     {
         try {
             $this->importData();
-        } catch (TemporaryException $e) {
-            // Retry this job
-            throw $e;
+        } catch (RateLimitedException $e) {
+            $this->release(300); // Try again in 5 minutes
         } catch (PermanentException $e) {
             // Don't retry, just log
-            app($context, \Psr\Log\LoggerInterface::class)->error('Import failed permanently', [$e]);
+            app($this->context, \Psr\Log\LoggerInterface::class)
+                ->error('Import failed permanently', ['error' => $e->getMessage()]);
         }
     }
 }
@@ -242,18 +327,15 @@ class GenerateInvoicePdfJob extends Job
 {
     public function handle(): void
     {
+        $invoiceId = $this->getData()['invoiceId'];
+
         // Check if already generated
-        if ($this->alreadyGenerated($this->invoiceId)) {
+        if ($this->alreadyGenerated($invoiceId)) {
             return; // Safe no-op
         }
 
-        $pdf = $this->generatePdf($this->invoiceId);
-        $this->storePdf($pdf);
-    }
-
-    private function alreadyGenerated($id): bool
-    {
-        return file_exists("invoices/{$id}.pdf");
+        $pdf = $this->generatePdf($invoiceId);
+        $this->storePdf($invoiceId, $pdf);
     }
 }
 ```
@@ -274,117 +356,68 @@ $jobs = array_map(
     $userIds
 );
 
-$queue->bulk($jobs, 'cache_warmup');
+$uuids = $queue->bulk($jobs, 'cache_warmup');
 ```
 
 ## Job Chaining
 
-Process jobs in sequence:
+There is no chaining API. Push the next job at the end of the current job's `handle()`, so it is
+queued only once the first one succeeds:
 
 ```php
-// Process video, then notify user
-$queue->push(ProcessVideoJob::class, ['videoId' => $videoId]);
-$queue->later(600, NotifyUserJob::class, ['userId' => $userId, 'message' => 'Video ready!']);
+class ProcessVideoJob extends Job
+{
+    public function handle(): void
+    {
+        $data = $this->getData();
+
+        // ... process the video
+
+        app($this->context, QueueManager::class)
+            ->push(NotifyUserJob::class, ['userId' => $data['userId'], 'message' => 'Video ready!']);
+    }
+}
 ```
 
 ## Common Patterns
 
-### Email Queue
-
-```php
-class SendWelcomeEmailJob extends Job
-{
-    public function handle(): void
-    {
-        $data = $this->getData();
-        $template = view('emails.welcome', [
-            'name' => $data['name']
-        ]);
-
-        mail($data['email'], 'Welcome!', $template);
-    }
-}
-```
-
-### Image Processing
-
-```php
-class OptimizeImageJob extends Job
-{
-    public function handle(): void
-    {
-        $data = $this->getData();
-        $image = Image::load($data['path']);
-
-        // Generate thumbnails
-        $image->resize(200, 200)->save($data['path'] . '.thumb.jpg');
-        $image->resize(800, 600)->save($data['path'] . '.medium.jpg');
-
-        // Optimize original
-        $image->optimize()->save($data['path']);
-    }
-}
-```
-
-### Webhook Delivery
-
-```php
-class DeliverWebhookJob extends Job
-{
-    public function getMaxAttempts(): int
-    {
-        return 5;
-    }
-
-    public function handle(): void
-    {
-        $data = $this->getData();
-        $response = $this->httpClient->post($data['url'], [
-            'event' => $data['event'],
-            'data' => $data['data'] ?? [],
-            'timestamp' => time()
-        ]);
-
-        if (!(method_exists($response, 'successful') && $response->successful())) {
-            throw new \Exception('Webhook delivery failed');
-        }
-    }
-}
-```
-
 ### Report Generation
 
 ```php
+use Glueful\Queue\Job;
+use Glueful\Queue\QueueManager;
+use Glueful\Storage\StorageManager;
+
 class GenerateMonthlyReportJob extends Job
 {
     public function handle(): void
     {
         $data = $this->getData();
-        $reportData = $this->gatherData();
-        $pdf = $this->generatePdf($reportData);
+        $pdf = $this->generatePdf($this->gatherData());
 
-        // Store report
-        Storage::put("reports/monthly-{$data['month']}.pdf", $pdf);
+        // Store the report on the default disk
+        app($this->context, StorageManager::class)
+            ->put("reports/monthly-{$data['month']}.pdf", $pdf);
 
         // Notify user
-        $queue = service($context, \Glueful\Queue\QueueManager::class);
-        $queue->push(NotifyReportReadyJob::class, ['userId' => $data['userId']]);
+        app($this->context, QueueManager::class)
+            ->push(NotifyReportReadyJob::class, ['userId' => $data['userId']]);
     }
 }
 ```
 
-## Monitoring
+For email, prefer [Notifications](/features/notifications), which can queue delivery for you.
 
-Track job metrics:
+## Monitoring
 
 ```php
 // Queue depth
-$pending = db($context)->table('queue_jobs')->count();
+$pending = $queue->size('default');
 
-// Failed jobs
+// Failed jobs (database driver)
 $failed = db($context)->table('queue_failed_jobs')->count();
 
-// Job age
+// Oldest waiting job (database driver)
 $oldest = db($context)->table('queue_jobs')
     ->orderBy('created_at', 'asc')
     ->first();
@@ -392,25 +425,45 @@ $oldest = db($context)->table('queue_jobs')
 
 ## Failed Jobs
 
-Use the FailedJobProvider to inspect, retry, and delete failed jobs:
+A job that exhausted its attempts lands in `queue_failed_jobs` (database driver) or the
+`queue:{name}:failed` list (Redis driver). Manage failures from the CLI:
+
+```bash
+php glueful queue:failed                   # List: job class, queue, error (--queue= --limit=50 --json)
+php glueful queue:retry <uuid> [<uuid>…]   # Put them back on their queue as new jobs
+php glueful queue:retry --all [--queue=emails]
+php glueful queue:forget <uuid>            # Delete one
+php glueful queue:flush [--queue=emails]   # Delete them all
+```
+
+Each takes `--connection=` (default: the configured connection). A retry verifies the stored
+payload's signature first, so a payload altered after it failed is refused, never re-signed.
+
+From code, use `FailedJobProvider` (database driver):
 
 ```php
 use Glueful\Queue\Failed\FailedJobProvider;
 
-$provider = new FailedJobProvider();
+$provider = app($context, FailedJobProvider::class);
 
-// List recent failed jobs
-$failed = $provider->all(limit: 50);
+// Filters: connection, queue, from_date, to_date
+$failed = $provider->all(['queue' => 'emails'], limit: 50);
 
-// Retry a specific failed job
-$provider->retry($uuid);
-
-// Forget (delete) a failed job
-$provider->forget($uuid);
-
-// Retry all retryable failed jobs
-$provider->retryAll();
+$provider->retry($uuid);   // bool
+$provider->forget($uuid);  // bool
+$provider->retryAll();     // retry every failed job
+$provider->prune(30);      // delete failures older than 30 days; returns the count
+$provider->cleanup();      // prune at the provider's retention age; bool
 ```
+
+`queue.failed.*` configures both the container-resolved provider above and the one the database
+driver builds (`$queue->connection('database')->failures()`); `retention_days` (default 30) is the
+age `cleanup()` prunes at. The built-in `queue_maintenance` [scheduled job](/features/scheduling#built-in-jobs)
+(`Glueful\Queue\Jobs\QueueMaintenanceJob`, daily at 04:15, `QUEUE_MAINTENANCE_ENABLED`) prunes
+failures past that age for you (`queue.maintenance.failed_jobs_cleanup_days` overrides the age for
+that pass). An app with its own `config/schedule.php` must list the job to get this pruning.
+`queue.failed.max_retries` is stored but not enforced — a retry is a new job with fresh attempts,
+bounded by the worker's `--tries`.
 
 ## Best Practices
 
@@ -422,7 +475,7 @@ class SendEmailJob extends Job
 {
     public function handle(): void
     {
-        mail($this->email, $this->subject, $this->body);
+        $this->send($this->getData());
     }
 }
 
@@ -467,7 +520,7 @@ public function handle(): void
 public function handle(): void
 {
     if (!$this->apiCall()) {
-        throw new \Exception('API failed');
+        throw new \RuntimeException('API failed');
     }
 }
 
@@ -485,13 +538,15 @@ public function handle(): void
 ## Troubleshooting
 
 **Jobs not processing?**
-- Ensure worker is running: `php glueful queue:work`
-- Check queue connection in `.env`
+- Ensure a worker is running: `php glueful queue:work`
+- Check `QUEUE_CONNECTION` in `.env` (`database` or `redis`)
+- "Refusing to run job class" in the log: the class does not implement `JobInterface`
+- "signature mismatch" / "missing its HMAC signature": the payload was pushed with a different
+  `APP_KEY`, or without one
 
 **Jobs failing?**
-- Check `queue_failed_jobs` table
-- Review error messages
-- Ensure job is idempotent
+- `php glueful queue:failed` shows the error for each failure
+- Make the job idempotent, then `php glueful queue:retry <uuid>`
 
 **Queue growing?**
 - Scale workers
@@ -499,7 +554,7 @@ public function handle(): void
 - Split into priority queues
 
 **Jobs timing out?**
-- Increase `retry_after` in config
+- Raise `--timeout` (and `retry_after` in config)
 - Break large jobs into smaller ones
 
 ## Scaling Workers
@@ -535,12 +590,26 @@ Run multiple lean workers under your OS process manager (Supervisor, systemd):
 
 ```ini
 [program:queue-worker]
-command=php /path/to/glueful queue:work --queue=default
+command=php /path/to/glueful queue:work --queue=default --max-runtime=3600
+process_name=%(program_name)s_%(process_num)02d
 autostart=true
 autorestart=true
 user=www-data
 numprocs=4
 ```
+
+### Deploying New Code
+
+Workers are long-running processes that keep the code they started with. As the last step of each
+deploy, ask them to restart:
+
+```bash
+php glueful queue:restart
+```
+
+Every running worker exits after its current job, and your supervisor starts it again on the new
+code. The signal is a timestamp in the cache, so the workers need a configured cache store they
+share (without one, nothing is signalled); a worker started after the signal keeps running.
 
 ### Managed Fleets & Autoscaling
 
@@ -556,17 +625,15 @@ or scale workers automatically based on queue depth, install
 
 ```bash
 composer require glueful/queue-ops
-php glueful extensions:enable queue-ops
-php glueful migrate:run
+php glueful extensions:enable queue-ops   # also runs the extension's migrations
 ```
 
-Worker-fleet config (`queue.workers.{process,auto_scaling,resource_limits,…}` and per-queue
-`workers`/`max_workers`/`auto_scale`) moves to the extension's `queue_ops.*` namespace
-(the same env vars still apply).
+Worker-fleet config lives in the extension's `queue_ops.*` namespace.
 ::
 
 ## Next Steps
 
+- [Task Scheduling](/features/scheduling) - Run jobs on a cron schedule
 - [Events](/features/events) - Fan-out with events + jobs
 - [Notifications](/features/notifications) - Queue notifications
-- [Caching](/features/caching) - Cache warm jobs
+- [Queue Infrastructure](/cookbook/queues-and-jobs) - Drivers, built-in tasks, queue-ops

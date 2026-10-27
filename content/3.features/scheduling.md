@@ -15,15 +15,25 @@ Schedule recurring tasks to run automatically at specified times using cron expr
 return [
     'jobs' => [
         [
-            'name' => 'cleanup_sessions',
+            'name' => 'cleanup_temp_files',
             'schedule' => '0 0 * * *', // Daily at midnight
-            'handler_class' => 'App\\Jobs\\CleanupSessionsJob',
-            'description' => 'Clean up expired sessions',
+            'handler_class' => 'App\\Jobs\\CleanupTempFilesJob',
+            'description' => 'Delete temporary files older than a day',
             'enabled' => true,
         ],
     ],
 ];
 ```
+
+::u-alert{color="warning" variant="subtle" icon="i-lucide-triangle-alert"}
+**Your `jobs` list replaces the framework's — it is not merged** (since 1.86). An app that ships its
+own `config/schedule.php` runs only the jobs it lists, so copy in the framework defaults you still
+want: `session_cleaner`, `log_cleanup`, `database_backup`, `cache_maintenance`,
+`notification_retry_processor`, `scheduled_notifications`, `queue_maintenance`, `webhook_cleanup`
+and `blob_purge` (see the framework's `config/schedule.php`). Without `blob_purge`, deleted uploads
+are never purged; without `scheduled_notifications` (added in 1.91), notifications sent with a
+`schedule` never go out; without `queue_maintenance` (added in 1.91), failed jobs are never pruned.
+::
 
 ### 2. Run Scheduler
 
@@ -42,13 +52,14 @@ Standard 5-part cron syntax:
 ```
 *  *  *  *  *
 │  │  │  │  │
-│  │  │  │  └─ Day of week (0-7, Sun=0/7)
+│  │  │  │  └─ Day of week (0-7, Sunday = 0 or 7)
 │  │  │  └──── Month (1-12)
 │  │  └─────── Day of month (1-31)
 │  └────────── Hour (0-23)
 └───────────── Minute (0-59)
 ```
-Note: In Glueful’s scheduler, day of week is 0–6 (Sunday = 0).
+
+Expressions are parsed by `dragonmantank/cron-expression`.
 
 ### Common Patterns
 
@@ -95,7 +106,17 @@ Note: In Glueful’s scheduler, day of week is 0–6 (Sunday = 0).
 
 ### Config-Based
 
-`config/schedule.php`:
+Each entry in `config/schedule.php` takes exactly these keys:
+
+| Key | Required | Meaning |
+|---|---|---|
+| `name` | yes | Unique job name (also the lock key) |
+| `schedule` | yes | Cron expression or macro |
+| `handler_class` | yes | Job class to run (must implement `JobInterface`) |
+| `parameters` | no | Array handed to the handler |
+| `enabled` | no | `false` skips the job (typically an env switch) |
+| `persistence` | no | `true` registers the job in the database instead of memory |
+| `description` | no | Shown in `list` |
 
 ```php
 return [
@@ -104,62 +125,39 @@ return [
             'name' => 'send_daily_digest',
             'schedule' => '@daily',
             'handler_class' => 'App\\Jobs\\SendDailyDigestJob',
-            'parameters' => [],
+            'parameters' => ['limit' => 500],
             'description' => 'Send daily email digest to users',
-            'enabled' => true,
-            'timeout' => 300,
-            'retry_attempts' => 3,
-            // optional
-            // 'queue' => 'scheduled',
-            // 'persistence' => true, // persist for DB tracking/history
+            'enabled' => env('DAILY_DIGEST_ENABLED', true),
         ],
-
-        [
-            'name' => 'cleanup_temp_files',
-            'schedule' => '0 */6 * * *', // Every 6 hours
-            'handler_class' => 'App\\Jobs\\CleanupTempFilesJob',
-            'description' => 'Delete temporary files older than 24 hours',
-            'enabled' => true,
-        ],
-
         [
             'name' => 'generate_reports',
             'schedule' => '0 1 * * *', // 1:00 AM daily
             'handler_class' => 'App\\Jobs\\GenerateReportsJob',
             'description' => 'Generate daily analytics reports',
-            'enabled' => env('REPORTS_ENABLED', true),
         ],
-    ],
-
-    'settings' => [
-        'enabled' => env('SCHEDULER_ENABLED', true),
-        'max_concurrent_jobs' => env('MAX_CONCURRENT_JOBS', 5),
-        'default_timeout' => env('DEFAULT_JOB_TIMEOUT', 300),
-        // Additional options
-        'default_queue' => env('DEFAULT_SCHEDULED_QUEUE', 'scheduled'),
-        'queue_connection' => env('SCHEDULE_QUEUE_CONNECTION', 'default'),
-        'use_queue_for_all_jobs' => env('USE_QUEUE_FOR_SCHEDULED_JOBS', true),
-        'log_execution' => env('LOG_JOB_EXECUTION', true),
-        'notification_on_failure' => env('NOTIFY_ON_JOB_FAILURE', env('APP_ENV') === 'production'),
-    ],
-
-    // Map named queues to job names (optional)
-    'queue_mapping' => [
-        'critical' => ['database_backup'],
-        'maintenance' => ['session_cleaner', 'log_cleanup', 'cache_maintenance'],
-        'notifications' => ['notification_retry_processor'],
-        'system' => ['queue_maintenance'],
     ],
 ];
 ```
 
+Nothing else is read. Config jobs run **inline**, in the process that runs `queue:scheduler`: there
+is no per-job `queue`, `timeout` or `retry_attempts`, and no `settings` or `queue_mapping` block
+(all removed in 1.86 — delete them from your copy). To run heavy work on a queue, have the scheduled
+job push queue jobs (see [Best Practices](#best-practices)).
+
 ### Persistence
 
-If you add `'persistence' => true` to a job in `config/schedule.php`, the scheduler persists it to the `scheduled_jobs` table and records executions in `job_executions`:
-- Jobs gain `last_run`/`next_run` tracking and show up in `list`, `status`, and history.
-- The scheduler invokes your handler class’s `handle(array $params = [])` method with the configured `parameters`.
+With `'persistence' => true`, the scheduler stores the job in the `scheduled_jobs` table and records
+each run in `job_executions` (`last_run`/`next_run` tracking). Registration is idempotent by name:
+every scheduler load updates the existing row (schedule, handler, parameters) in place, keeping its
+uuid, run history and `is_enabled` flag. Its parameters are stored in a signed envelope (see
+[payload signing](/features/queues-jobs#payload-signing)); a row whose parameters, handler, name or
+schedule were altered is refused. Without persistence, jobs are registered in memory for the
+current process.
 
-Without persistence, jobs are registered in memory for the current process only (useful for quick, ephemeral schedules during development).
+::u-alert{color="neutral" variant="subtle" icon="i-lucide-info"}
+**Since 1.91:** earlier releases inserted a new `scheduled_jobs` row on every load, and each
+duplicate ran. The first 1.91 load removes those duplicate rows for you.
+::
 
 ### Programmatic
 
@@ -168,103 +166,77 @@ use Glueful\Scheduler\JobScheduler;
 
 $scheduler = app($context, JobScheduler::class);
 
-$scheduler->register('@hourly', function() {
+$scheduler->register('@hourly', function () use ($context) {
     // Cleanup task
-    $storage->cleanupOldFiles('temp/', 86400);
 }, 'hourly-cleanup');
 ```
 
+`register(string $schedule, callable $callback, string $name = '')` adds an in-memory job for the
+current process only.
+
 ## Job Handlers
 
-Create job handler classes:
-
-Note: When jobs are loaded from config/database, the scheduler invokes your handler as handle($params). Define your method as handle(array $params = []): void and read values from $params when needed.
+A scheduled handler is a queue job: it must extend `Glueful\Queue\Job` (or otherwise implement
+`Glueful\Queue\Contracts\JobInterface`) — any other class is refused. The scheduler builds it with
+the configured `parameters` and the application context, then calls `handle()`. Read the
+parameters with `$this->getData()` and reach services through `$this->context`:
 
 ```php
 namespace App\Jobs;
 
-class CleanupSessionsJob
+use Glueful\Queue\Job;
+use Glueful\Storage\StorageManager;
+use Psr\Log\LoggerInterface;
+
+class CleanupTempFilesJob extends Job
 {
-    public function handle(array $params = []): void
+    public function handle(): void
     {
-        $cutoff = date('Y-m-d H:i:s', strtotime('-30 days'));
+        $maxAge = (int) ($this->getData()['max_age'] ?? 86400);
+        $storage = app($this->context, StorageManager::class);
 
-        db($context)->table('sessions')
-            ->where('last_activity', '<', $cutoff)
-            ->delete();
+        foreach ($storage->listContents('temp/', true) as $item) {
+            if ($item->isFile() && $item->lastModified() < time() - $maxAge) {
+                $storage->delete($item->path());
+            }
+        }
 
-        app($context, \Psr\Log\LoggerInterface::class)->info('Cleaned up expired sessions');
+        app($this->context, LoggerInterface::class)->info('Cleaned up temp files');
     }
 }
 ```
+
+Each job runs under a lock named `scheduler:job:{name}` (one hour TTL) when a lock manager is
+available, so two scheduler processes don't run the same job at once.
+
+## Built-in Jobs
+
+The framework's default `config/schedule.php` ships these (each toggled by an env var):
+
+| Name | Schedule | Handler | Toggle |
+|---|---|---|---|
+| `session_cleaner` | `0 0 * * *` | `Glueful\Queue\Jobs\SessionCleanupJob` | `SESSION_CLEANER_ENABLED` |
+| `log_cleanup` | `0 1 * * *` | `Glueful\Queue\Jobs\LogCleanupJob` | `LOG_CLEANUP_ENABLED` (`LOG_RETENTION_DAYS`) |
+| `database_backup` | `DB_BACKUP_SCHEDULE` (`0 2 * * *`) | `Glueful\Queue\Jobs\DatabaseBackupJob` | `DB_BACKUP_ENABLED` (production only by default) |
+| `cache_maintenance` | `0 3 * * *` | `Glueful\Queue\Jobs\CacheMaintenanceJob` | `CACHE_MAINTENANCE_ENABLED` |
+| `notification_retry_processor` | `*/10 * * * *` | `Glueful\Queue\Jobs\NotificationRetryJob` | `NOTIFICATION_RETRIES_ENABLED` |
+| `scheduled_notifications` | `* * * * *` | `Glueful\Queue\Jobs\ScheduledNotificationsJob` | `SCHEDULED_NOTIFICATIONS_ENABLED` |
+| `queue_maintenance` | `15 4 * * *` | `Glueful\Queue\Jobs\QueueMaintenanceJob` | `QUEUE_MAINTENANCE_ENABLED` |
+| `webhook_cleanup` | `30 3 * * *` | `Glueful\Api\Webhooks\Jobs\WebhookCleanupJob` | `WEBHOOK_CLEANUP_ENABLED` |
+| `blob_purge` | `45 3 * * *` | `Glueful\Uploader\Jobs\BlobPurgeJob` | `BLOB_PURGE_ENABLED` |
+
+`scheduled_notifications` delivers [scheduled notifications](/features/notifications#scheduled-notifications)
+once they fall due (up to 50 per run); it does nothing when `NOTIFICATIONS_DATABASE_STORE=false`.
+`queue_maintenance` prunes [failed jobs](/features/queues-jobs#failed-jobs) older than
+`queue.failed.retention_days` (default 30) and cleans stale worker records.
+
+The database backup needs `pg_dump` or `mysqldump` on the scheduler host for PostgreSQL/MySQL, and
+fails its run when no dump is made. `webhook_cleanup` prunes delivery records for
+[webhooks](/features/webhooks).
 
 ## Common Scheduled Tasks
 
-### Daily Cleanup
-
-```php
-[
-    'name' => 'daily_cleanup',
-    'schedule' => '@daily',
-    'handler_class' => 'App\\Jobs\\DailyCleanupJob',
-],
-```
-
-```php
-class DailyCleanupJob
-{
-    public function handle(array $params = []): void
-    {
-        // Delete old sessions
-        db($context)->table('sessions')
-            ->where('created_at', '<', date('Y-m-d', strtotime('-7 days')))
-            ->delete();
-
-        // Delete old logs
-        db($context)->table('activity_logs')
-            ->where('created_at', '<', date('Y-m-d', strtotime('-90 days')))
-            ->delete();
-
-        // Delete temporary files older than a day
-        $disk = app($context, \Glueful\Storage\StorageManager::class)->disk();
-        foreach ($disk->listContents('temp/', true) as $item) {
-            if ($item->isFile() && $item->lastModified() < time() - 86400) {
-                $disk->delete($item->path());
-            }
-        }
-    }
-}
-```
-
-### Hourly Cache Warm
-
-```php
-[
-    'name' => 'warm_cache',
-    'schedule' => '@hourly',
-    'handler_class' => 'App\\Jobs\\WarmCacheJob',
-],
-```
-
-```php
-class WarmCacheJob
-{
-    public function handle(array $params = []): void
-    {
-        // Warm popular product cache
-        $products = db($context)->table('products')
-            ->where('is_featured', true)
-            ->get();
-
-        $cache = \Glueful\Cache\CacheFactory::create();
-        foreach ($products as $product) {
-            $cache->set('product:' . $product->uuid, $product, 3600);
-        }
-    }
-}
-```
-
-### Weekly Reports
+### Weekly Report
 
 ```php
 [
@@ -275,56 +247,22 @@ class WarmCacheJob
 ```
 
 ```php
-class WeeklyReportJob
+use Glueful\Queue\Job;
+
+class WeeklyReportJob extends Job
 {
-    public function handle(array $params = []): void
+    public function handle(): void
     {
+        $since = date('Y-m-d', strtotime('-7 days'));
+
         $stats = [
-            'users' => db($context)->table('users')->count(),
-            'orders' => db($context)->table('orders')
-                ->where('created_at', '>=', date('Y-m-d', strtotime('-7 days')))
+            'users' => db($this->context)->table('users')->count(),
+            'orders' => db($this->context)->table('orders')
+                ->where('created_at', '>=', $since)
                 ->count(),
-            'revenue' => db($context)->table('orders')
-                ->where('created_at', '>=', date('Y-m-d', strtotime('-7 days')))
-                ->sum('total'),
         ];
 
-        // Email report ($admin implements Glueful\Notifications\Contracts\Notifiable)
-        app($context, \Glueful\Notifications\Services\NotificationService::class)->send(
-            type: 'report.weekly',
-            notifiable: $admin,
-            subject: 'Weekly Report',
-            data: ['stats' => $stats]
-        );
-    }
-}
-```
-
-### Nightly Backups
-
-```php
-[
-    'name' => 'backup_database',
-    'schedule' => '0 2 * * *', // 2:00 AM daily
-    'handler_class' => 'App\\Jobs\\BackupDatabaseJob',
-],
-```
-
-```php
-class BackupDatabaseJob
-{
-    public function handle(array $params = []): void
-    {
-        $filename = 'backup-' . date('Y-m-d') . '.sql';
-
-        exec("mysqldump -u{$user} -p{$pass} {$db} > {$path}/{$filename}");
-
-        // Upload to S3
-        app($context, \Glueful\Storage\StorageManager::class)
-            ->disk('s3')
-            ->write("backups/{$filename}", file_get_contents("{$path}/{$filename}"));
-
-        app($context, \Psr\Log\LoggerInterface::class)->info('Database backup completed', ['file' => $filename]);
+        // ... deliver $stats (e.g. through a notification)
     }
 }
 ```
@@ -350,8 +288,8 @@ php glueful queue:scheduler run --dry-run
 # Run continuously, check every 60 seconds
 php glueful queue:scheduler work --interval=60
 
-# Custom interval
-php glueful queue:scheduler work --interval=30
+# Stop after N passes; --watch shows a live status screen
+php glueful queue:scheduler work --interval=60 --max-runs=100
 ```
 
 ### System Cron
@@ -364,23 +302,27 @@ Add to system crontab to run scheduler every minute:
 
 ## Monitoring
 
-### List Jobs
-
 ```bash
+# List registered jobs (--output-format=table|json|plain)
 php glueful queue:scheduler list
-```
 
-### Check Status
-
-```bash
+# Stats and the next upcoming jobs
 php glueful queue:scheduler status
-```
 
-### Health Check
-
-```bash
+# Health check
 php glueful queue:scheduler health
 ```
+
+Those five actions (`run`, `work`, `list`, `status`, `health`) are the whole command: jobs are
+added, removed, enabled and disabled in `config/schedule.php`, and the run history of persisted jobs
+is in the `job_executions` table. An unknown action fails and lists the available ones.
+
+::u-alert{color="neutral" variant="subtle" icon="i-lucide-info"}
+**Since 1.91:** the `add`, `remove`, `enable`, `disable` and `history` stubs (and their
+`--job-name`, `--cron`, `--command`, `--description`, `--timeout`, `--history` options) are gone.
+They printed "not yet implemented" and exited 0; scripts that call them now fail. See
+[Upgrading](/upgrading).
+::
 
 ## Production Setup
 
@@ -419,46 +361,35 @@ services:
 
 ## Configuration
 
-`.env`:
-
-```env
-SCHEDULER_ENABLED=true
-MAX_CONCURRENT_JOBS=5
-DEFAULT_JOB_TIMEOUT=300
-
-# Optional advanced settings
-DEFAULT_SCHEDULED_QUEUE=scheduled
-SCHEDULE_QUEUE_CONNECTION=default
-USE_QUEUE_FOR_SCHEDULED_JOBS=true
-LOG_JOB_EXECUTION=true
-NOTIFY_ON_JOB_FAILURE=false
-```
+There are no scheduler env vars beyond the per-job toggles above: `SCHEDULER_ENABLED`,
+`MAX_CONCURRENT_JOBS`, `DEFAULT_JOB_TIMEOUT`, `SCHEDULE_QUEUE_*` and the like are not read. Turn a
+job off with its `enabled` key. The `scheduled_jobs`/`job_executions` tables are core migrations and
+always installed; `SCHEDULE_DATABASE_STORE` (removed from `config/capabilities.php` in 1.91) never
+gated anything — delete it from published copies.
 
 ## Best Practices
 
 ### Keep Jobs Simple
 
+Scheduled jobs run inline in the scheduler process — fan heavy work out to the queue:
+
 ```php
-// ✅ Good - delegates to job queue
-class SendDigestJob
-{
-    public function handle(array $params = []): void
-    {
-        $users = db($context)->table('users')->where('digest_enabled', true)->get();
+use Glueful\Queue\Job;
+use Glueful\Queue\QueueManager;
 
-        $queue = service($context, \Glueful\Queue\QueueManager::class);
+// ✅ Good - delegates to the job queue
+class SendDigestJob extends Job
+{
+    public function handle(): void
+    {
+        $users = db($this->context)->table('users')
+            ->where('digest_enabled', true)
+            ->get();
+
+        $queue = app($this->context, QueueManager::class);
         foreach ($users as $user) {
-            $queue->push(\App\Jobs\SendUserDigestJob::class, ['userId' => $user->id]);
+            $queue->push(\App\Jobs\SendUserDigestJob::class, ['userUuid' => $user['uuid']]);
         }
-    }
-}
-
-// ❌ Bad - does everything inline
-class SendDigestJob
-{
-    public function handle(array $params = []): void
-    {
-        // Heavy processing in scheduled job...
     }
 }
 ```
@@ -466,11 +397,13 @@ class SendDigestJob
 ### Idempotent Tasks
 
 ```php
+use Glueful\Cache\CacheStore;
+
 // ✅ Good - safe to run multiple times
 public function handle(): void
 {
     $today = date('Y-m-d');
-    $cache = \Glueful\Cache\CacheFactory::create();
+    $cache = app($this->context, CacheStore::class);
 
     if ($cache->has("report:generated:{$today}")) {
         return; // Already ran today
@@ -482,39 +415,23 @@ public function handle(): void
 }
 ```
 
-### Logging
-
-```php
-public function handle(): void
-{
-    app($context, \Psr\Log\LoggerInterface::class)->info('Starting daily cleanup');
-
-    $deleted = db($context)->table('sessions')
-        ->where('expires_at', '<', now())
-        ->delete();
-
-    app($context, \Psr\Log\LoggerInterface::class)->info('Daily cleanup completed', [
-        'sessions_deleted' => $deleted
-    ]);
-}
-```
-
 ## Troubleshooting
 
 **Jobs not running?**
 - Verify scheduler is running (`work` command or cron)
-- Check cron expression is valid
-- Ensure job is enabled in config
+- Check the cron expression is valid
+- Ensure the job is enabled, and listed in *your* `config/schedule.php` if the app has one
+- "Refusing to run scheduled job handler" in the log: the handler does not implement `JobInterface`
+  (or a persisted row's signature no longer matches)
 
 **Jobs running multiple times?**
 - Check only one scheduler instance is running
 - Verify cron isn't triggering duplicates
-- Consider using distributed locks
+- Configure a lock store so the per-job lock applies
 
-**Jobs timing out?**
-- Increase `timeout` in job config
+**Jobs taking too long?**
 - Break into smaller jobs
-- Queue heavy work instead
+- Queue the heavy work instead
 
 ## Next Steps
 

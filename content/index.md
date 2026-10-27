@@ -185,10 +185,10 @@ public function create(ApplicationContext $ctx, CreateUserDTO $dto): array
 ```php [UserRepository.php]
 public function insert(array $data): array
 {
-    $data['uuid'] = Utils::generateNanoID();
-    $this->db->table('users')->insert($data);
+    // BaseRepository::create() generates the uuid + timestamps
+    $uuid = $this->create($data);
 
-    return $this->findByUuid($data['uuid']);
+    return $this->find($uuid);
 }
 ```
 
@@ -329,16 +329,16 @@ lines:
       - { text: "http://localhost:8000", style: url }
   - segments:
       - { text: "$ ", style: prompt }
+      - { text: "curl ", style: cmd }
+      - { text: "localhost:8000/v1/status", style: url }
+  - segments:
+      - { text: "  {\"success\":true,\"data\":{\"status\":\"healthy\"}}", style: success }
+  - segments:
+      - { text: "$ ", style: prompt }
       - { text: "php glueful scaffold:controller Post ", style: cmd }
       - { text: "--api", style: flag }
   - segments:
       - { text: "  ✓ Created PostController", style: success }
-  - segments:
-      - { text: "$ ", style: prompt }
-      - { text: "curl ", style: cmd }
-      - { text: "localhost:8000/api/posts", style: url }
-  - segments:
-      - { text: "  {\"success\":true,\"data\":[]}", style: success }
 ---
 :::::
 ::::

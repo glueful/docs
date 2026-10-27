@@ -5,43 +5,63 @@ description: Send email, SMS, and push notifications
 
 Send multi-channel notifications with templates, retries, and delivery tracking.
 
+Core ships the notification system (`NotificationService`, the channel registry, persistence and
+retries) with one channel, `database`. Email comes from the `glueful/email-notification`
+extension; other channels (SMS, push, Slack…) are [custom channels](#extending-channels).
+
 ## Installation
 
 ```bash
 composer require glueful/email-notification
+php glueful extensions:enable email-notification   # also runs its migrations
 ```
 
-Register in `config/extensions.php`:
+Then configure the mailer in `.env` — `MAIL_HOST` and `MAIL_FROM` are required; with either unset
+the email channel reports itself unavailable:
 
-```php
-'providers' => [
-    Glueful\Extensions\EmailNotification\EmailNotificationServiceProvider::class,
-],
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_ENCRYPTION=tls
+MAIL_USERNAME=your-username
+MAIL_PASSWORD=your-password
+MAIL_FROM=noreply@example.com
+MAIL_FROM_NAME="Your App"
 ```
+
+See [Notification Channels & Templates](/cookbook/notifications) for API providers (SendGrid,
+Mailgun, SES, Postmark, Brevo) and failover.
 
 ## Quick Start
 
 ```php
 use Glueful\Notifications\Services\NotificationService;
 
-$notifiable = new UserNotifiable('user-uuid', 'user@example.com');
-$notifications = app($this->getContext(), NotificationService::class);
+$notifiable = new UserNotifiable($user['uuid'], $user['email']);
+$notifications = app($context, NotificationService::class);
 
-$notifications->send(
+$result = $notifications->send(
     type: 'user.welcome',
     notifiable: $notifiable,
-    subject: 'Welcome to Glueful!',
+    subject: 'Welcome!',
     data: [
-        'template' => 'welcome',
-        'name' => 'Jane Doe',
-        'cta_url' => 'https://app.example.com/get-started'
-    ]
+        'template_name' => 'welcome',
+        'name' => $user['name'],
+        'action_url' => 'https://app.example.com/get-started',
+    ],
+    options: ['channels' => ['email']]
 );
 ```
 
-### Minimal Notifiable Wrapper
+`send(string $type, Notifiable $notifiable, string $subject, array $data = [], array $options = [])`.
+Without `channels`, a notification goes to `notifications.default_channels` — `['database']` by
+default — so pass `['channels' => ['email']]` to send an email.
 
-If your user/entity does not implement `Glueful\Notifications\Contracts\Notifiable`, wrap it with a tiny adapter:
+### Notifiable
+
+The recipient implements `Glueful\Notifications\Contracts\Notifiable` — all five methods are
+required:
 
 ```php
 namespace App\Notifications;
@@ -55,7 +75,7 @@ class UserNotifiable implements Notifiable
         private string $email
     ) {}
 
-    public function routeNotificationFor(string $channel): ?string
+    public function routeNotificationFor(string $channel)
     {
         // Map channel to recipient. Extend for SMS, push, etc.
         return $channel === 'email' ? $this->email : null;
@@ -70,308 +90,184 @@ class UserNotifiable implements Notifiable
     {
         return 'user';
     }
-}
 
-// Usage
-use Glueful\Notifications\Services\NotificationService;
+    public function shouldReceiveNotification(string $notificationType, string $channel): bool
+    {
+        return true; // Consult stored preferences here if you keep them
+    }
 
-$notifiable = new \App\Notifications\UserNotifiable($user['uuid'], $user['email']);
-app($this->getContext(), NotificationService::class)->send(
-    type: 'user.welcome',
-    notifiable: $notifiable,
-    subject: 'Welcome!',
-    data: ['template' => 'welcome', 'name' => $user['name']]
-);
-```
-
-## Basic Email
-
-### Send Welcome Email
-
-```php
-public function register()
-{
-    $user = [
-        'uuid' => 'user-uuid',
-        'email' => 'user@example.com',
-        'name' => 'Jane Doe',
-    ];
-    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
-
-    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
-    $notifications->send(
-        type: 'user.welcome',
-        notifiable: $notifiable,
-        subject: 'Welcome!',
-        data: [
-            'template' => 'welcome',
-            'name' => $user['name']
-        ]
-    );
-
-    return Response::created($user);
+    public function getNotificationPreferences(): array
+    {
+        return [];
+    }
 }
 ```
 
-### Send with Custom Data
+### Results
 
-```php
-$notifications->send(
-    type: 'order.confirmation',
-    notifiable: $notifiable,
-    subject: 'Order #' . $orderId,
-    data: [
-        'template' => 'order-confirmation',
-        'order_id' => $orderId,
-        'total' => $total,
-        'items' => $items,
-        'shipping_address' => $address
-    ]
-);
-```
+`send()` returns an array whose `status` is one of:
+
+| Status | Meaning |
+|---|---|
+| `success` | Sent on the sync channels (per the channel failure policy) |
+| `failed` | The sync channels failed |
+| `queued` | Only async channels were requested; a job was queued (`queued_job_uuid`) |
+| `partial` | Sync channels failed, but async channels were queued |
+| `scheduled` | Stored for later (`scheduled_at`) |
+| `duplicate` | An idempotency key matched a recent notification; nothing was sent |
+
+Each result carries `notification_uuid`; sync results include the per-channel outcomes under `sync`.
 
 ## Templates
 
-### Create Email Template
+The email channel renders a **registered template**, chosen by `template_name` in the data
+(`default` when omitted). The template owns the subject and body; your data fills its
+`{{placeholders}}`. Built-in templates:
 
-`templates/html/welcome.html`:
+| Key | Use | Placeholders |
+|---|---|---|
+| `default` | General notifications | `name`, `message`, `action_url`, `action_text`, `otp`, `expiry_minutes` |
+| `welcome` | Onboarding | `name`, `app_name`, `message`, `action_url`, `action_text` |
+| `alert` | Security / important alerts | `message`, `details`, `action_url` |
+| `password-reset` | Password reset | `name`, `otp`, `expiry_minutes`, `reset_url` |
+| `verification` | Email verification | `otp`, `expiry_minutes` |
+| `two-factor-pin` | 2FA codes | `pin`, `ttl_minutes` |
 
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .button { background: #007bff; color: white; padding: 12px 24px; }
-    </style>
-</head>
-<body>
-    <h1>Welcome, {{name}}!</h1>
-    <p>Thanks for joining Glueful. Get started now:</p>
-    <a href="{{cta_url}}" class="button">Get Started</a>
-</body>
-</html>
-```
+Register your own templates, or override a template's content per site, as described in
+[Notification Channels & Templates](/cookbook/notifications#template-system). Unknown template keys
+fail loudly; a payload cannot select a file.
 
-### Use Template
+## Database Channel
+
+The core `database` channel stores the notification in the `notifications` table for in-app inboxes:
 
 ```php
-$notifications->send(
-    type: 'user.welcome',
-    notifiable: $notifiable,
-    subject: 'Welcome!',
-    data: [
-        'template' => 'welcome',  // Matches welcome.html
-        'name' => $user['name'],
-        'cta_url' => 'https://app.example.com'
-    ]
-);
+$notifications->send('order.shipped', $notifiable, 'Your order has shipped', [
+    'order_id' => $orderId,
+]); // default_channels => ['database']
+
+$unread = $notifications->getUnreadCount($notifiable);
+$notifications->markAllAsRead($notifiable);
 ```
 
-## Built-in Templates
+Persistence is on by default; `NOTIFICATIONS_DATABASE_STORE=false` (`config/capabilities.php`)
+skips the notification tables, and then the database channel is unavailable and scheduling is
+refused.
 
-Glueful includes these templates:
+## Queued (Async) Delivery
 
-- `welcome` - Welcome new users
-- `verification` - Email verification
-- `password-reset` - Password reset link
-- `alert` - System alerts
-- `default` - Generic template
+Send critical channels now and queue the rest:
+
+```php
+// Persist + database now; email on the queue
+$notifications->sendSplit(
+    type: 'order.placed',
+    notifiable: $notifiable,
+    subject: 'Order confirmation',
+    data: ['template_name' => 'default', 'message' => 'Thanks for your order!'],
+    persistNowChannels: ['database'],
+    dispatchAsyncChannels: ['email'],
+);
+
+// Equivalent: options sync_channels / async_channels on send()
+$notifications->send('order.placed', $notifiable, 'Order confirmation', $data, [
+    'async_channels' => ['email'],
+]);
+```
+
+Async channels are pushed through `Glueful\Notifications\Contracts\NotificationQueueDispatcherInterface`
+(the default wraps `QueueManager`) onto the `notifications` queue, so run a worker for it:
+
+```bash
+php glueful queue:work --queue=notifications,default
+```
+
+A dispatch job that exhausts its attempts is recorded in `queue_failed_jobs` (see
+[Failed Jobs](/features/queues-jobs#failed-jobs)).
 
 ## Scheduled Notifications
-
-Send notifications later:
 
 ```php
 $notifications->send(
     type: 'reminder',
     notifiable: $notifiable,
-    subject: 'Don't forget!',
-    data: ['template' => 'reminder'],
+    subject: "Don't forget!",
+    data: ['template_name' => 'default', 'message' => 'Your trial ends tomorrow'],
     options: [
-        'schedule' => new DateTime('+1 day')
+        'schedule' => new \DateTime('+1 day'),
+        'channels' => ['database', 'email'],
     ]
 );
 ```
 
+The notification is stored with its `scheduled_at` and status `scheduled`. The built-in
+`scheduled_notifications` [scheduled job](/features/scheduling#built-in-jobs)
+(`Glueful\Queue\Jobs\ScheduledNotificationsJob`, every minute, up to 50 per run) delivers the ones
+that are due, so all you need is a running scheduler (`php glueful queue:scheduler work` or the
+cron entry). Turn it off with `SCHEDULED_NOTIFICATIONS_ENABLED=false`; it does nothing when
+`NOTIFICATIONS_DATABASE_STORE=false` (and scheduling is refused then anyway).
+`$notifications->processScheduledNotifications($batchSize)` runs the same pass on demand.
+
+At delivery the recipient is rebuilt from the stored notifiable type and id — `user` through the
+identity provider (`UserProviderInterface`), other types through an extension's
+`resolveNotifiableEntity()` — and the notification goes out on the `channels` given at schedule
+time (or `default_channels` when none were given), under the `channel_failure_policy` /
+`critical_channels` it was scheduled with. The rebuilt `user` recipient
+(`Glueful\Notifications\UserNotifiable`) routes `email` to the user's current address, so
+scheduled emails reach the user; a user that no longer exists is skipped and counted as failed.
+Notifications scheduled before 1.91 did not store their channels and go out on `default_channels`.
+
+::u-alert{color="warning" variant="subtle" icon="i-lucide-triangle-alert"}
+**Upgrading to 1.91:** before 1.91 nothing processed scheduled notifications. An app with its own
+`config/schedule.php` must add the `scheduled_notifications` job to its `jobs` list (copy it from
+the framework's `config/schedule.php`) — the app's list replaces the framework's. Notifications
+already overdue go out on the first runs, 50 at a time. See [Upgrading](/upgrading).
+::
+
 ## Priority
 
-Set notification priority:
+```php
+$notifications->send('urgent.alert', $notifiable, 'Action Required', $data, [
+    'channels' => ['email'],
+    'priority' => 'high',
+]);
+```
+
+The priority (for example `high`, `normal`, `low`) is stored on the notification.
+
+## Idempotency
+
+Pass an `idempotency_key` (in `options` or `data`) to make a send safe to repeat: a second send with
+the same key, type and recipient within `idempotency_ttl_seconds` (300) returns
+`status: duplicate` and sends nothing.
 
 ```php
-$notifications->send(
-    type: 'urgent.alert',
-    notifiable: $notifiable,
-    subject: 'Action Required',
-    data: ['template' => 'alert'],
-    options: [
-        'priority' => 'high'  // high, normal, low
-    ]
-);
+$notifications->send('order.placed', $notifiable, 'Order confirmation', $data, [
+    'channels' => ['email'],
+    'idempotency_key' => "order-placed:{$orderUuid}",
+]);
 ```
 
 ## Retries
 
-Automatic retries on failure:
+Failed deliveries are queued in `notification_retry_queue` and retried by the
+`notification_retry_processor` [scheduled job](/features/scheduling#built-in-jobs) (every 10
+minutes), or on demand:
 
-```php
-// Configure retries
-'retry' => [
-    'enabled' => true,
-    'delay' => 300,        // 5 minutes
-    'backoff' => 'exponential',
-    'max_attempts' => 3
-],
+```bash
+php glueful notifications:process-retries
 ```
 
-Backoff strategies:
+The email extension's retry settings live in `config/emailnotification.php` (`retry.*`:
+`MAIL_RETRY_ENABLED`, `MAIL_RETRY_MAX_ATTEMPTS`, `MAIL_RETRY_DELAY`, `MAIL_RETRY_BACKOFF`,
+`MAIL_RETRY_JITTER`). Backoff strategies:
 - `exponential`: delay × 2^(attempt-1)
 - `linear`: delay × attempt
 - `fixed`: same delay every time
 
-## Common Patterns
-
-### Welcome Email
-
-```php
-public function register()
-{
-    $data = $this->getRequestData();
-    $user = [
-        'uuid' => 'user-uuid',
-        'name' => $data['name'] ?? 'Jane Doe',
-        'email' => $data['email'] ?? 'user@example.com',
-    ];
-    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
-    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
-
-    $notifications->send(
-        type: 'user.registered',
-        notifiable: $notifiable,
-        subject: 'Welcome to Glueful',
-        data: [
-            'template' => 'welcome',
-            'name' => $user['name'],
-            'verify_url' => 'https://app.example.com/verify/' . $user['uuid']
-        ]
-    );
-
-    return Response::created($user);
-}
-```
-
-### Password Reset
-
-```php
-public function forgotPassword()
-{
-    $data = $this->getRequestData();
-    $email = $data['email'] ?? null;
-    $user = $this->getConnection()->table('users')->where(['email' => $email])->first();
-
-    if (!$user) {
-        return Response::success(null, 'If email exists, reset link sent');
-    }
-
-    $token = bin2hex(random_bytes(32));
-
-    $this->getConnection()->table('password_resets')->insert([
-        'email' => $email,
-        'token' => hash('sha256', $token),
-        'created_at' => date('Y-m-d H:i:s')
-    ]);
-
-    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
-    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
-    $notifications->send(
-        type: 'password.reset',
-        notifiable: $notifiable,
-        subject: 'Reset Your Password',
-        data: [
-            'template' => 'password-reset',
-            'name' => $user['name'] ?? $user['email'],
-            'reset_url' => 'https://app.example.com/reset-password/' . $token
-        ]
-    );
-
-    return Response::success(null, 'Password reset link sent');
-}
-```
-
-### Order Confirmation
-
-```php
-public function placeOrder()
-{
-    $order = [
-        'id' => 1234,
-        'uuid' => 'order-uuid',
-        'total' => 149.99,
-        'user_uuid' => 'user-uuid',
-    ];
-    $user = [
-        'uuid' => 'user-uuid',
-        'email' => 'user@example.com',
-    ];
-    $notifiable = new UserNotifiable($user['uuid'], $user['email']);
-    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
-    $notifications->send(
-        type: 'order.placed',
-        notifiable: $notifiable,
-        subject: 'Order Confirmation #' . $order['id'],
-        data: [
-            'template' => 'order-confirmation',
-            'order_id' => $order['id'],
-            'total' => $order['total'],
-            'items' => $this->getOrderItems($order['id']),
-            'tracking_url' => 'https://app.example.com/orders/' . $order['uuid']
-        ]
-    );
-
-    return Response::created($order);
-}
-```
-
-### Digest Notifications
-
-```php
-public function sendWeeklyDigest()
-{
-    $users = $this->getConnection()->table('users')
-        ->where(['digest_enabled' => true])
-        ->get();
-
-    $notifications = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class);
-    foreach ($users as $user) {
-        $notifiable = new UserNotifiable($user['uuid'], $user['email']);
-        $stats = $this->getUserStats($user['uuid']);
-
-        $notifications->send(
-            type: 'digest.weekly',
-            notifiable: $notifiable,
-            subject: 'Your Weekly Summary',
-            data: [
-                'template' => 'weekly-digest',
-                'name' => $user['name'] ?? $user['email'],
-                'stats' => $stats,
-                'highlights' => $this->getHighlights($user['uuid'])
-            ]
-        );
-    }
-}
-```
-
-## Queue Notifications
-
-Queue expensive notifications:
-
-```php
-'queue' => [
-    'enabled' => true,
-    'queue_name' => 'emails',
-    'max_attempts' => 3
-],
-```
+A transport failure is retryable; a misconfigured transport (`transport_misconfigured`) is not.
+A retry for a `user` recipient rebuilds it through the identity provider, so a retried email goes
+to the user's current address; a retry for a user that no longer exists is removed from the queue.
 
 ## Notification Events
 
@@ -384,67 +280,75 @@ use Glueful\Notifications\Events\NotificationFailed;
 
 $events = app($context, EventService::class);
 
-$events->addListener(NotificationSent::class, function($event) use ($context) {
+$events->addListener(NotificationSent::class, function ($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->info('Notification sent', [
         'type' => $event->getNotification()->getType(),
-        'channel' => $event->getChannel()
+        'channel' => $event->getChannel(),
     ]);
 });
 
-$events->addListener(NotificationFailed::class, function($event) use ($context) {
+$events->addListener(NotificationFailed::class, function ($event) use ($context) {
     app($context, \Psr\Log\LoggerInterface::class)->error('Notification failed', [
         'type' => $event->getNotification()->getType(),
-        'error' => $event->getReason()
+        'error' => $event->getReason(),
     ]);
 });
 ```
 
+Also available: `NotificationQueued`, `NotificationScheduled`, `NotificationDelivered`,
+`NotificationRead`, `NotificationRetry`.
+
 ## Configuration
 
-`config/email-notification.php`:
+**Core** — optional `config/notifications.php` in your app (only these keys are accepted):
 
 ```php
 return [
-    'templates' => [
-        'extension_path' => __DIR__ . '/../templates/html',
-        'extension_mappings' => [
-            'welcome' => 'welcome',
-            'password-reset' => 'password-reset',
-            'verification' => 'verification',
-            'alert' => 'alert',
-            'default' => 'default'
-        ],
-        'processing' => [
-            'minify_html' => env('MAIL_MINIFY_HTML', false),
-            'inline_css' => env('MAIL_INLINE_CSS', true),
-            'auto_text_version' => true
-        ]
-    ],
+    'default_channels' => ['database'],
+    'async_queue' => 'notifications',
+    'channel_failure_policy' => 'any_success',
+    'critical_channels' => [],
+    'idempotency_enabled' => true,
+    'idempotency_ttl_seconds' => 300,
+    'max_retry_attempts' => 3,
+    'retry_delay_seconds' => 60,
+];
+```
 
-    'queue' => [
-        'enabled' => env('MAIL_QUEUE_ENABLED', true),
-        'queue_name' => env('MAIL_QUEUE_NAME', 'emails'),
-        'max_attempts' => env('MAIL_QUEUE_MAX_ATTEMPTS', 3)
-    ],
+**Mail transport** — `services.mail` in `config/services.php` (`MAIL_MAILER`, `MAIL_HOST`,
+`MAIL_PORT`, `MAIL_FROM`, …). Settings saved through the extension's admin API override it per send.
 
+**Email extension** — `config/emailnotification.php`:
+
+```php
+return [
     'retry' => [
         'enabled' => env('MAIL_RETRY_ENABLED', true),
+        'max_attempts' => env('MAIL_RETRY_MAX_ATTEMPTS', 3),
         'delay' => env('MAIL_RETRY_DELAY', 300),
-        'backoff' => env('MAIL_RETRY_BACKOFF', 'exponential')
-    ]
+        'backoff' => env('MAIL_RETRY_BACKOFF', 'exponential'),
+        'jitter' => env('MAIL_RETRY_JITTER', true),
+    ],
+    'debug' => ['enabled' => env('MAIL_DEBUG', false)],        // log recipient/subject/type per send
+    'logging' => ['enabled' => env('MAIL_LOG_RESULTS', false)], // log each send outcome
+    'security' => [
+        'allowed_domains' => env('MAIL_ALLOWED_DOMAINS', null),  // exact-match allowlist
+        'blocked_domains' => env('MAIL_BLOCKED_DOMAINS', null),  // also blocks subdomains
+        'attachment_allowed_paths' => null,                       // null = app storage dir
+    ],
 ];
 ```
 
 ## Best Practices
 
-### Use Queues
+### Queue Email
 
 ```php
-// ✅ Good - queued
-'queue' => ['enabled' => true]
+// ✅ Good - persisted now, emailed by a worker
+$notifications->sendSplit($type, $notifiable, $subject, $data, ['database'], ['email']);
 
-// ❌ Bad - blocks response
-'queue' => ['enabled' => false]
+// ❌ Bad - the request waits on SMTP
+$notifications->send($type, $notifiable, $subject, $data, ['channels' => ['email']]);
 ```
 
 ### Personalize
@@ -459,58 +363,49 @@ return [
 
 ### Clear CTAs
 
-```php
-// ✅ Good - clear action
-<a href="{{verify_url}}">Verify Your Email</a>
-
-// ❌ Bad - unclear
-<a href="{{url}}">Click here</a>
-```
-
-### Unsubscribe Links
-
-```php
-// Always include
-<p>
-    <a href="{{unsubscribe_url}}">Unsubscribe</a>
-</p>
-```
+Give templates an explicit `action_url` and `action_text` ("Verify your email") rather than a bare
+"Click here". Non-http(s) URLs in `action_url` / `reset_url` are blanked.
 
 ## Testing
 
-Test notifications without sending:
-
 ```php
-public function testWelcomeEmail()
+public function testWelcomeNotification(): void
 {
     $notifiable = new \App\Notifications\UserNotifiable('user-uuid', 'user@example.com');
 
-    $result = app($this->getContext(), \Glueful\Notifications\Services\NotificationService::class)->send(
+    $result = app($this->app->getContext(), \Glueful\Notifications\Services\NotificationService::class)->send(
         type: 'user.welcome',
         notifiable: $notifiable,
         subject: 'Welcome!',
-        data: ['template' => 'welcome', 'name' => 'Jane Doe']
+        data: ['template_name' => 'welcome', 'name' => 'Jane Doe'],
+        options: ['channels' => ['email']]
     );
 
-    $this->assertEquals('success', $result['status']);
+    $this->assertSame('success', $result['status']);
 }
 ```
+
+Set `MAIL_MAILER=array` (or `null`) in the test environment so nothing leaves the process.
 
 ## Troubleshooting
 
 **Emails not sending?**
-- Check SMTP configuration in `.env`
-- Verify queue worker is running
-- Check `failed_jobs` table
+- `MAIL_HOST` and `MAIL_FROM` set? Without them the email channel is unavailable
+- Did you pass `'channels' => ['email']`? The default channel is `database`
+- For async channels, is a worker running on the `notifications` queue?
+- Check `queue_failed_jobs` (`php glueful queue:failed`) and `notification_retry_queue`
+
+**Scheduled notifications not sent?**
+- Is the scheduler running, and is `scheduled_notifications` in *your* `config/schedule.php`?
+- `SCHEDULED_NOTIFICATIONS_ENABLED` must not be `false`
+- Were the `channels` passed when scheduling? Without them delivery uses `default_channels`
 
 **Template not found?**
-- Verify template file exists
-- Check template mapping in config
-- Ensure template name matches
+- `template_name` must be a registered key (built-in, or registered by an extension)
 
 **High failure rate?**
 - Check SMTP credentials
-- Verify email addresses are valid
+- Verify email addresses are valid, and not blocked by `MAIL_BLOCKED_DOMAINS` / `MAIL_ALLOWED_DOMAINS`
 - Review rate limits
 
 ## Extending Channels
@@ -582,4 +477,4 @@ final class SmsServiceProvider extends ServiceProvider
 
 - [Queues & Jobs](/features/queues-jobs) - Queue notifications
 - [Events](/features/events) - Event-driven notifications
-- [Templates](/cookbook/notifications) - Advanced templates
+- [Notification Channels & Templates](/cookbook/notifications) - Providers, custom channels, templates
