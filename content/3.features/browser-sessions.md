@@ -116,7 +116,7 @@ Content-Type: application/json
 - Without the field, or with any other value, the login is the bearer path: tokens in the body, no cookies. Bearer login responses also include `session_uuid` and a session-bound `csrf_token`.
 - While the transport is disabled, `"auth_transport": "cookie"` is ignored and the bearer path runs.
 - Only username/password logins honour it. `token` and `api_key` provider logins are always shaped as before.
-- A login that needs a second factor returns the `two_factor_required` challenge and sets no cookies: there is no session yet.
+- A login that needs a second factor returns the `two_factor_required` challenge and sets no cookies: there is no session yet. Finish it at `POST /2fa/verify` with the `challenge_token`, the `code` and `"auth_transport": "cookie"` again; that response sets the cookies (`glueful/users` 2.5.1+).
 
 ::u-alert{color="info" variant="subtle" icon="i-lucide-info"}
 **Since 1.91:** if you wrote your own cookie login controller only because the core login couldn't set cookies, you can switch the SPA to `POST /auth/login` with `"auth_transport": "cookie"` and remove it.
