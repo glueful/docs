@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.91.4 - Alshain
+**Released: October 31, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: login events see the user on provider logins.** Low risk: the login response body is unchanged, no configuration or default changes.
+::
+
+### Key Highlights
+
+::card
+#title
+`LoginResponseBuildingEvent` always knows who signed in
+#description
+The event's user map was built from the nested `user` object that only the username/password route
+produces. A token or API-key provider login returns the identity flat (`uuid`, `sub`, `email`, ...),
+so a listener that enriches the login response saw an empty user and could not look anything up.
+The shaper now derives the event's user (`id`, `uuid`, `email`, `username`) from the flat result
+when there is no `user` object. What goes on the wire is exactly what it was.
+::
+
+### Migration Notes
+
+- None. Listeners that read `$event->getUser()['id']` now receive it on every login route; nothing
+  to change in apps.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.91.3 - Alshain
 **Released: October 27, 2026**
 
