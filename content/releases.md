@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.91.5 - Alshain
+**Released: November 2, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: upload folders start at the bucket root.** Low risk: only uploads that send a `path_prefix` while `uploads.path_prefix` is empty change, and only in where the object is stored.
+::
+
+### Key Highlights
+
+::card
+#title
+A per-upload `path_prefix` no longer starts the key with a slash
+#description
+`POST /blobs` accepts a `path_prefix` so an app can file uploads under folders such as `avatars/`
+or `parps/photos/`. With `uploads.path_prefix` left empty, the route joined the empty base and the
+folder into `/avatars/...`, which S3-style stores list as an empty top-level folder. The override is
+now the whole path when there is no base prefix; with a base prefix the two are joined as before,
+and uploads that send no `path_prefix` are untouched.
+::
+
+### Migration Notes
+
+- None. Objects already stored keep their keys; only new uploads with a `path_prefix` land under the
+  intended folder.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.91.4 - Alshain
 **Released: October 31, 2026**
 
