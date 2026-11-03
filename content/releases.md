@@ -5,6 +5,39 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.91.6 - Alshain
+**Released: November 3, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: login reports a confirmed email as verified.** Low risk: the login response gains no new fields and nothing in configuration changes; only the value of `user.email_verified` is corrected.
+::
+
+### Key Highlights
+
+::card
+#title
+`email_verified` is true once the address is confirmed
+#description
+The core login rebuilt the session user from the identity's facts alone (uuid, email, username,
+status, roles), which dropped the verification stamp, so the OIDC `email_verified` in the login
+response was computed from a missing value and read `false` on every login. Apps that gate on it
+sent verified users back to the code screen each time they signed in. The session user now carries
+`email_verified_at` from the identity's claims; glueful/users 2.5.6 puts the account row's stamp
+there, and the two-factor challenge already read the same key.
+::
+
+### Migration Notes
+
+- Update glueful/users to 2.5.6 as well: the framework reads the claim, the users extension sets it.
+  On an older users version the response keeps reporting `false`, as before.
+
+```bash
+composer update glueful/framework glueful/users
+```
+
+---
+
 ## v1.91.5 - Alshain
 **Released: November 2, 2026**
 
