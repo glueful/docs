@@ -5,6 +5,52 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.91.7 - Alshain
+**Released: November 5, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: private media from remote disks, and thumbnails of large images.** Low risk: `Range` requests on S3 and R2 answer with the requested bytes instead of a 500, and resizing a large source no longer answers 422; nothing in configuration changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Private media plays from S3 and R2
+#description
+`GET /blobs/{uuid}` with a `Range` header called `fseek()` on the disk's read stream, and the streams
+that S3 and R2 hand back cannot seek, so every range request answered 500 ("fseek(): Stream does not
+support seeking"). AVPlayer on iOS opens media with a range request, so private audio and video
+would not play at all. Non-seekable streams now read forward to the start of the range. A range late
+in a large file costs a read of everything before it; public media served from a CDN is unaffected.
+::
+
+::card
+#title
+Large images can be resized
+#description
+`GET /blobs/{uuid}?width=...` held the source to the image limits meant for output, 2048px by
+default, so any larger original answered 422 however small the request. A resize is now limited by
+the size requested, which was already capped. The source only has to fit
+`uploads.image_processing.max_pixels` (25MP by default), a setting that was defined but never read.
+A variant with no target size, such as `?format=webp`, keeps the source's dimensions and so still
+has to fit the image limits.
+::
+
+### Migration Notes
+
+- No configuration changes. Lower `UPLOADS_MAX_PIXELS` if your server should not decode sources up to
+  25MP when resizing.
+- Update glueful/media to 1.2.1 as well: it applies the same rule to the resize itself. On an older
+  media version a large source still answers 422, as before.
+
+```bash
+composer update glueful/framework glueful/media
+```
+
+---
+
 ## v1.91.6 - Alshain
 **Released: November 3, 2026**
 
