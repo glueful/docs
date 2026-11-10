@@ -40,7 +40,8 @@ Or JSON with base64 content:
 ```
 
 The `201` response carries `blob_uuid`, `url`, `thumb_url`, `type`, `mime_type`, `size_bytes`,
-`width`, `height`, `duration_s`, `filename`, `path` and `visibility`.
+`width`, `height`, `duration_s`, `filename`, `path`, `visibility` and `version` (see
+[Caching](#caching)). `GET /blobs/{uuid}/info` returns `version` too.
 
 ### Serve and resize
 
@@ -48,6 +49,52 @@ The `201` response carries `blob_uuid`, `url`, `thumb_url`, `type`, `mime_type`,
 (`contain`, `cover`, `fill`) and `?format=`; resized variants are cached (`uploads.image_processing`).
 Resizing needs the `glueful/media` extension — without it the original is served, and only an
 explicit `format` conversion answers `415`.
+
+### Caching
+
+Who may keep a copy of the response depends on who could have fetched it:
+
+| Response | `Cache-Control` (config key) |
+|---|---|
+| A public blob | `public, max-age=86400` (`uploads.response.cache_control`) |
+| A public blob at its current version, `?v=` | `public, max-age=31536000, immutable` (`uploads.response.immutable_cache_control`) |
+| Served because the request is signed in or signed | `private, no-cache` (`uploads.response.private_cache_control`) |
+
+"Public" means an anonymous request without a signature would get the same answer: the blob is
+`public`, `uploads.access` does not require auth to view, and your `BlobAccessPolicy` allows a
+visitor. Anything else is `private`, so a CDN or proxy never hands one person's file to another, and
+the browser revalidates it, so a lost permission applies on the next view.
+
+A blob's version is a short code for its contents. It changes whenever the blob is replaced in
+place. Link a public image at its current version and browsers and CDNs can keep it for a year; after
+a change, your page links a new URL, so no one sees the old copy. A URL with an outdated `v` still
+works and gets the ordinary cache.
+
+```php
+use Glueful\Controllers\UploadController;
+use Glueful\Uploader\BlobVersion;
+
+$url = UploadController::blobUrl($context, 'https://example.com', $blob['uuid'], $blob);
+// https://example.com/api/v1/blobs/{uuid}?v=3f9c2a1b7d04
+
+$version = BlobVersion::of($blob); // to add to a URL you build yourself, e.g. with ?width=
+```
+
+Pass the blob row as `BlobRepository` returns it. `v` works with every other query parameter, such
+as `?v=…&width=640&format=webp`.
+
+#### Behind Cloudflare
+
+Cloudflare caches by file extension, and `/blobs/{uuid}` has none, so it passes every blob request
+through to your app (`cf-cache-status: DYNAMIC`). Add one Cache Rule:
+
+- **When:** URI Path starts with `/api/v1/blobs/` (your API prefix).
+- **Then:** Eligible for cache. Edge TTL: use the cache-control header if present. Browser TTL:
+  respect origin.
+
+Cloudflare then follows the headers above: it keeps public blobs, a year at their current version,
+and never stores a `private` response. The rule is only safe on 1.92 or later; earlier releases sent
+`public` for private blobs too.
 
 ### Access control
 
