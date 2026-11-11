@@ -5,6 +5,54 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.92.0 - Alshat
+**Released: November 10, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Minor: blobs a CDN can cache safely.** Moderate risk: public blobs linked at their version can be cached for a year, and private blobs are no longer marked publicly cacheable. Existing URLs keep working; browsers now revalidate private blobs instead of reusing them for a day.
+::
+
+### Key Highlights
+
+::card
+#title
+Public images cached for a year
+#description
+`GET /blobs/{uuid}?v=<version>` naming a public blob's current version answers
+`public, max-age=31536000, immutable`, so browsers and CDNs keep it instead of asking again.
+`BlobVersion::of($blob)` gives the version, a short code that changes when the blob is replaced in
+place; `UploadController::blobUrl()` adds it when given the blob row, and the upload and info
+responses report it as `version`. After a change your page links a new URL, so no one sees the old
+copy. A missing or outdated `v` gets the ordinary one-day cache.
+::
+
+::card
+#title
+Private blobs never reach a shared cache
+#description
+A blob served because the request was signed in, or carried a signed URL, was sent
+`public, max-age=86400`. A CDN or proxy caching blob URLs could keep one person's private file and
+hand it to anyone. These responses now carry `private, no-cache`: the browser keeps the file but
+checks with the app each time, so a lost permission applies on the next view. This includes a public
+blob your `BlobAccessPolicy` shows only to signed-in users.
+::
+
+### Migration Notes
+
+- No configuration changes are needed. To change the new headers, set
+  `UPLOADS_IMMUTABLE_CACHE_CONTROL` or `UPLOADS_PRIVATE_CACHE_CONTROL` (for example
+  `private, max-age=3600` to let browsers reuse private blobs for an hour).
+- Behind Cloudflare, blob URLs are not cached until you add one Cache Rule; see
+  [Caching](/features/file-uploads#caching) in the file uploads guide. Add it only once you run
+  1.92.0, since earlier releases marked private blobs public.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.91.7 - Alshain
 **Released: November 5, 2026**
 
