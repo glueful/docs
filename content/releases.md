@@ -5,6 +5,50 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.92.1 - Alshat
+**Released: November 18, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: push notifications with something to show.** Low risk: notification extensions that declare every type now run, and channels receive the notification's subject; nothing in configuration changes.
+::
+
+### Key Highlights
+
+::card
+#title
+Pushes are no longer empty
+#description
+The dispatcher handed each channel the notification's data but not its subject, so a push channel had
+no title. Unless the sender also put text in the data, the push went out with nothing in it: FCM
+accepted it, delivery was recorded as sent, and the phone showed nothing. Channels now receive the
+subject as `subject`, unless the data already sets one.
+::
+
+::card
+#title
+Extensions that declare every type now run
+#description
+`getSupportedNotificationTypes()` returning `['*']` was compared literally against the notification
+type, so such an extension's `beforeSend()` and `afterSend()` never ran. glueful/notiva declares
+`['*']`, so its push hook was skipped on every notification. `'*'` now means every type; named types
+still match exactly.
+::
+
+### Migration Notes
+
+- No configuration changes.
+- Update glueful/notiva to 1.13.1 as well. It sends FCM `data` values as strings; FCM rejects a whole
+  message whose data holds a number, a boolean or an array.
+- If you set `body` in notification data to work around the empty title, it now shows under the
+  title. Drop it if it repeats the subject, or set `title` instead, which is kept.
+
+```bash
+composer update glueful/framework glueful/notiva
+```
+
+---
+
 ## v1.92.0 - Alshat
 **Released: November 10, 2026**
 
