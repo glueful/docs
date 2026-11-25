@@ -5,6 +5,38 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.93.1 - Altais
+**Released: November 25, 2026**
+
+::u-alert{color="info" variant="subtle" icon="i-tabler-info-circle"}
+#description
+**Patch: queued jobs run as often as they say.** Low risk: a database-queue job that keeps failing now stops after `maxAttempts` deliveries, not one more; nothing in configuration changes.
+::
+
+### Key Highlights
+
+::card
+#title
+`maxAttempts` means what it says
+#description
+The database queue counted a delivery's attempt in its table but handed the worker the row it had
+read before, so the worker always saw one attempt fewer than the job was on. A failing job therefore
+ran once more than its `maxAttempts` (or the worker's `--tries`) allowed: a job allowed a single
+attempt was retried once. The job now carries the attempt it is on, as the Redis driver's already
+did.
+::
+
+### Migration Notes
+
+- No configuration changes.
+- A job that relied on the extra delivery should raise its `maxAttempts`, or the worker's `--tries`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.93.0 - Altais
 **Released: November 25, 2026**
 
