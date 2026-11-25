@@ -46,9 +46,58 @@ The `201` response carries `blob_uuid`, `url`, `thumb_url`, `type`, `mime_type`,
 ### Serve and resize
 
 `GET /blobs/{uuid}` streams the file. Images accept `?width=`, `?height=`, `?quality=`, `?fit=`
-(`contain`, `cover`, `fill`) and `?format=`; resized variants are cached (`uploads.image_processing`).
-Resizing needs the `glueful/media` extension — without it the original is served, and only an
-explicit `format` conversion answers `415`.
+(`contain`, `cover`, `fill`) and `?format=`. Resizing needs the `glueful/media` extension — without
+it the original is served, and only an explicit `format` conversion answers `415`.
+
+#### Stored copies
+
+Each resized copy is rendered once and stored as a file, then served from there until its image
+changes. It sits beside the original on the image's own disk, local or a bucket, at
+`_variants/{uuid}/{version}/{settings}.{ext}`. Replacing an image gives it a new version, so its
+next copies are made fresh and the old ones are removed.
+
+| Key (`uploads.image_processing.`) | Default | |
+|---|---|---|
+| `cache_enabled` | `true` | Store copies. Off: render every copy on every request. |
+| `variant_disk` | `null` | One disk for every copy, e.g. a local disk while the originals are in S3 or R2. |
+| `variant_prefix` | `_variants` | The folder copies are kept under. |
+| `max_stored_variants` | `32` | Copies kept per image version. Sizes asked for past this are served, not stored, so arbitrary `?width=` values cannot fill the disk. |
+
+A copy that cannot be stored (a full disk, a bucket error) is still served.
+
+**Making copies at upload.** With `pregenerate.enabled` (`UPLOADS_PREGENERATE_VARIANTS=true`), an
+uploaded image queues `GenerateBlobVariantsJob`, which makes each `pregenerate.widths` in each
+`pregenerate.formats` (`null` is the image's own format) for images whose type is in
+`pregenerate.mime_types`, so no visitor waits for one to be rendered. List the sizes your pages ask
+for:
+
+```php
+// config/uploads.php
+'image_processing' => [
+    'pregenerate' => [
+        'enabled' => true,
+        'queue' => 'default',
+        'widths' => [320, 640, 960, 1280],
+        'formats' => ['webp'],
+        'mime_types' => ['image/jpeg', 'image/png'],
+    ],
+],
+```
+
+It needs a running queue worker. A copy already stored is skipped, so you can queue it again
+yourself after changing an image: `GenerateBlobVariantsJob::dispatchFor($context, $uuid)`.
+
+**Cleaning up.** Purging a deleted blob removes its copies too. `blobs:variants:prune` removes
+copies whose image is gone or has changed, including copies left on a disk your images have moved
+off; `--all` removes every copy (each is made again when next requested).
+
+```bash
+php glueful blobs:variants:prune
+php glueful blobs:variants:prune --all
+```
+
+Upgrading from 1.92 or earlier: copies used to live in the app cache, base64-encoded, for
+`cache_ttl`. Those entries are no longer read and expire on their own.
 
 ### Caching
 
@@ -345,7 +394,7 @@ $this->app->get(BlobAccessPolicyRegistry::class)->register('acme.owner-delete', 
 
 `DELETE /blobs/{uuid}` removes the file and marks the row `deleted`. Rows marked deleted are kept
 for `uploads.purge_deleted_after_days` (`UPLOADS_PURGE_DELETED_AFTER_DAYS`, 30), then purged — any
-remaining file through the disk the blob names, then the row:
+remaining file through the disk the blob names, its stored resized copies, then the row:
 
 ```bash
 php glueful blobs:purge                 # uses uploads.purge_deleted_after_days
