@@ -5,6 +5,69 @@ description: Curated highlights, migration guidance, and structured summaries of
 
 > This page is a curated layer over the raw authoritative `CHANGELOG.md`. For complete detail (including every Added/Changed/Removed/Fix line) consult the full changelog.
 
+## v1.93.0 - Altais
+**Released: November 25, 2026**
+
+::u-alert{color="warning" variant="subtle" icon="i-tabler-alert-triangle"}
+#description
+**Minor: resized images made once and kept.** Moderate risk: resized copies move from the app cache to files beside each image, so they use disk space instead of cache memory. Responses, headers and URLs are unchanged; making copies at upload is opt-in.
+::
+
+### Key Highlights
+
+::card
+#title
+Each resized copy is a file, kept until its image changes
+#description
+A copy made by `GET /blobs/{uuid}?width=…` was base64 text in the app cache for seven days, so every
+copy was rendered again each week and the request that found it gone waited about a second. Each
+copy is now stored beside its image, on the image's own disk (local, S3 or R2), and served from there
+until the image is replaced. `variant_disk` keeps them all on one disk instead.
+::
+
+::card
+#title
+Copies made at upload
+#description
+With `uploads.image_processing.pregenerate.enabled`, an uploaded image queues
+`GenerateBlobVariantsJob`, which makes each configured width in each configured format before anyone
+asks for it. A queue that is down leaves the upload standing; the copies are made on request.
+::
+
+::card
+#title
+Copies on cloud storage fetched from the store
+#description
+With `variant_redirect_ttl` set, a stored copy of a public image on any cloud disk (S3 and its R2,
+MinIO, Spaces and Wasabi presets, GCS, Azure) is a redirect to a signed URL, so the browser loads it
+from the bucket instead of through your app. Private images and local disks are streamed as before.
+::
+
+::card
+#title
+Bounded and cleaned up
+#description
+At most `max_stored_variants` (32) copies per image version, so requests for arbitrary sizes cannot
+fill the disk. Purging a deleted blob removes its copies, and `blobs:variants:prune` removes copies
+of images that are gone, have changed or moved disks.
+::
+
+### Migration Notes
+
+- Nothing to migrate: old copies in the app cache are no longer read and expire on their own.
+- Copies now take disk space under `_variants/` on each image's disk. Set `variant_disk` to put them
+  elsewhere, or `uploads.image_processing.cache_enabled` to `false` to store none.
+- To make copies at upload, set `UPLOADS_PREGENERATE_VARIANTS=true`, list the widths your pages use in
+  `uploads.image_processing.pregenerate.widths`, and run a queue worker.
+- With images on cloud storage, set `UPLOADS_VARIANT_REDIRECT_TTL=3600` to serve stored copies from the
+  bucket, and allow the bucket's host in your Content-Security-Policy `img-src`.
+
+```bash
+composer update glueful/framework
+```
+
+---
+
 ## v1.92.1 - Alshat
 **Released: November 18, 2026**
 
