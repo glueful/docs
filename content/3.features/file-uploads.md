@@ -63,7 +63,18 @@ next copies are made fresh and the old ones are removed.
 | `variant_prefix` | `_variants` | The folder copies are kept under. |
 | `max_stored_variants` | `32` | Copies kept per image version. Sizes asked for past this are served, not stored, so arbitrary `?width=` values cannot fill the disk. |
 
+| `variant_redirect_ttl` | `0` | Seconds a redirect to a stored copy on cloud storage lasts. `0`: copies are streamed through the app. |
+
 A copy that cannot be stored (a full disk, a bucket error) is still served.
+
+**Serving copies from cloud storage.** Every cloud driver signs URLs: `glueful/storage-s3` (with its
+R2, MinIO, Spaces and Wasabi presets), `glueful/storage-gcs` and `glueful/storage-azure`. With
+`variant_redirect_ttl` above 0 (`UPLOADS_VARIANT_REDIRECT_TTL=3600`), a stored copy of a public image
+on such a disk is answered with a `302` to a signed URL, so the browser fetches it from the store
+and your app does not stream it. Caches keep the redirect for half the TTL, so they never hand out
+an expired URL; keep the driver's `max_signed_ttl` at or above it. Private images, and disks that
+cannot sign (local), are streamed as before. Since images then load from the bucket's host, allow it
+in your Content-Security-Policy's `img-src`.
 
 **Making copies at upload.** With `pregenerate.enabled` (`UPLOADS_PREGENERATE_VARIANTS=true`), an
 uploaded image queues `GenerateBlobVariantsJob`, which makes each `pregenerate.widths` in each

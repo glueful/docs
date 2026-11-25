@@ -36,6 +36,15 @@ asks for it. A queue that is down leaves the upload standing; the copies are mad
 
 ::card
 #title
+Copies on cloud storage fetched from the store
+#description
+With `variant_redirect_ttl` set, a stored copy of a public image on any cloud disk (S3 and its R2,
+MinIO, Spaces and Wasabi presets, GCS, Azure) is a redirect to a signed URL, so the browser loads it
+from the bucket instead of through your app. Private images and local disks are streamed as before.
+::
+
+::card
+#title
 Bounded and cleaned up
 #description
 At most `max_stored_variants` (32) copies per image version, so requests for arbitrary sizes cannot
@@ -50,6 +59,8 @@ of images that are gone, have changed or moved disks.
   elsewhere, or `uploads.image_processing.cache_enabled` to `false` to store none.
 - To make copies at upload, set `UPLOADS_PREGENERATE_VARIANTS=true`, list the widths your pages use in
   `uploads.image_processing.pregenerate.widths`, and run a queue worker.
+- With images on cloud storage, set `UPLOADS_VARIANT_REDIRECT_TTL=3600` to serve stored copies from the
+  bucket, and allow the bucket's host in your Content-Security-Policy `img-src`.
 
 ```bash
 composer update glueful/framework
